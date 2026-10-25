@@ -1986,6 +1986,10 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · Markets.** `presenters/market/markets.presenter.js` (useMarketsPresenter) builds tabs with live counts, search by code or name, sorting on the five number columns, the watchlist star (optimistic, put back if the request fails) and the halted-market footnote.
   - Views: `views/components/market/MarketTable.js` (MarketTable, MarketRow, WatchlistStar) and `views/pages/market/MarketsPage.js`; styles in `styles/pages/markets.css`.
   - The board's column edges are reproduced with fixed column widths. Every text run is within 2 px of the board, offset only by the verify-email banner, which shows while the demo address is unconfirmed.
+- **26 Oct 2026 · Trade, desktop and phone.** `presenters/trade/trade.presenter.js` (useTradePresenter) composes the six presenters section 1 lists for the page: `marketHeader`, `chart`, `orderBook`, `recentTrades`, `orderForm` and `myOrders`, all in `presenters/trade/`. They share one redraw, and the composer hands ladder clicks and the live book to the ticket (flow C, step 5).
+  - *Model.* `models/stores/order.store.js` holds the signed-in user's open orders: loaded from `GET /orders`, merged from `order.update`, with a placed order added at once as pending. An update older than the one held is ignored, since the socket can beat the 202. `models/data/candles.BTC-USDT.15m.json` holds the board's 80 candles, digitised from the chart image and ending with the O, H, L and C it prints. The mock market now builds every interval from one 15-minute series, so 1m, 5m, 1h, 4h and 1d agree with what the board draws. It also waits for a demo reset to finish before answering requests.
+  - *Views.* In `views/components/trade/`: MarketHeader (with the market switcher), RecentTrades, OrderForm (with PercentButtons, OrderSummary and LoginToTradeCTA) and MyOrdersPanel. Also `charts/PriceChart.js` (PriceChart and ChartToolbar in SVG), `orders/OrderTimeline.js`, `wallet/LedgerTable.js`, `ui/Popover.js` (shared with the header) and `views/pages/trade/TradePage.js`. Styles are in `styles/pages/trade.css`, `components/chart.css` and `components/orders.css`, plus a full-height variant in `ladder.css`.
+  - *Checks.* Compared with both boards, every text run is within 2 to 3 px except live values. `npm run compare` and `npm run shots` gained `--verified`, which confirms the demo email first so the banner doesn't shift the page. A Playwright script exercised 48 behaviours: the ticket's maths, shares and tick errors; a ladder pick; placing a resting order, then its timeline, ledger and cancel; a taker fill; market orders; intervals and grouping; the market switcher; a halted market; an unknown market; the logged-out page; and the phone sheet.
 
 ### Conflicts and differences
 
@@ -2019,6 +2023,20 @@ The owner approved these decisions on 25 Oct 2026.
 | Space above the footer on Home | — | The export splits Home over two pages, so the gap before the footer is unclear (about 104 px on page 1, more after the break) | 104 px |
 | Markets: sorting, search, watchlist | Search, sort and the four tabs | The tabs and the search field; no sort marks | The number column headers are sort buttons (aria-sort; an arrow appears beside the label once sorted). A guest who stars a market is sent to log in, since the watchlist lives on the account. Not drawn |
 | Markets on a phone | — | Only the 1440 px board | High, low, volume, status and the Trade button fold away below 768 px; the row's pair links to the trade page |
+| Trade: the 14:15 candle | Candles are built from trades | The sell order filled at 62,400.00 at 14:21:07, but the 14:15 candle tops out near 62,166 | Its high is 62,400.00, from that fill. The rest of the chart is the board's, digitised |
+| Trade: candle intervals | The candle worker keeps every interval | Only 15m is drawn | All intervals come from one 15-minute series (shorter ones split, longer ones added up), so they agree. Older history is generated |
+| Trade: open orders | useMyOrdersPresenter and balance.store merge the updates (flow A, step 7) | — | A small `order.store` merges `order.update`, so the ladder's tags, Your orders and later the Orders page share one list |
+| Trade: Your orders | MyOrdersPanel has Open, History and Trades tabs with history and trade tables | The open orders as a strip, and the picked one's lifecycle and ledger; no tabs | Follow the board. History and trades are on the Orders page; the phone panel links there ("See all") |
+| Trade: ladder depth | — | 12 levels a side; the demo trader's sell at 62,400.00 isn't on it | Each half shows the levels that fit, up to 15. The demo trader's sell is the 13th ask, tagged "You · 1st in queue" because it is the whole level |
+| Trade: the pending buy | The engine applies pending orders when it starts | "Buy 0.01 @ 62,000 · pending" | The mock applies it about half a second after load, as the engine would after a restart. The strip then reads "Buy 0.01 @ 62,000" and the ladder tags 62,000.00 |
+| Trade: the ticket at rest | — | 62,140.50 and 0.02000 typed in | The price starts at the last price and the amount starts empty, so nothing is placed by accident. "What the engine will do" keeps room for three lines, so the tape doesn't jump |
+| Trade: market orders | A market buy takes a total | Only a limit order | The price field is disabled. A buy takes the total to spend and shows the amount it should get (≈); a sell takes the amount and shows the total (≈). The fee is an estimate too. Not drawn |
+| Trade: halted, logged out, unknown market | A halted market shows a banner and a disabled form; LoginToTradeCTA when logged out | Only BTC/USDT, signed in | Halted: the banner, an empty book and a grey "Market halted" button. Logged out: "Log in to trade" in the ticket and in Your orders. An unknown symbol: a message and a link to Markets. Not drawn |
+| Trade: market switcher | MarketSelector with a search | "Bitcoin ▾"; "BTC/USDT ▾" on the phone | A popover of the markets with price and change, and a search field. Not drawn |
+| Trade: the phone ticket | A Buy and Sell bar on a phone | The bar; no ticket | Buy and Sell open the ticket in a bottom sheet (a dialog), and so does a price on the Book tab. Not drawn |
+| Trade from 768 to 1199 px | Tabs below 768 px | Only 1440 and 390 px | Two columns that scroll: the chart and Your orders across, then the ladder beside the ticket and the tape. Not drawn |
+| Chart grid and volume bars | — | Grid lines every 300; grey volume bars | Grid lines at round steps (1, 2, 3 or 5 × 10ⁿ) at least 50 px apart. The bars use a new token, `--chart-volume` #CFC7B9, sampled from the board |
+| Phone header | — | 56 px, a bare bell and menu, the market switcher before the demo tag | Every page's header follows it below 768 px; from 768 px up it stays 52 px with framed buttons |
 
 ### Checklist
 
@@ -2045,8 +2063,8 @@ Pages drawn
 
 - [x] Home
 - [x] Markets
-- [ ] Trade, desktop
-- [ ] Trade, phone
+- [x] Trade, desktop
+- [x] Trade, phone
 - [ ] Log in and its 2FA step
 - [ ] Register
 - [ ] Wallet
@@ -2081,7 +2099,7 @@ Open items
 - [ ] Google sign-in and the OAuth callback wait for the backend; the button still lacks the "G" mark
 - [ ] Colour-blind pair: no setting yet
 - [ ] The API needs listed in section 7
-- [ ] Visual checks with Playwright, if approved
+- [x] Visual checks with Playwright at 1440 and 390 px (approved), plus `npm run compare` against the boards' text layers
 
 ### Component map
 
@@ -2121,11 +2139,20 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | MarketsPage, useMarketsPresenter | `views/pages/market/MarketsPage.js`, `presenters/market/markets.presenter.js` |
 | MarketTable, MarketRow, WatchlistStar | `views/components/market/MarketTable.js` |
 | MarketFilterTabs, SearchInput | `Tabs` and `SearchInput` from `views/components/ui/` |
+| TradePage, useTradePresenter | `views/pages/trade/TradePage.js`, `presenters/trade/trade.presenter.js` |
+| useMarketHeaderPresenter, useChartPresenter, useOrderBookPresenter, useRecentTradesPresenter, useOrderFormPresenter, useMyOrdersPresenter | `presenters/trade/marketHeader.presenter.js`, `chart.presenter.js`, `orderBook.presenter.js`, `recentTrades.presenter.js`, `orderForm.presenter.js`, `myOrders.presenter.js` |
+| MarketHeader, MarketSelector | `views/components/trade/MarketHeader.js` (the popover helpers are in `views/components/ui/Popover.js`) |
+| PriceChart, ChartToolbar | `views/components/charts/PriceChart.js` |
+| RecentTrades | `views/components/trade/RecentTrades.js` |
+| OrderForm, PercentButtons, OrderSummary, LoginToTradeCTA | `views/components/trade/OrderForm.js` |
+| MyOrdersPanel | `views/components/trade/MyOrdersPanel.js` |
+| OrderTimeline | `views/components/orders/OrderTimeline.js` |
+| LedgerTable | `views/components/wallet/LedgerTable.js` (the per-order columns; History adds its own) |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |
 | auth, user, market, order, wallet, kyc, notification, admin APIs | `models/api/*.api.js` |
-| auth.store, preferences.store, balance.store, ticker.store, connection.store, notification.store | `models/stores/session.store.js` and the others under `models/stores/` |
+| auth.store, preferences.store, balance.store, ticker.store, connection.store, notification.store | `models/stores/session.store.js` and the others under `models/stores/`; also `order.store.js` (open orders) and `asset.store.js` |
 | money, order.rules, withdrawal.rules, portfolio.rules, password.rules, orderBook.model, candles.model | `models/domain/*.js` |
 | number.format, date.format, status.format | `presenters/formatters/*.js` |
 
@@ -2329,6 +2356,8 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | 1 Folders | `client/src/models/api/mock/`: a mock backend with the section 4 endpoints, envelope and socket events, a market simulator and a matching engine | Lets every screen work end to end before the server exists; deleted when it does |
 | Addition | 4 API | The mock answers the eight API needs of section 7 (and the admin withdrawals' `userKycStatus`) | The boards need them; each stays a pending decision for the real API |
 | Addition | Repository root | `scripts/` with `check-data`, `extract-boards`, `screenshots` and `copy-vendor`; `serve` and Playwright as dev dependencies | Tooling for the static phase; Node runs only these |
+| Change | 6 Flow A, step 7 | Open orders live in `models/stores/order.store.js`, which merges `order.update` and ignores copies older than the one it holds | The ladder's "You" tags, Your orders and the Orders page read one list, and a late 202 can't undo an update the socket already delivered |
+| Change | 7 UI design, 8 | The Trade board's 14:15 candle reaches 62,400.00, and every candle interval comes from one 15-minute series | The board's sell order filled at 62,400.00 inside that candle, and the intervals must agree with each other |
 
 ### Sources
 

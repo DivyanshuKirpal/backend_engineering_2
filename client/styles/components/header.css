@@ -266,7 +266,13 @@
 }
 
 @media (max-width: 767px) {
-  .app-header { padding: 0 12px; gap: 8px; }
+  /* The phone board: a 56 px bar with the mark, the page's centre (the trade
+     page's market switch), the demo tag, a bare bell and the menu */
+  .app-header { height: 56px; padding: 0 6px 0 16px; gap: 8px; }
+  .header-center { margin-left: 16px; }
+  .header-center + .demo-anchor { margin-left: 7.7px; }
+  .bell-btn { border-color: transparent; background: none; }
+  .bell-count { top: 6px; right: 4.1px; }
   .app-header .wordmark { display: none; }
   .demo-anchor { margin-left: 0; }
   .demo-badge-long { display: none; }

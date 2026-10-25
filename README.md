@@ -35,8 +35,8 @@ The **Simulator · demo funds** badge in the header opens the demo controls: res
 | `npm run dev` | Serves `client/` on port 5173; any path without a file falls back to `index.html`, so links straight to a page work |
 | `npm run check:data` | Checks the demo data in `client/src/models/data`: every balance equals the sum of its ledger entries, ids are unique, locks match open orders and pending withdrawals, amounts fit their decimals |
 | `npm run boards` | Cuts each design board out of the PDFs as a JPEG plus its text layer, into `.boards/` (git-ignored) |
-| `npm run shots -- --as=demo /wallet` | Screenshots pages at 1440 and 390 px into `.screenshots/` (git-ignored), with Playwright; `--fresh` resets the demo data first |
-| `npm run compare -- /markets screens-p03-markets` | Compares a page's text positions and sizes with a board's text layer (from `npm run boards`) and flags anything more than a few px off |
+| `npm run shots -- --as=demo /wallet` | Screenshots pages at 1440 and 390 px into `.screenshots/` (git-ignored), with Playwright; `--fresh` resets the demo data first, `--verified` confirms the email so the verify banner doesn't show |
+| `npm run compare -- /markets screens-p03-markets` | Compares a page's text positions and sizes with a board's text layer (from `npm run boards`) and flags anything more than a few px off; takes `--as`, `--fresh`, `--verified` and `--width` too |
 | `npm run vendor` | Copies the fonts and the QR encoder out of `node_modules` into `client/assets` (the copies are committed) |
 
 ## How it fits together

@@ -135,6 +135,19 @@ for (const x of markets) {
     check(beyond || (level && m.gte(level[1], amount)), where, `resting ${side} ${amount} at ${p} don't fit in the snapshot`);
   }
 
+  const candleFile = files[`candles.${x.symbol}.15m.json`];
+  if (candleFile) {
+    const where = `candles.${x.symbol}.15m.json`;
+    candleFile.candles.forEach((c, i) => {
+      for (const f of ['open', 'high', 'low', 'close']) check(m.fitsStep(c[f], x.tickSize), where, `candle ${i} ${f} breaks tickSize`);
+      check(m.gte(c.high, m.max(c.open, c.close)) && m.lte(c.low, m.min(c.open, c.close)), where, `candle ${i}: high and low must contain open and close`);
+      check(m.fitsStep(c.volume, x.stepSize) && !m.isNegative(c.volume), where, `candle ${i} volume`);
+      if (i > 0) check(c.time - candleFile.candles[i - 1].time === 900, where, `candle ${i} isn't 15 minutes after the one before`);
+    });
+    const lastCandle = candleFile.candles[candleFile.candles.length - 1];
+    check(lastCandle && m.eq(lastCandle.close, x.ticker.last), where, 'the forming candle must close at ticker.last');
+  }
+
   const trades = files[`trades.${x.symbol}.json`]?.trades ?? [];
   trades.forEach((t, i) => {
     check(m.fitsStep(t.price, x.tickSize) && m.fitsStep(t.quantity, x.stepSize), `trades.${x.symbol}.json`, `trade ${t.id} breaks tick or step`);

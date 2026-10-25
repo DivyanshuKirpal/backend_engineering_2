@@ -105,6 +105,8 @@
 
   /* Admin volume bars */
   --chart-bar: #2A78D6;
+  /* The candle chart's volume bars, sampled from the Trade board */
+  --chart-volume: #CFC7B9;
 
   /* Type */
   --font-sans: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;

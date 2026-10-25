@@ -1,0 +1,77 @@
+/* OrderTimeline and LedgerTable (section 7, Order lifecycle and Order ledger;
+   board Trade, YOUR ORDERS). The Orders drawer uses them too. */
+
+/* The lifecycle: dots joined by a rule, dotted on the way to "now" */
+.timeline { list-style: none; margin: 0; padding: 0; }
+
+.timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  column-gap: 0;
+  padding-left: 40px;
+  padding-bottom: 12px;
+}
+
+.timeline-item:last-child { padding-bottom: 0; }
+
+.timeline-dot {
+  position: absolute;
+  left: 18px;
+  top: 4px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+/* The rule from this dot down to the next */
+.timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 23.5px;
+  top: 17px;
+  bottom: -4px;
+  border-left: 2px solid var(--ink);
+}
+
+.timeline-to-now::after { border-left-style: dotted !important; }
+
+.timeline-part .timeline-dot { background: linear-gradient(90deg, var(--ink) 50%, var(--bg-panel) 50%); }
+.timeline-now .timeline-dot { background: var(--bg-panel); border-color: var(--ink-3); }
+.timeline-stopped .timeline-dot { background: var(--ink-3); border-color: var(--ink-3); }
+
+.timeline-time { padding-top: 2px; color: var(--ink-3); font-size: 12px; line-height: 18px; }
+.timeline-text { font-size: 14px; line-height: 19.6px; }
+.timeline-text strong { font-weight: 700; }
+
+/* The ledger lines one order wrote */
+.ledger-table { width: 100%; font-size: 12px; }
+
+.ledger-table th {
+  height: 27px;
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+  vertical-align: bottom;
+}
+
+.ledger-table td {
+  height: 27.5px;
+  padding: 0;
+  padding-bottom: 6.4px;
+  border-bottom: 1px solid var(--line-row);
+  line-height: 20.1px;
+  font-size: 12px;
+}
+
+.ledger-table td:not(.t-mono) { font-family: var(--font-sans); font-size: 12px; }
+.ledger-table .num { text-align: right; }
+.ledger-table tbody tr:last-child td { border-bottom: 0; }
+.ledger-type { color: var(--ink); }
+.ledger-empty { color: var(--ink-3); padding: 10px 0 !important; }
+.ledger-note { margin-top: 3.9px; color: var(--ink-3); font-size: 13px; }

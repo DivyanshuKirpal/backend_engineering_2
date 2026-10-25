@@ -6,6 +6,7 @@
 //   Routes may leave out the leading slash ("home" is /), which also keeps Git Bash
 //   from turning them into Windows paths.
 //   --fresh   reset the demo data first, so the page matches its board's state
+//   --verified  confirm the user's email first, so no verify banner shows
 
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -27,6 +28,7 @@ const as = flag('as', 'guest');
 const widths = flag('widths', '1440,390').split(',').map(Number);
 const wait = Number(flag('wait', '1200'));
 const fresh = args.includes('--fresh');
+const verified = args.includes('--verified');
 const ACCOUNTS = { demo: ['demo@orichal.app', 'orichal-demo', '123456'], admin: ['admin@orichal.app', 'orichal-demo', null] };
 
 const freePort = () => new Promise((resolve) => {
@@ -70,7 +72,21 @@ async function signIn(page, base) {
       await handle({ method: 'POST', path: '/auth/login/2fa', body: { loginTicket: first.body.data.loginTicket, code: c } });
     }
   }, [email, password, code]);
+  if (verified) await confirmEmail(page, email);
 }
+
+// --verified: confirm the signed-in user's email first, so the verify banner
+// doesn't push the page down (the boards other than Profile draw it confirmed).
+async function confirmEmail(page, email) {
+  await page.evaluate(async (address) => {
+    const { db, persist } = await import('/src/models/api/mock/db.js');
+    const me = db().users.find((u) => u.email === address);
+    if (me) me.emailVerified = true;
+    persist();
+    await new Promise((r) => setTimeout(r, 400));
+  }, email);
+}
+
 
 const port = await freePort();
 const server = await startServer(port);

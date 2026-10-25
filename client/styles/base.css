@@ -93,6 +93,7 @@ a {
 .tone-up, .tone-buy, .tone-success { color: var(--buy); }
 .tone-down, .tone-sell, .tone-error { color: var(--sell); }
 .tone-wait { color: var(--brass); }
+.tone-muted, .tone-flat { color: var(--ink-3); }
 
 /* Layout */
 .container {

@@ -51,6 +51,8 @@ export async function handle({ method, path, query = {}, body = null, headers = 
   await whenReady();
   const [lo, hi] = method === 'GET' ? latency.GET : latency.WRITE;
   await sleep((lo + Math.random() * (hi - lo)) * (settings.slow ? 4 : 1));
+  // A demo reset may have started during the delay; wait for it to finish.
+  await whenReady();
 
   if (settings.failNext) {
     settings.failNext = false;
@@ -120,13 +122,16 @@ export function setSlowNetwork(on) {
   settings.slow = Boolean(on);
 }
 
-/** Throws the demo data away and loads it again from the seed files. */
+/** Throws the demo data away and loads it again from the seed files. Requests wait for it. */
 export async function resetDemo() {
   await whenReady();
-  market.clear();
-  session.clearCookie();
-  await store.reset();
-  await market.init();
-  market.start();
-  engine.replayPending();
+  ready = (async () => {
+    market.clear();
+    session.clearCookie();
+    await store.reset();
+    await market.init();
+    market.start();
+    engine.replayPending();
+  })();
+  return ready;
 }

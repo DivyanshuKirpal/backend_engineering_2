@@ -98,6 +98,8 @@
 }
 
 .number-input:focus { outline: none; }
+/* Sized by the box, not by the browser's default input width */
+.number-input { width: 0; }
 .number-unit { color: var(--ink-3); font-size: 12px; }
 .is-disabled .number-box { background: var(--bg-panel); }
 

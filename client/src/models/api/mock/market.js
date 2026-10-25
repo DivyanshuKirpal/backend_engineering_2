@@ -21,6 +21,9 @@ const HISTORY = 240;
 const BOT_TAKER = '66e1b0a7c3f9d2e5481b7c02';
 const LEADER_ID = 'engine-7f2c';
 
+// Markets whose 15-minute candles are seeded from a board (the rest are generated).
+const CANDLE_SEEDS = new Set(['BTC-USDT']);
+
 const markets = new Map();
 let makerFillHook = null;
 let timers = [];
@@ -51,7 +54,7 @@ export async function init() {
   const files = await Promise.all(marketList.map(async (mk) => ({
     book: await fetchSeed(`orderbook.${mk.symbol}.json`),
     trades: (await fetchSeed(`trades.${mk.symbol}.json`)).trades,
-    candles: await fetchSeed(`candles.${mk.symbol}.15m.json`).then((d) => d.candles).catch(() => null),
+    candles: CANDLE_SEEDS.has(mk.symbol) ? (await fetchSeed(`candles.${mk.symbol}.15m.json`)).candles : null,
   })));
 
   // The boards' "now" lands on the real now; the tapes keep their gaps.
@@ -144,50 +147,144 @@ function defaultLadder(s) {
 }
 
 // ---------------------------------------------------------------- candles
+// Every interval comes from one series of 15-minute candles, so switching
+// intervals shows the same history: longer intervals add them up, shorter ones
+// split each into a path through its open, high, low and close. Where a board
+// drew the chart (BTC-USDT), its candles are the newest part of that series,
+// slid onto the current 15-minute slots. Work is in ticks and steps.
+const BASE = 900;
+
 function buildCandles(s, seed15m) {
   const nowSec = Math.floor(Date.now() / 1000);
-  const last = toTicks(s, s.ticker.last);
+  const forming = Math.floor(nowSec / BASE) * BASE;
+  // A day's volume spread over 96 slots, so generated history matches the ticker.
+  s.volumePer15m = Math.max(1, Math.round(toSteps(s, s.ticker.volume) / 96));
+
+  let base = [];
+  if (seed15m?.length) {
+    const shift = forming - seed15m[seed15m.length - 1].time;
+    base = seed15m.map((c) => ({
+      time: c.time + shift,
+      open: toTicks(s, c.open), high: toTicks(s, c.high), low: toTicks(s, c.low), close: toTicks(s, c.close),
+      volume: toSteps(s, c.volume),
+    }));
+  }
+  if (base.length < HISTORY) {
+    const endClose = base.length ? base[0].open : toTicks(s, s.ticker.last);
+    const endTime = base.length ? base[0].time - BASE : forming;
+    base = [...generate(s, BASE, HISTORY - base.length, endClose, endTime), ...base];
+  }
+
+  // Each longer interval adds up the one before it (1h from 15m, 4h from 1h,
+  // 1d from 4h) and is generated only further back than that one reaches.
+  let finer = base;
   for (const [interval, sec] of Object.entries(INTERVALS)) {
-    const forming = Math.floor(nowSec / sec) * sec;
-    let list = [];
-    if (interval === '15m' && seed15m?.length) {
-      // The board's chart: keep its shape, slide it onto the current 15-minute slots.
-      const shift = forming - seed15m[seed15m.length - 1].time;
-      list = seed15m.map((c) => ({ time: c.time + shift, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume }));
-    }
-    const needed = HISTORY - list.length;
-    if (needed > 0) {
-      const endClose = list.length ? toTicks(s, list[0].open) : last;
-      const endTime = list.length ? list[0].time - sec : forming;
-      list = [...generate(s, sec, needed, endClose, endTime), ...list];
-    }
-    s.candles[interval] = list;
+    let list = sec === BASE ? base : sec < BASE ? splitRecent(base, sec, nowSec) : addUp(finer, sec);
+    if (list.length < HISTORY) list = [...generate(s, sec, HISTORY - list.length, list[0].open, list[0].time - sec), ...list];
+    if (sec >= BASE) finer = list;
+    s.candles[interval] = list.slice(-HISTORY).map((c) => ({
+      time: c.time,
+      open: priceOf(s, c.open),
+      high: priceOf(s, c.high),
+      low: priceOf(s, c.low),
+      close: priceOf(s, c.close),
+      volume: qtyOf(s, c.volume),
+    }));
   }
 }
 
 /** `count` candles ending at `endTime`, the last one closing at `endClose` ticks. */
 function generate(s, sec, count, endClose, endTime) {
-  const move = Math.max(1, Math.round(endClose * 0.0011 * Math.sqrt(sec / 900)));
-  const vol = Math.max(1, s.typicalSize * 4 * Math.sqrt(sec / 900));
+  const move = Math.max(1, Math.round(endClose * 0.0011 * Math.sqrt(sec / BASE)));
+  const vol = s.volumePer15m * (sec / BASE);
   const closes = new Array(count);
   closes[count - 1] = endClose;
   for (let i = count - 2; i >= 0; i -= 1) closes[i] = Math.max(1, closes[i + 1] - Math.round(gauss() * move * 0.6));
   const out = [];
   for (let i = 0; i < count; i += 1) {
-    const open = i === 0 ? closes[0] + Math.round(gauss() * move * 0.3) : closes[i - 1];
+    const open = i === 0 ? Math.max(1, closes[0] + Math.round(gauss() * move * 0.3)) : closes[i - 1];
     const close = closes[i];
-    const high = Math.max(open, close) + Math.round(Math.abs(gauss()) * move * 0.35);
-    const low = Math.min(open, close) - Math.round(Math.abs(gauss()) * move * 0.35);
     out.push({
       time: endTime - (count - 1 - i) * sec,
-      open: priceOf(s, open),
-      high: priceOf(s, high),
-      low: priceOf(s, low),
-      close: priceOf(s, close),
-      volume: qtyOf(s, Math.max(1, Math.round(vol * between(0.3, 1.7)))),
+      open,
+      high: Math.max(open, close) + Math.round(Math.abs(gauss()) * move * 0.35),
+      low: Math.max(1, Math.min(open, close) - Math.round(Math.abs(gauss()) * move * 0.35)),
+      close,
+      volume: Math.max(1, Math.round(vol * between(0.3, 1.7))),
     });
   }
   return out;
+}
+
+/** Longer candles: shorter ones added up per slot. */
+function addUp(base, sec) {
+  const out = [];
+  for (const c of base) {
+    const slot = Math.floor(c.time / sec) * sec;
+    const last = out[out.length - 1];
+    if (last?.time === slot) {
+      last.high = Math.max(last.high, c.high);
+      last.low = Math.min(last.low, c.low);
+      last.close = c.close;
+      last.volume += c.volume;
+    } else {
+      out.push({ ...c, time: slot });
+    }
+  }
+  return out;
+}
+
+/** Shorter candles for the newest 15-minute ones; the forming one only up to now. */
+function splitRecent(base, sec, nowSec) {
+  const parts = BASE / sec;
+  const out = [];
+  for (const c of base.slice(-(Math.ceil(HISTORY / parts) + 1))) {
+    out.push(...splitCandle(c, Math.min(parts, Math.floor((nowSec - c.time) / sec) + 1), sec));
+  }
+  return out;
+}
+
+/**
+ * Splits one candle into `parts` along a path from its open to its close that
+ * touches its high and its low once (a rising candle usually dips first). The
+ * pieces stay inside its range, and their volumes add up to its volume.
+ */
+function splitCandle(c, parts, sec) {
+  if (parts <= 1) return [{ ...c }];
+  const a = Math.random() * parts;
+  const b = Math.random() * parts;
+  const rising = c.close >= c.open;
+  const atLow = rising ? Math.min(a, b) : Math.max(a, b);
+  const atHigh = rising ? Math.max(a, b) : Math.min(a, b);
+  const anchors = [[0, c.open], [atLow, c.low], [atHigh, c.high], [parts, c.close]].sort((x, y) => x[0] - y[0]);
+  const along = (t) => {
+    let i = 0;
+    while (i < anchors.length - 2 && anchors[i + 1][0] < t) i += 1;
+    const [t0, p0] = anchors[i];
+    const [t1, p1] = anchors[i + 1];
+    return t1 === t0 ? p1 : p0 + ((p1 - p0) * (t - t0)) / (t1 - t0);
+  };
+  const range = Math.max(1, c.high - c.low);
+  const inside = (p) => Math.min(c.high, Math.max(c.low, Math.round(p)));
+  const points = Array.from({ length: parts + 1 }, (_, k) => (k === 0 ? c.open : k === parts ? c.close : inside(along(k) + gauss() * range * 0.08)));
+  const weights = Array.from({ length: parts }, () => between(0.3, 1.7));
+  const weightSum = weights.reduce((x, y) => x + y, 0);
+  let volumeLeft = c.volume;
+  return weights.map((w, k) => {
+    const open = points[k];
+    const close = points[k + 1];
+    const wick = () => Math.round(Math.abs(gauss()) * range * 0.06);
+    const volume = k === parts - 1 ? volumeLeft : Math.min(volumeLeft, Math.round((c.volume * w) / weightSum));
+    volumeLeft -= volume;
+    return {
+      time: c.time + k * sec,
+      open,
+      high: atHigh >= k && atHigh < k + 1 ? c.high : Math.min(c.high, Math.max(open, close) + wick()),
+      low: atLow >= k && atLow < k + 1 ? c.low : Math.max(c.low, Math.min(open, close) - wick()),
+      close,
+      volume,
+    };
+  });
 }
 
 function updateCandles(s, priceStr, qtyStr, timeMs) {

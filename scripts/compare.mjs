@@ -4,7 +4,7 @@
 // 2 px across, 3 px down, or in size are flagged.
 //
 // Usage: npm run compare -- <route> <board> [--as=demo|admin|guest] [--width=1440]
-//          [--fresh] [--all] [--only=from:to] [--align=<selector>:<boardY>]
+//          [--fresh] [--verified] [--all] [--only=from:to] [--align=<selector>:<boardY>]
 //   <board>  a name in .boards/ without .txt, e.g. screens-p03-markets
 //   --only   keep board runs whose baseline is in that range
 //   --align  shift the page so that element's top sits at that board y
@@ -33,6 +33,7 @@ const only = flag('only', null)?.split(':').map(Number);
 const align = flag('align', null);
 const showAll = args.includes('--all');
 const fresh = args.includes('--fresh');
+const verified = args.includes('--verified');
 const ACCOUNTS = { demo: ['demo@orichal.app', 'orichal-demo', '123456'], admin: ['admin@orichal.app', 'orichal-demo', null] };
 
 const board = readFileSync(join(root, '.boards', `${boardName}.txt`), 'utf8').trim().split('\n').map((line) => {
@@ -54,6 +55,18 @@ for (let i = 0; i < 50; i += 1) {
   }
 }
 
+// --verified: confirm the signed-in user's email first, so the verify banner
+// doesn't push the page down (the boards other than Profile draw it confirmed).
+async function confirmEmail(page, email) {
+  await page.evaluate(async (address) => {
+    const { db, persist } = await import('/src/models/api/mock/db.js');
+    const me = db().users.find((u) => u.email === address);
+    if (me) me.emailVerified = true;
+    persist();
+    await new Promise((r) => setTimeout(r, 400));
+  }, email);
+}
+
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width, height: 920 } });
@@ -67,6 +80,7 @@ try {
       const first = await handle({ method: 'POST', path: '/auth/login', body: { email: e, password: p } });
       if (first.body.data.requires2fa) await handle({ method: 'POST', path: '/auth/login/2fa', body: { loginTicket: first.body.data.loginTicket, code: c } });
     }, ACCOUNTS[as]);
+    if (verified) await confirmEmail(page, ACCOUNTS[as][0]);
   }
   await page.goto(`${base}${route}`);
   await page.waitForLoadState('networkidle');

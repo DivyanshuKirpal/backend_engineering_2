@@ -98,10 +98,16 @@ export function calendarDay(day) {
   return `${d} ${MONTHS[m - 1]}`;
 }
 
-/** A chart's time label: the date at midnight, otherwise the time. */
-export function axisLabel(unixSeconds, intervalSeconds) {
+/**
+ * A candle chart's time label: the date on a day's first candle (21:00,
+ * 25 Oct, 03:00), and always for daily candles. `previous` is the candle before.
+ */
+export function candleLabel(unixSeconds, previousSeconds, intervalSeconds) {
   const d = new Date(unixSeconds * 1000);
   if (intervalSeconds >= 86400) return dayMonth(d);
-  if (d.getHours() === 0 && d.getMinutes() === 0) return dayMonth(d);
-  return hourMinute(d);
+  const before = previousSeconds == null ? null : new Date(previousSeconds * 1000);
+  return before && before.toDateString() !== d.toDateString() ? dayMonth(d) : hourMinute(d);
 }
+
+/** Seconds since 1970 on the local clock, to find round local times (03:00, midnight). */
+export const localSeconds = (unixSeconds) => unixSeconds - new Date(unixSeconds * 1000).getTimezoneOffset() * 60;

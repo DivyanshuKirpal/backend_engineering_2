@@ -7,17 +7,7 @@ import { h } from '../../dom.js';
 import { Icon } from '../ui/Icon.js';
 import { Brand } from './Brand.js';
 import { DemoControls } from './DemoControls.js';
-
-function Backdrop(onClose) {
-  return h('button', { class: 'popover-backdrop', type: 'button', tabindex: '-1', 'aria-hidden': 'true', onClick: onClose });
-}
-
-const focusFirst = (el) => {
-  if (!el.__focused) {
-    el.__focused = true;
-    el.querySelector('a, button:not([disabled])')?.focus();
-  }
-};
+import { PopoverBackdrop as Backdrop, focusFirst } from '../ui/Popover.js';
 
 export function ConnectionStatus(c) {
   if (!c) return null;
@@ -90,12 +80,12 @@ function PhoneMenu(vm, actions) {
 export function AppHeader(vm, actions, { center = null } = {}) {
   return h('header', { class: 'app-header' },
     Brand({ href: '/', label: 'Orichal home' }),
+    center ? h('div', { class: 'header-center' }, center) : null,
     h('div', { class: 'popover-anchor demo-anchor' },
       h('button', { class: 'demo-badge', type: 'button', 'aria-expanded': String(vm.demoOpen), onClick: actions.toggleDemo },
         h('span', { class: 'demo-badge-long' }, 'Simulator · demo funds'),
         h('span', { class: 'demo-badge-short' }, 'Demo')),
       vm.demoOpen ? [Backdrop(actions.close), DemoControls(actions)] : null),
-    center ? h('div', { class: 'header-center' }, center) : null,
     h('nav', { class: 'header-nav', 'aria-label': 'Main' },
       h('ul', { class: 'plain' }, vm.nav.map((item) => h('li', { key: item.key },
         h('a', { class: 'nav-link', href: item.href, 'aria-current': item.current ? 'page' : null }, item.label))))),

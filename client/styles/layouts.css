@@ -16,8 +16,9 @@
   font-size: 15px;
 }
 
-/* TradeLayout: the page fills the window under the header, no footer */
-.app-trade { height: 100vh; overflow: hidden; }
+/* TradeLayout: the page fills the window under the header, no footer. A
+   window shorter than 760 px scrolls instead of squashing the panels. */
+.app-trade { height: 100vh; min-height: 760px; }
 .layout-trade { display: flex; flex-direction: column; min-height: 0; }
 
 @media (max-width: 767px) {

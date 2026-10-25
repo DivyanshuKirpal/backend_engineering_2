@@ -1,0 +1,342 @@
+/* TradePage (boards Trade and Trade · phone). At 1200 px and up the page
+   fills the window: the market bar, then three columns of panels 8 px apart.
+   Between 768 and 1199 px it scrolls in two columns. Below 768 px it follows
+   the phone board. */
+
+.trade-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+/* ------------------------------------------------------------ market bar */
+.market-bar {
+  display: flex;
+  align-items: center;
+  min-height: 62px;
+  padding: 0 16px;
+  background: var(--bg-panel);
+  border-bottom: var(--rule);
+}
+
+.market-id { display: flex; align-items: baseline; gap: 9px; }
+.market-pair { font-size: 21px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+
+.market-switch {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.market-switch:hover { color: var(--ink); }
+.market-caret { font-size: 10px; }
+
+.market-price { display: flex; align-items: baseline; gap: 7px; margin-left: 29.3px; white-space: nowrap; }
+.market-last { font-size: 21px; font-weight: 600; }
+.market-price .change { font-size: 13px; }
+.market-summary { display: none; }
+
+.market-stats { display: flex; margin-left: 30.6px; }
+.market-stat { min-width: 98px; }
+.market-stat dt { color: var(--ink-3); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; line-height: 15px; }
+.market-stat dd { margin-top: 2px; font-size: 13px; line-height: 17px; white-space: nowrap; }
+
+/* The market's rules on an inset plate */
+.market-specs {
+  display: flex;
+  margin-left: auto;
+  border: var(--rule);
+  background: var(--bg-inset);
+}
+
+.market-spec { padding: 6px 12px 5px; border-left: 1px solid var(--line-soft); white-space: nowrap; }
+.market-spec:first-child { border-left: 0; }
+.market-spec dt { color: var(--ink-3); font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; line-height: 13px; }
+.market-spec dd { margin-top: 3px; font-size: 12px; line-height: 15px; }
+.market-spec-words dd { font-size: 13px; font-weight: 600; }
+
+/* The market switcher */
+.market-menu { left: 0; right: auto; width: 340px; padding: 10px; }
+.market-menu .search { margin-bottom: 6px; }
+.market-menu-list { max-height: 320px; overflow-y: auto; }
+
+.market-menu-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto 70px;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 8px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.market-menu-item:hover { background: var(--bg-row-hover); }
+.market-menu-item.current { box-shadow: inset 2px 0 0 var(--ink); }
+.market-menu-name { display: grid; line-height: 1.2; }
+.market-menu-name strong { font-size: 15px; }
+.market-menu-name span { color: var(--ink-3); font-size: 13px; }
+.market-menu-price { font-size: 13px; text-align: right; }
+.market-menu-item .change { font-size: 12px; text-align: right; }
+.market-switch-phone { display: none; }
+
+/* ------------------------------------------------------------ the grid */
+.trade-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 341px 300px;
+  gap: 8px;
+  padding: 8px;
+}
+
+.trade-col { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
+.trade-grid .panel { display: flex; flex-direction: column; min-height: 0; }
+.trade-grid .panel-head { min-height: 40px; padding: 0 12px; flex: none; }
+
+.panel-state {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 120px;
+  padding: 20px;
+  color: var(--ink-2);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* The chart */
+.chart-panel { flex: 1 1 auto; min-height: 300px; }
+.chart-head { justify-content: flex-start; gap: 13.3px; }
+
+/* Your orders */
+.orders-panel { flex: 0 0 313px; overflow: hidden; }
+
+.orders-head {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px 14.5px;
+  padding: 6px 12px !important;
+  min-height: 0 !important;
+}
+
+.orders-head .panel-label { line-height: 26px; }
+.order-strip { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+
+.order-chip {
+  height: 26px;
+  padding: 0 8.5px;
+  border: var(--rule);
+  background: var(--bg-inset);
+  color: var(--ink);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.order-chip:hover:not(.current) { background: var(--bg-row-hover); }
+.order-chip.current { border-color: var(--ink); background: var(--ink); color: var(--on-fill); font-weight: 700; }
+
+.orders-cancel-row { display: flex; justify-content: flex-end; width: 100%; }
+.orders-cancel { height: 26px; min-height: 26px; padding: 0 8.5px; font-size: 13px; }
+
+.orders-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 343px minmax(0, 1fr);
+  overflow: auto;
+}
+
+.orders-timeline { padding: 13px 12px 12px 0; border-right: 1px solid var(--line-soft); }
+.orders-timeline .timeline-item { padding-left: 46px; }
+.orders-timeline .timeline-dot { left: 17.3px; }
+.orders-timeline .timeline-item:not(:last-child)::after { left: 22.8px; }
+
+.orders-ledger { padding: 13px 16px 12px; }
+.orders-ledger .panel-label { font-size: 12px; color: var(--ink-2); }
+.orders-ledger .ledger-table { margin-top: 8px; table-layout: fixed; }
+.orders-ledger .ledger-table th:nth-child(1) { width: 123px; }
+.orders-ledger .ledger-table th:nth-child(2) { width: 69px; }
+.orders-ledger .ledger-table th:nth-child(3) { width: 83px; }
+
+.orders-state {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 12px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+/* The price ladder */
+.ladder-panel { min-height: 0; }
+
+.ladder-group { display: flex; align-items: center; gap: 6px; }
+.ladder-group-label { color: var(--ink-3); font-size: 13px; }
+.ladder-group-wrap { width: 58px; }
+
+.ladder-group-select {
+  width: 100%;
+  height: 26px;
+  min-height: 26px;
+  padding: 0 20px 0 8px;
+  border: var(--rule);
+  background: var(--bg-inset);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.ladder-group-wrap .select-chevron { right: 6px; }
+
+/* The ticket */
+.ticket-panel { flex: none; padding: 14px 14px 14px; }
+.ticket-panel .panel-label.ticket-title { margin: 1px 0 10.8px; }
+.ticket { display: flex; flex-direction: column; }
+.ticket > * + * { margin-top: 12px; }
+.ticket .ticket-type-row { margin-top: 7.4px; }
+
+.ticket-sides .tab { min-height: 38px; font-size: 15px; }
+.ticket-type-row { display: flex; align-items: flex-end; justify-content: space-between; }
+.ticket-type-row .tabs-underline { gap: 15.4px; }
+.ticket-type-row .tabs-underline .tab { min-height: 30px; padding-top: 5px; font-size: 14px; }
+
+.ticket-free { padding-bottom: 3.1px; color: var(--ink-3); font-size: 13px; white-space: nowrap; }
+.ticket-free-amount { color: var(--ink); font-size: 13px; }
+.ticket-free-asset { font-size: 13px; }
+
+.ticket .number-box { min-height: 38px; padding: 0 10px; }
+.ticket .number-input { height: 36px; font-size: 15px; }
+.ticket .number-unit { width: 30px; text-align: right; }
+
+.share-group { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--rule); background: var(--bg-inset); }
+
+.share-btn {
+  height: 27.3px;
+  border: 0;
+  border-left: 1px solid var(--line-soft);
+  background: none;
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.share-btn:first-child { border-left: 0; }
+.share-btn:hover:not(.current):not(:disabled) { background: var(--bg-row-hover); }
+.share-btn.current { background: var(--ink); color: var(--on-fill); }
+.share-btn:disabled { color: var(--ink-3); cursor: not-allowed; }
+
+.engine-box { padding: 10px 12px 12px; border: 1px dashed var(--ink-3); background: var(--bg-inset); }
+.engine-title { color: var(--ink-2); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; line-height: 15px; }
+/* Room for three lines, so the tape below doesn't jump as the text changes */
+.engine-text { min-height: 58.8px; margin-top: 4px; font-size: 14px; line-height: 19.6px; }
+
+.ticket-fee { display: flex; justify-content: space-between; gap: 12px; color: var(--ink-3); font-size: 13px; }
+.ticket-fee .t-mono { color: var(--ink); }
+.ticket .ticket-submit { margin-top: 12.1px; min-height: 44px; font-size: 16px; }
+.ticket-error { margin-top: 8px !important; }
+
+.login-cta { display: grid; gap: 12px; padding-top: 4px; }
+.login-cta-title { font-size: 18px; font-weight: 700; }
+.login-cta-body { color: var(--ink-2); font-size: 14px; }
+
+/* The tape */
+.tape-panel { flex: 1 1 auto; min-height: 160px; }
+.tape-panel .panel-head { min-height: 36px; }
+.tape-hint { color: var(--ink-3); font-size: 12px; }
+.tape-body { flex: 1; min-height: 0; overflow: hidden; }
+.tape { width: 100%; table-layout: fixed; font-size: 12px; }
+.tape td { height: 22px; padding: 0; line-height: 22px; white-space: nowrap; }
+.tape-price { padding-left: 12px !important; }
+.tape-col-qty { width: 101px; }
+.tape-col-time { width: 103.3px; }
+.tape-qty { text-align: right; }
+.tape-time { padding-right: 12px !important; color: var(--ink-3); text-align: right; }
+.tape-state { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 12px; color: var(--ink-2); font-size: 14px; }
+
+.trade-missing { padding-top: 64px; padding-bottom: 64px; display: grid; gap: 16px; justify-items: start; }
+
+/* ------------------------------------------------------------ 768 to 1199 px: two columns, page scrolls */
+@media (max-width: 1199px) {
+  .app-trade { height: auto; min-height: 100vh; }
+  .market-bar { flex-wrap: wrap; row-gap: 10px; padding-top: 10px; padding-bottom: 10px; }
+  .market-specs { margin-left: 0; width: 100%; }
+  .market-spec { flex: 1; }
+  .trade-grid { grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto auto; }
+  .trade-col-main { grid-column: 1 / -1; }
+  .trade-grid .chart-panel { flex: none; height: 440px; }
+  /* 13 levels a side, so no row is cut in half */
+  .ladder-panel { height: 680px; }
+}
+
+/* ------------------------------------------------------------ phones (board Trade · phone) */
+@media (max-width: 767px) {
+  .market-switch-desk { display: none; }
+  .market-switch-phone { display: block; }
+  .market-switch-phone .market-switch { color: var(--ink); font-size: 19px; font-weight: 700; gap: 7px; align-items: center; }
+  .market-switch-phone .market-caret { font-size: 12px; }
+  .market-switch-phone .market-menu { position: fixed; top: 60px; left: 12px; right: 12px; width: auto; }
+
+  .trade-phone { display: flex; flex-direction: column; flex: 1; }
+
+  .phone-price { padding: 13px 16px 10.2px; background: var(--bg-panel); border-bottom: var(--rule); }
+  .phone-last { display: flex; align-items: baseline; gap: 8px; }
+  .phone-last-price { font-size: 30px; font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; }
+  .phone-last .change { font-size: 14px; }
+  .phone-summary { margin-top: 6px; color: var(--ink-2); font-size: 12px; }
+
+  .phone-body { display: flex; flex-direction: column; gap: 11px; padding: 11px 12px 16px; }
+  .phone-tabs { width: 100%; }
+  .phone-tabs .tab { justify-content: center; min-height: 42px; }
+
+  .phone-body .panel { display: flex; flex-direction: column; }
+  .phone-body .panel-head { min-height: 50px; padding: 0 12px; }
+  .phone-body .chart-panel { height: 374px; min-height: 0; }
+  .phone-body .chart-head { padding: 0 4px; }
+  .phone-body .ladder-panel { height: 560px; }
+  .phone-body .tape-panel { height: 480px; }
+
+  .orders-panel { flex: none; }
+  .orders-head-phone { justify-content: space-between; min-height: 38px !important; }
+  .orders-head-phone .link { font-size: 14px; }
+  .orders-list-row {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0;
+    min-height: 48px;
+    padding: 0 12px;
+    border-top: var(--rule-row);
+  }
+  .orders-list-row:first-child { border-top: 0; }
+  .orders-side { font-size: 15px; font-weight: 700; }
+  .orders-what { font-size: 13px; }
+  .orders-status { padding-left: 8px; font-size: 13px; font-weight: 600; }
+  .orders-status.tone-muted { font-weight: 400; }
+
+  /* The Buy and Sell bar stays at the bottom */
+  .phone-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin-top: auto;
+    padding: 12px 12px 16px;
+    background: var(--bg-panel);
+    border-top: var(--rule);
+  }
+
+  .phone-free { display: flex; justify-content: space-between; gap: 8px; color: var(--ink-3); font-size: 13px; }
+  .phone-free .t-mono { color: var(--ink); }
+  .phone-actions { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 10px; }
+  .phone-actions .btn { min-height: 50px; font-size: 18px; }
+
+  /* The ticket as a sheet from the bottom */
+  .overlay-modal .ticket-sheet { align-self: end; width: 100%; max-height: 92vh; overflow-y: auto; }
+  .ticket-sheet .dialog-body { padding-top: 4px; }
+}

@@ -1,0 +1,61 @@
+/* PriceChart and ChartToolbar (board Trade, the PRICE panel). */
+
+.chart { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.chart-svg { display: block; touch-action: pan-y; }
+
+.chart-grid line { stroke: var(--line-soft); stroke-width: 1; }
+.chart-volume rect { fill: var(--chart-volume); }
+.chart-last-line { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+
+.candle-up line { stroke: var(--buy); stroke-width: 1; }
+.candle-up rect { fill: var(--buy); }
+.candle-down line { stroke: var(--sell); stroke-width: 1; }
+.candle-down rect { fill: var(--sell); }
+
+.chart-axis text,
+.chart-times text {
+  fill: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.chart-last-tag rect { fill: var(--ink); }
+.chart-last-tag text { fill: var(--on-fill); font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+
+.chart-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+/* Interval buttons: a segmented row, the current one in ink */
+.interval-group { display: inline-flex; border: var(--rule); background: var(--bg-inset); }
+
+.interval-btn {
+  height: 26px;
+  padding: 0 8.8px;
+  border: 0;
+  border-left: 1px solid var(--line-soft);
+  background: none;
+  color: var(--ink-2);
+  font-size: 11px;
+}
+
+.interval-btn:first-child { border-left: 0; }
+.interval-btn:hover:not(.current) { background: var(--bg-row-hover); }
+.interval-btn.current { background: var(--ink); color: var(--on-fill); }
+
+/* O, H, L and C of the hovered or last candle */
+.chart-ohlc { margin-left: auto; color: var(--ink); font-size: 11px; white-space: nowrap; }
+.chart-ohlc abbr { color: var(--ink-3); text-decoration: none; }
+
+@media (max-width: 767px) {
+  /* The phone board: bare labels, the current one boxed in ink */
+  .interval-group { border: 0; background: none; }
+  .interval-btn { height: 38.7px; padding: 0 13px; border: 0; color: var(--ink-2); font-size: 13px; }
+}

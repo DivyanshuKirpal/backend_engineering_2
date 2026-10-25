@@ -100,3 +100,46 @@ td.ladder-bid .ladder-tag { margin: 0 8px 0 0; float: right; }
 .ladder-arrow { font-size: 10px; color: inherit; }
 .ladder-spread { padding-left: 10px !important; color: var(--ink-3); }
 .ladder-spread-value { font-size: 12px; }
+
+/* The trade page's ladder (board Trade, PRICE LADDER): 22 px rows, asks held
+   down against the middle rule and bids hanging from it, each half showing
+   the levels that fit (the farthest are cut first). The table keeps its
+   roles, so the grid layout doesn't cost its semantics. */
+.ladder-full { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.ladder-full thead,
+.ladder-full tbody { display: block; }
+.ladder-full tr { display: grid; grid-template-columns: minmax(0, 1fr) 103px minmax(0, 1fr); }
+.ladder-full th,
+.ladder-full td { display: block; width: auto; }
+
+.ladder-full th { height: 26px; padding: 0 8px; line-height: 25px; border-bottom: var(--rule); color: var(--ink-2); font-weight: 600; }
+.ladder-full th.ladder-price { padding: 0; background: none; border-left: 0; border-right: 0; }
+.ladder-full td { height: 22px; }
+.ladder-full .ladder-size,
+.ladder-full .ladder-pick { height: 21px; }
+.ladder-full .ladder-size-text { line-height: 21px; }
+.ladder-full .ladder-ask .ladder-size-text { padding-left: 9px; }
+.ladder-full .ladder-bar { top: 3.5px; bottom: 3.5px; }
+.ladder-full .ladder-tag { margin-top: 2px; }
+
+.ladder-full .ladder-asks {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.ladder-full .ladder-bids { flex: 1 1 0; min-height: 0; overflow: hidden; }
+.ladder-full .ladder-asks tr:last-child td { border-bottom: 0; }
+
+.ladder-full .ladder-middle td {
+  display: flex;
+  align-items: center;
+  height: 40px;
+}
+
+.ladder-full .ladder-middle .ladder-last-label { justify-content: flex-end; gap: 3px; padding-right: 12px !important; font-size: 12px; }
+.ladder-full .ladder-middle .ladder-last { justify-content: center; font-size: 15px; font-weight: 600; }
+.ladder-full .ladder-middle .ladder-spread { display: block; padding: 3px 8px 0 9px !important; font-size: 12px; line-height: 16.8px; }

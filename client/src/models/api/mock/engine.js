@@ -156,7 +156,8 @@ function settle(order, fill, role, tradeId, time) {
 
 function apply(orderId) {
   const order = db().orders.find((o) => o.id === orderId);
-  if (!order || order.status !== 'pending') return;
+  // A timer from before a demo reset: the reset replays pending orders itself.
+  if (!order || order.status !== 'pending' || !market.has(order.market)) return;
   const cfg = marketConfig(order.market);
   const now = new Date().toISOString();
 
@@ -262,7 +263,7 @@ function finishCancel(order, reason, time = new Date().toISOString()) {
 
 function runCancel(orderId) {
   const order = db().orders.find((o) => o.id === orderId);
-  if (!order || !OPEN.has(order.status) || order.status === 'pending') return;
+  if (!order || !OPEN.has(order.status) || order.status === 'pending' || !market.has(order.market)) return;
   finishCancel(order, 'user');
   market.noteCommand(order.market, 'cancel');
 }

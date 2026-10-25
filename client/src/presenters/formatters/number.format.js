@@ -65,13 +65,16 @@ export function compact(value, decimals = 2) {
   return fixed(v, decimals);
 }
 
+/** Trailing zeros dropped, for short labels: "0.02500" -> "0.025", "62400.00" -> "62,400". */
+export const plain = (value) => (money.isDecimal(String(value ?? '')) ? grouped(money.normalize(String(value))) : '—');
+
 /** Five significant figures: 168.37204 -> "168.37", 13504.118 -> "13,504". */
-export function significant(value, figures = 5) {
+export function significant(value, figures = 5, mode = 'halfUp') {
   if (!money.isDecimal(String(value ?? ''))) return '—';
   const v = String(value);
   const whole = money.abs(money.round(v, 0, 'down')).length;
   const decimals = Math.max(0, figures - (money.lt(money.abs(v), '1') ? 0 : whole));
-  return fixed(v, decimals);
+  return fixed(v, decimals, mode);
 }
 
 /** A percentage share with one decimal: "56.2%". */
