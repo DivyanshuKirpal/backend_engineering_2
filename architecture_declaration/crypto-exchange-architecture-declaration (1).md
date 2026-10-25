@@ -1979,6 +1979,10 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - `views/components/ui/`: Field, NumberField, Select, SearchInput, Checkbox and RadioCards in `Field.js`; segmented, underline and Buy/Sell tabs in `Tabs.js`, with arrow keys; `StatusMarker.js` draws the section 7 markers in SVG; `Table.js`; `OtpInput.js` is one real input under six drawn boxes, so autofill and paste work; `CopyButton.js`; `EmptyState.js` with Skeleton and ErrorState; `Panel.js`; Drawer, Modal and ConfirmDialog in `Overlay.js`, which trap focus and give it back; `Pagination.js`.
   - Also `market/AssetIcon.js`, `market/PriceChange.js`, `trade/MarketStatusBanner.js` and `wallet/KycRequiredNotice.js`.
   - Styles in `styles/components/`: `fields.css`, `tabs.css`, `data.css` (markers, tiles, tables, pagination, copy), `panels.css` and `overlays.css`.
+- **25 Oct 2026 · Home.** `presenters/market/home.presenter.js` (useHomePresenter) reads the tickers store, a new assets store and the live BTC/USDT book. `presenters/shared/liveBook.js` runs flow C for any presenter, and `presenters/trade/ladder.js` builds the price ladder's rows for Home and Trade.
+  - Views: `views/components/home/` (HeroSection, TickerStrip, TopMoversCard, FeatureGrid, CtaBanner) and `views/components/trade/OrderBook.js`, a real table whose prices become buttons on the trade page. Styles: `styles/pages/home.css` and `styles/components/ladder.css`.
+  - Pages now load their own style sheet before drawing (`views/loadStyle.js`, awaited by the router).
+  - `scripts/compare.mjs` (`npm run compare`) checks a page against a board's text layer. Home matches within 3 px everywhere except the live prices and times.
 
 ### Conflicts and differences
 
@@ -2005,6 +2009,11 @@ The owner approved these decisions on 25 Oct 2026.
 | Theme toggle | Switches the theme | The moon button | Kept; it explains in a toast that only the light theme is drawn |
 | Panel labels | 13 / 700, capitals, 0.1em | 13 px on Trade and Wallet; 12 px on Withdraw, Profile and some other panels | 13 px everywhere, as section 7 sets exact sizes. Field labels (EMAIL, TO ADDRESS) stay 12 px, as every board draws them; section 7 doesn't size them |
 | Toasts | sonner | Ink boxes without a close button | Same boxes with a small dismiss button: toasts disappear on a timer, so a way to close them sooner (and to reach them by keyboard) helps |
+| Home section titles | Hero 72, page title 38, section heading 22 | "The last 24 hours" and "How the exchange works" are 32 px | 32 px, as drawn: section 7's table doesn't cover these two, and the feature titles keep the 22 px section heading |
+| Home hero ladder | HomePage shows the live ticker; the hero isn't specified | A ladder with a sample order "You · 1st in queue" at 62,140.50, its timeline and its ledger line | Live: asks and bids from the BTC/USDT book; the sample order stays first in its queue at the last price (or a tick above the best bid), so the ledger line follows its price. At load it shows exactly the board's numbers; its times are when the page opened |
+| Ladder bars | — | Each side's bars measured against the larger of both sides' biggest levels (0.40 is 95% of 0.42) | The same: one scale for both sides |
+| Home when signed in | — | Only the signed-out board | "Open the trade screen" replaces "Create a demo account", and the sign-up note and banner are hidden. Not drawn |
+| Space above the footer on Home | — | The export splits Home over two pages, so the gap before the footer is unclear (about 104 px on page 1, more after the break) | 104 px |
 
 ### Checklist
 
@@ -2029,7 +2038,7 @@ Components
 
 Pages drawn
 
-- [ ] Home
+- [x] Home
 - [ ] Markets
 - [ ] Trade, desktop
 - [ ] Trade, phone
@@ -2100,6 +2109,10 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | MarketStatusBanner | `views/components/trade/MarketStatusBanner.js` |
 | KycRequiredNotice | `views/components/wallet/KycRequiredNotice.js` |
 | Toaster (sonner) | `views/components/ui/Toaster.js`, fed by `presenters/shared/toasts.js` |
+| HomePage, useHomePresenter | `views/pages/market/HomePage.js`, `presenters/market/home.presenter.js` |
+| HeroSection, TickerStrip, TopMoversCard, FeatureGrid, CtaBanner | `views/components/home/*.js` |
+| OrderBook, OrderBookRow | `views/components/trade/OrderBook.js`; rows built by `presenters/trade/ladder.js` |
+| useOrderBookPresenter's live book (flow C) | `presenters/shared/liveBook.js` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |

@@ -77,9 +77,9 @@
   --brass: #735520;
   --brass-light: #C8A468;
 
-  /* Size bars in the ladder: the buy and sell colours, washed out */
-  --bar-bid: rgba(7, 96, 43, 0.25);
-  --bar-ask: rgba(184, 41, 39, 0.28);
+  /* Size bars in the ladder, as drawn: the buy and sell colours washed into the panel */
+  --bar-bid: #B7C6AF;
+  --bar-ask: #D9B5A7;
 
   /* On ink: the footer, the admin sidebar and the sign-in brand panel */
   --ink-surface: #161616;
@@ -151,8 +151,8 @@
 :root[data-market-colors="blue-orange"] {
   --buy: #1346AB;
   --sell: #A14301;
-  --bar-bid: rgba(19, 70, 171, 0.22);
-  --bar-ask: rgba(161, 67, 1, 0.26);
+  --bar-bid: #B9C2D6;
+  --bar-ask: #DCBFA8;
 }
 
 /* Dark theme: not designed yet (section 7, Open items). ThemeToggle and

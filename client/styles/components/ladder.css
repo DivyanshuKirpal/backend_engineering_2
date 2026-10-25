@@ -1,0 +1,102 @@
+/* The price ladder (section 7, Patterns; UI kit, "Ladder row anatomy"). */
+
+.ladder {
+  width: 100%;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+.ladder th {
+  height: 25px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.ladder th.ladder-bid { text-align: right; }
+.ladder th.ladder-price { text-align: center; }
+.ladder th.ladder-ask { text-align: left; }
+
+.ladder td {
+  height: 24px;
+  padding: 0;
+  border-bottom: 1px solid var(--line-row);
+  vertical-align: middle;
+}
+
+.ladder .ladder-price { width: 102px; background: var(--bg-inset); text-align: center; border-left: 1px solid var(--line-row); border-right: 1px solid var(--line-row); }
+.ladder-asks .ladder-price,
+.ladder-asks .ladder-pick { color: var(--sell); }
+.ladder-bids .ladder-price,
+.ladder-bids .ladder-pick { color: var(--buy); }
+
+.ladder-pick,
+.ladder-price-text {
+  display: block;
+  width: 100%;
+  height: 23px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  text-align: center;
+}
+
+.ladder-pick { cursor: pointer; }
+.ladder-row:hover td { background-color: var(--bg-row-hover); }
+.ladder-row:hover .ladder-price { background-color: #ece3d4; }
+
+/* Size cells: bars grow outward from the price column */
+.ladder-size { position: relative; display: block; height: 23px; }
+
+.ladder-bar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  max-width: 100%;
+}
+
+.ladder-asks .ladder-bar { left: 0; background: var(--bar-ask); }
+.ladder-bids .ladder-bar { right: 0; background: var(--bar-bid); }
+
+.ladder-size-text {
+  position: relative;
+  display: block;
+  line-height: 23px;
+  color: var(--ink);
+}
+
+.ladder-bid .ladder-size-text { text-align: right; padding-right: 8px; }
+.ladder-ask .ladder-size-text { text-align: left; padding-left: 10px; }
+
+/* Your own resting order */
+.ladder-tag {
+  display: inline-block;
+  margin-left: 8.5px;
+  padding: 1px 5px;
+  background: var(--ink);
+  color: var(--on-fill);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  white-space: nowrap;
+}
+
+td.ladder-bid .ladder-tag { margin: 0 8px 0 0; float: right; }
+
+/* The double rule with the last price and the spread */
+.ladder-middle td {
+  height: 34px;
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  background: var(--bg-inset);
+}
+
+.ladder-middle .ladder-price { background: var(--bg-inset); border-left-color: transparent; border-right-color: transparent; }
+.ladder-last { font-size: 14px; font-weight: 600; color: var(--ink); }
+.ladder-last-label { text-align: right; padding-right: 10px !important; color: var(--ink-3); }
+.ladder-arrow { font-size: 10px; color: inherit; }
+.ladder-spread { padding-left: 10px !important; color: var(--ink-3); }
+.ladder-spread-value { font-size: 12px; }

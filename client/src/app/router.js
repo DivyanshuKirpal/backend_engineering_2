@@ -9,6 +9,7 @@ import { onSessionChange, sessionState } from '/src/presenters/shared/session.pr
 import { toast } from '/src/presenters/shared/toasts.js';
 import { render } from '/src/views/dom.js';
 import { PageLoading, PageError } from '/src/views/components/ui/PageStates.js';
+import { loadStyle } from '/src/views/loadStyle.js';
 
 const LAYOUTS = {
   public: () => import('/src/views/layouts/PublicLayout.js'),
@@ -107,6 +108,7 @@ async function resolve({ initial = false, quiet = false } = {}) {
   let mod;
   try {
     mod = await route.load();
+    if (mod.styles) await Promise.all(mod.styles.map(loadStyle));
   } catch (err) {
     if (mine !== token) return;
     console.error(err);

@@ -167,7 +167,9 @@
 
 .avatar-admin { background: var(--brass); }
 
-.header-login { margin-left: 4px; }
+.header-login,
+.header-register { min-height: 36px; font-size: 15px; }
+.header-login { margin-left: 4px; padding-right: 11px; }
 .menu-anchor { display: none; }
 .header-center { display: none; }
 
