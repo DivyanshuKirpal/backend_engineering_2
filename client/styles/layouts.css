@@ -1,0 +1,96 @@
+/* The five layouts of section 5. */
+
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.layout-main { flex: 1; }
+.layout-main:focus { outline: none; }
+.account-main:focus, .admin-main:focus, .auth-main:focus { outline: none; }
+
+/* Before the first page draws */
+.boot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 100vh;
+  color: var(--ink-3);
+  font-size: 15px;
+}
+
+/* TradeLayout: the page fills the window under the header, no footer */
+.app-trade { height: 100vh; overflow: hidden; }
+.layout-trade { display: flex; flex-direction: column; min-height: 0; }
+
+@media (max-width: 767px) {
+  .app-trade { height: auto; overflow: visible; }
+}
+
+/* AccountLayout: a 217 px sidebar beside the page */
+.account-layout {
+  display: grid;
+  grid-template-columns: 217px 1fr;
+  gap: 24px;
+  padding-block: 40px 64px;
+  align-items: start;
+}
+
+@media (max-width: 899px) {
+  .account-layout { grid-template-columns: 1fr; gap: 16px; padding-block: 24px 48px; }
+  .account-nav ul { display: flex; }
+  .account-nav li { flex: 1; }
+  .account-nav li + li { border-top: 0; border-left: var(--rule-row); }
+  .account-nav a { justify-content: center; }
+}
+
+/* AdminLayout: ink sidebar, topbar, page */
+.admin-layout { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+.admin-body { display: flex; flex-direction: column; min-width: 0; }
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 51px;
+  padding: 0 22px;
+  background: var(--bg-panel);
+  border-bottom: var(--rule);
+}
+
+.admin-topbar-title { display: flex; align-items: center; gap: 16px; min-width: 0; flex-wrap: wrap; }
+.admin-topbar-tools { display: flex; align-items: center; gap: 8px; }
+.admin-main { flex: 1; padding: 22px; }
+
+@media (max-width: 899px) {
+  .admin-layout { grid-template-columns: 1fr; }
+  .admin-topbar { padding: 8px 16px; flex-wrap: wrap; }
+  .admin-main { padding: 16px; }
+}
+
+/* AuthLayout: ink brand panel and a centred card, half and half */
+.auth-layout { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
+
+.auth-aside {
+  display: flex;
+  flex-direction: column;
+  padding: 44px 54px 40px;
+  background: var(--ink-surface);
+  color: var(--on-ink);
+}
+
+.auth-aside-body { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.auth-aside-foot { color: var(--on-ink-3); font-size: 14px; }
+.auth-aside :focus-visible { outline-color: var(--on-ink); }
+
+.auth-main {
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+}
+
+@media (max-width: 899px) {
+  .auth-layout { grid-template-columns: 1fr; }
+  .auth-aside { padding: 20px 16px; }
+  .auth-aside-body { display: none; }
+  .auth-aside-foot { display: none; }
+  .auth-main { padding: 24px 16px 48px; align-items: start; }
+}

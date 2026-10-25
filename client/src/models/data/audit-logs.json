@@ -1,0 +1,174 @@
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "66f74035c8c178d8661fddb2",
+        "actor": {
+          "id": "66f19a3c5e7b2d4f8a1c0e01",
+          "email": "demo@orichal.app",
+          "role": "user"
+        },
+        "action": "user.registered",
+        "targetType": "user",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "203.0.113.24",
+        "device": "Chrome on macOS",
+        "createdAt": "2026-10-24T09:12:31.000Z"
+      },
+      {
+        "id": "66f72a4121b8724e05ef2f26",
+        "actor": {
+          "id": "66f19a3c5e7b2d4f8a1c0e01",
+          "email": "demo@orichal.app",
+          "role": "user"
+        },
+        "action": "user.2fa_enabled",
+        "targetType": "user",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "203.0.113.24",
+        "device": "Chrome on macOS",
+        "createdAt": "2026-10-24T10:15:08.000Z"
+      },
+      {
+        "id": "66f7302562e5419e2c1031b7",
+        "actor": {
+          "id": "66f19a3c5e7b2d4f8a1c0e01",
+          "email": "demo@orichal.app",
+          "role": "user"
+        },
+        "action": "kyc.submitted",
+        "targetType": "kyc",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "203.0.113.24",
+        "device": "Chrome on macOS",
+        "createdAt": "2026-10-24T10:41:20.000Z"
+      },
+      {
+        "id": "66f71611c9d4676bed5c6dca",
+        "actor": {
+          "id": "66e8d47b2c9f5a1e3d6b0a12",
+          "email": "admin@orichal.app",
+          "role": "admin"
+        },
+        "action": "admin.kyc_document_viewed",
+        "targetType": "kyc",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "198.51.100.120",
+        "device": "Chrome on Windows",
+        "createdAt": "2026-10-24T11:04:10.000Z"
+      },
+      {
+        "id": "66f7ad0435e4edfa9710567b",
+        "actor": {
+          "id": "66e8d47b2c9f5a1e3d6b0a12",
+          "email": "admin@orichal.app",
+          "role": "admin"
+        },
+        "action": "admin.kyc_approved",
+        "targetType": "kyc",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "198.51.100.120",
+        "device": "Chrome on Windows",
+        "createdAt": "2026-10-24T11:05:47.000Z"
+      },
+      {
+        "id": "66f78dd5978b84d4e255067b",
+        "actor": {
+          "id": "66f19a3c5e7b2d4f8a1c0e01",
+          "email": "demo@orichal.app",
+          "role": "user"
+        },
+        "action": "auth.login_failed",
+        "targetType": "user",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "198.51.100.7",
+        "device": "Safari on iPhone",
+        "createdAt": "2026-10-24T21:39:12.000Z"
+      },
+      {
+        "id": "66f7c19629404855ad03a539",
+        "actor": {
+          "id": "66f19a3c5e7b2d4f8a1c0e01",
+          "email": "demo@orichal.app",
+          "role": "user"
+        },
+        "action": "auth.login",
+        "targetType": "user",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "198.51.100.7",
+        "device": "Safari on iPhone",
+        "createdAt": "2026-10-24T21:40:03.000Z"
+      },
+      {
+        "id": "66f79d1eb9c5a0ad7c018c17",
+        "actor": {
+          "id": "66f19a3c5e7b2d4f8a1c0e01",
+          "email": "demo@orichal.app",
+          "role": "user"
+        },
+        "action": "auth.login",
+        "targetType": "user",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "192.0.2.44",
+        "device": "Firefox on Windows",
+        "createdAt": "2026-10-25T08:02:44.000Z"
+      },
+      {
+        "id": "66f702f704dca580c615cb73",
+        "actor": {
+          "id": "66e8d47b2c9f5a1e3d6b0a12",
+          "email": "admin@orichal.app",
+          "role": "admin"
+        },
+        "action": "admin.market_halted",
+        "targetType": "market",
+        "targetId": "BNB-USDT",
+        "metadata": {
+          "cancelOpenOrders": true
+        },
+        "ip": "198.51.100.120",
+        "device": "Chrome on Windows",
+        "createdAt": "2026-10-25T13:05:00.120Z"
+      },
+      {
+        "id": "66f7f49b225e24cfc8adf125",
+        "actor": {
+          "id": "66e8d47b2c9f5a1e3d6b0a12",
+          "email": "admin@orichal.app",
+          "role": "admin"
+        },
+        "action": "auth.login",
+        "targetType": "user",
+        "targetId": "66e8d47b2c9f5a1e3d6b0a12",
+        "metadata": {},
+        "ip": "198.51.100.120",
+        "device": "Chrome on Windows",
+        "createdAt": "2026-10-25T13:58:42.000Z"
+      },
+      {
+        "id": "66f7b9c705456a9133a149ee",
+        "actor": {
+          "id": "66f19a3c5e7b2d4f8a1c0e01",
+          "email": "demo@orichal.app",
+          "role": "user"
+        },
+        "action": "auth.login",
+        "targetType": "user",
+        "targetId": "66f19a3c5e7b2d4f8a1c0e01",
+        "metadata": {},
+        "ip": "203.0.113.24",
+        "device": "Chrome on macOS",
+        "createdAt": "2026-10-25T14:02:05.000Z"
+      }
+    ]
+  }
+}

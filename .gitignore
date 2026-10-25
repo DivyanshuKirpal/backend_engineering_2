@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Playwright output and screenshot checks
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.screenshots/
+
+# Board images extracted from the design PDFs (npm run boards)
+.boards/
+
+# Logs and OS files
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini

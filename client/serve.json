@@ -1,0 +1,7 @@
+{
+  "rewrites": [{ "source": "**", "destination": "/index.html" }],
+  "directoryListing": false,
+  "headers": [
+    { "source": "**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+  ]
+}

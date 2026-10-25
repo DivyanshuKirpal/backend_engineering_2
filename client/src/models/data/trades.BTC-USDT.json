@@ -1,0 +1,77 @@
+{
+  "success": true,
+  "data": {
+    "trades": [
+      {
+        "id": "66f37832e36b8f8398980392",
+        "price": "62140.50",
+        "quantity": "0.01240",
+        "takerSide": "buy",
+        "time": "2026-10-25T14:32:07.214Z"
+      },
+      {
+        "id": "66f33ab82b3ff0e06011a4e8",
+        "price": "62140.40",
+        "quantity": "0.00350",
+        "takerSide": "sell",
+        "time": "2026-10-25T14:31:52.860Z"
+      },
+      {
+        "id": "66f3572375cc58768e0ee931",
+        "price": "62141.10",
+        "quantity": "0.02000",
+        "takerSide": "buy",
+        "time": "2026-10-25T14:31:30.402Z"
+      },
+      {
+        "id": "66f34578f33b7c3417856b18",
+        "price": "62138.90",
+        "quantity": "0.15000",
+        "takerSide": "sell",
+        "time": "2026-10-25T14:31:04.118Z"
+      },
+      {
+        "id": "66f31d9c89560d71448a728d",
+        "price": "62138.90",
+        "quantity": "0.08120",
+        "takerSide": "sell",
+        "time": "2026-10-25T14:30:41.733Z"
+      },
+      {
+        "id": "66f3fbf8f542cd3213061001",
+        "price": "62143.00",
+        "quantity": "0.00800",
+        "takerSide": "buy",
+        "time": "2026-10-25T14:30:12.509Z"
+      },
+      {
+        "id": "66f3920ed6d3b4a9c2c4595b",
+        "price": "62146.80",
+        "quantity": "0.10500",
+        "takerSide": "buy",
+        "time": "2026-10-25T14:29:58.041Z"
+      },
+      {
+        "id": "66f3723ae19de677c5363852",
+        "price": "62139.20",
+        "quantity": "0.04000",
+        "takerSide": "sell",
+        "time": "2026-10-25T14:29:20.377Z"
+      },
+      {
+        "id": "66f35af34c3db9ce86c15797",
+        "price": "62142.00",
+        "quantity": "0.00610",
+        "takerSide": "buy",
+        "time": "2026-10-25T14:28:47.926Z"
+      },
+      {
+        "id": "66f376d3b05efcb13b90a1a0",
+        "price": "62137.50",
+        "quantity": "0.12000",
+        "takerSide": "sell",
+        "time": "2026-10-25T14:28:03.655Z"
+      }
+    ]
+  }
+}

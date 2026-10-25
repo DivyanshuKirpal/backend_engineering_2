@@ -1,0 +1,192 @@
+/* Reset, page typography, focus and the few utilities every page shares. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  font-feature-settings: 'tnum' 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote {
+  margin: 0;
+}
+
+ul[role="list"], ol[role="list"], ul.plain, ol.plain {
+  list-style: none;
+  padding: 0;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+a {
+  color: inherit;
+}
+
+/* Focus: a 2 px ink outline, 2 px off the element (section 7). Text fields
+   darken their border instead; see components/fields.css. */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Text styles */
+.t-hero { font-size: var(--fs-hero); font-weight: 700; line-height: 1; letter-spacing: -0.01em; }
+.t-title { font-size: var(--fs-title); font-weight: 700; line-height: 1.1; }
+.t-section { font-size: var(--fs-section); font-weight: 700; line-height: 1.2; }
+.t-label {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+.t-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.t-price { font-family: var(--font-mono); font-size: var(--fs-price); font-weight: 600; }
+.t-amount { font-family: var(--font-mono); font-size: var(--fs-amount); font-weight: 500; }
+.t-dense { font-family: var(--font-mono); font-size: var(--fs-dense); font-weight: 400; }
+.t-muted { color: var(--ink-2); }
+.t-faint { color: var(--ink-3); }
+
+/* Tones the presenters pick; colour always comes with a sign, arrow or word. */
+.tone-up, .tone-buy, .tone-success { color: var(--buy); }
+.tone-down, .tone-sell, .tone-error { color: var(--sell); }
+.tone-wait { color: var(--brass); }
+
+/* Layout */
+.container {
+  width: 100%;
+  max-width: calc(var(--container) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.page {
+  padding-block: 56px 72px;
+}
+
+.page-head {
+  margin-bottom: 24px;
+}
+
+.page-head p {
+  margin-top: 10px;
+  color: var(--ink-2);
+  font-size: 17px;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -64px;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+/* Underlined text links, as on the boards (Fees, tick sizes..., All history) */
+.link {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Icons from the sprite: <svg class="icon"><use href="/assets/icons/sprite.svg#bell"/></svg> */
+.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Placeholder note on pages and parts the design file hasn't drawn yet */
+.undesigned-note {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 8px;
+  border: 1px dashed var(--line);
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

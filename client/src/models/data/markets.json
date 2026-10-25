@@ -1,0 +1,91 @@
+{
+  "success": true,
+  "data": {
+    "markets": [
+      {
+        "symbol": "BTC-USDT",
+        "baseAsset": "BTC",
+        "quoteAsset": "USDT",
+        "status": "active",
+        "tickSize": "0.01",
+        "stepSize": "0.00001",
+        "minQty": "0.00001",
+        "minNotional": "5",
+        "makerFeeRate": "0.0008",
+        "takerFeeRate": "0.001",
+        "ticker": {
+          "last": "62140.50",
+          "open": "61017.77",
+          "high": "62488.00",
+          "low": "60912.35",
+          "volume": "168.37204",
+          "quoteVolume": "10430315.52",
+          "changePct": "1.84"
+        }
+      },
+      {
+        "symbol": "ETH-USDT",
+        "baseAsset": "ETH",
+        "quoteAsset": "USDT",
+        "status": "active",
+        "tickSize": "0.01",
+        "stepSize": "0.0001",
+        "minQty": "0.0001",
+        "minNotional": "5",
+        "makerFeeRate": "0.0008",
+        "takerFeeRate": "0.001",
+        "ticker": {
+          "last": "3012.40",
+          "open": "2984.94",
+          "high": "3041.10",
+          "low": "2968.25",
+          "volume": "1387.6021",
+          "quoteVolume": "4180190.37",
+          "changePct": "0.92"
+        }
+      },
+      {
+        "symbol": "SOL-USDT",
+        "baseAsset": "SOL",
+        "quoteAsset": "USDT",
+        "status": "active",
+        "tickSize": "0.01",
+        "stepSize": "0.001",
+        "minQty": "0.001",
+        "minNotional": "5",
+        "makerFeeRate": "0.0008",
+        "takerFeeRate": "0.001",
+        "ticker": {
+          "last": "142.18",
+          "open": "145.54",
+          "high": "146.92",
+          "low": "140.37",
+          "volume": "13504.118",
+          "quoteVolume": "1920268.80",
+          "changePct": "-2.31"
+        }
+      },
+      {
+        "symbol": "BNB-USDT",
+        "baseAsset": "BNB",
+        "quoteAsset": "USDT",
+        "status": "halted",
+        "tickSize": "0.01",
+        "stepSize": "0.001",
+        "minQty": "0.001",
+        "minNotional": "5",
+        "makerFeeRate": "0.0008",
+        "takerFeeRate": "0.001",
+        "ticker": {
+          "last": "588.90",
+          "open": "591.74",
+          "high": "594.30",
+          "low": "585.12",
+          "volume": "1477.305",
+          "quoteVolume": "870129.70",
+          "changePct": "-0.48"
+        }
+      }
+    ]
+  }
+}

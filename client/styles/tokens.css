@@ -1,0 +1,163 @@
+/* Design tokens from section 7 of the architecture doc. Every colour, font and
+   size in the other style sheets comes from here, so a dark set only has to
+   redefine these custom properties (see the end of this file). */
+
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  src: url('/assets/fonts/barlow-semi-condensed-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  src: url('/assets/fonts/barlow-semi-condensed-latin-500-normal.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  src: url('/assets/fonts/barlow-semi-condensed-latin-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  src: url('/assets/fonts/barlow-semi-condensed-latin-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Azeret Mono';
+  src: url('/assets/fonts/azeret-mono-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Azeret Mono';
+  src: url('/assets/fonts/azeret-mono-latin-500-normal.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Azeret Mono';
+  src: url('/assets/fonts/azeret-mono-latin-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces and rules */
+  --bg-page: #DED3C2;
+  --bg-panel: #E9E1D2;
+  --bg-inset: #F2ECE1;
+  --bg-row-hover: #E3D9C8;
+  --bg-muted: #D8CEBE;
+  --line: #C4B9A7;
+  --line-soft: #D8CEBE;
+  --line-row: #E0D8C9;
+
+  /* Text */
+  --ink: #161616;
+  --ink-2: #524C44;
+  --ink-3: #605A51;
+  --on-fill: #FFFFFF;
+
+  /* Meaning: buy, price up, bids, success / sell, price down, asks, errors */
+  --buy: #07602B;
+  --sell: #B82927;
+  --brass: #735520;
+  --brass-light: #C8A468;
+
+  /* Size bars in the ladder: the buy and sell colours, washed out */
+  --bar-bid: rgba(7, 96, 43, 0.25);
+  --bar-ask: rgba(184, 41, 39, 0.28);
+
+  /* On ink: the footer, the admin sidebar and the sign-in brand panel */
+  --ink-surface: #161616;
+  --on-ink: #E9E1D2;
+  --on-ink-2: #C9C0AF;
+  --on-ink-3: #B0A795;
+  --line-on-ink: #3A362F;
+
+  /* Overlay behind drawers and dialogs */
+  --scrim: rgba(22, 22, 22, 0.32);
+
+  /* Asset identity colours, kept in the fixed order USDT, BTC, ETH, SOL, BNB */
+  --asset-usdt: #2A78D6;
+  --asset-usdt-text: #FFFFFF;
+  --asset-btc: #EDA100;
+  --asset-btc-text: #161616;
+  --asset-eth: #6250D6;
+  --asset-eth-text: #FFFFFF;
+  --asset-sol: #E87BA4;
+  --asset-sol-text: #161616;
+  --asset-bnb: #1BAF7A;
+  --asset-bnb-text: #161616;
+
+  /* Admin volume bars */
+  --chart-bar: #2A78D6;
+
+  /* Type */
+  --font-sans: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --font-mono: 'Azeret Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --fs-hero: 72px;
+  --fs-title: 38px;
+  --fs-section: 22px;
+  --fs-label: 13px;
+  --fs-body: 15px;
+  --fs-price: 30px;
+  --fs-amount: 15px;
+  --fs-dense: 12px;
+  --tracking-label: 0.1em;
+  --tracking-wordmark: 0.12em;
+
+  /* Shape: square corners, 1 px rules, a 2 px ink focus ring */
+  --rule: 1px solid var(--line);
+  --rule-soft: 1px solid var(--line-soft);
+  --rule-row: 1px solid var(--line-row);
+  --focus-ring: 2px solid var(--ink);
+  --focus-offset: 2px;
+
+  /* Layout */
+  --header-h: 52px;
+  --container: 1216px;
+  --gutter: 112px;
+  --touch: 44px;
+}
+
+@media (max-width: 1439px) {
+  :root { --gutter: clamp(16px, 7.78vw, 112px); }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --gutter: 16px;
+    --fs-hero: 44px;
+    --fs-title: 30px;
+  }
+}
+
+/* Market colours for colour-blind users (section 7). No setting switches this
+   on yet; it waits for preferences.marketColors. */
+:root[data-market-colors="blue-orange"] {
+  --buy: #1346AB;
+  --sell: #A14301;
+  --bar-bid: rgba(19, 70, 171, 0.22);
+  --bar-ask: rgba(161, 67, 1, 0.26);
+}
+
+/* Dark theme: not designed yet (section 7, Open items). ThemeToggle and
+   preferences.theme already set data-theme on <html>; a dark set goes here and
+   redefines the custom properties above. Until then dark falls back to light. */
+:root[data-theme="dark"] {
+  color-scheme: light;
+}

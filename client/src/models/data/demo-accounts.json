@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "data": {
+    "note": "Mock sign-in for the static phase. The real server checks bcrypt hashes and TOTP codes; this file goes away with the mock.",
+    "accounts": [
+      {
+        "email": "demo@orichal.app",
+        "password": "orichal-demo",
+        "twoFactorCode": "123456"
+      },
+      {
+        "email": "admin@orichal.app",
+        "password": "orichal-demo",
+        "twoFactorCode": null
+      }
+    ]
+  }
+}

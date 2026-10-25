@@ -1,0 +1,32 @@
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "USDT",
+        "address": "sim-usdt-3d81c0f9a2b6e417"
+      },
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "BTC",
+        "address": "sim-btc-7f3a91c2e6b04d58"
+      },
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "ETH",
+        "address": "sim-eth-b04e7a19c3d52f86"
+      },
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "SOL",
+        "address": "sim-sol-5a2fd8e0c71b9634"
+      },
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "BNB",
+        "address": "sim-bnb-e93c1b7d40a6f258"
+      }
+    ]
+  }
+}

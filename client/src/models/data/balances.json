@@ -1,0 +1,420 @@
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "USDT",
+        "available": "1616.000800",
+        "locked": "5207.500000",
+        "total": "6823.500800"
+      },
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "BTC",
+        "available": "0.03743750",
+        "locked": "0.01500000",
+        "total": "0.05243750"
+      },
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "ETH",
+        "available": "0.39960000",
+        "locked": "0.00000000",
+        "total": "0.39960000"
+      },
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "asset": "SOL",
+        "available": "5.99400000",
+        "locked": "0.00000000",
+        "total": "5.99400000"
+      },
+      {
+        "userId": "66e05de52cffc996fb30e4dc",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ee5e2e024104b389ea1101",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e8190eb66061bfd33989dc",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e55a22f0e938e7cf77a914",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ee1ba63a7c24a3ff2eb313",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e2247e080f97415b319eb8",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e3d3cc0926de792ca24695",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e50ad6d024d26c970e1cdc",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e4650c6fafee7c49cee2d1",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e7b26cc7c691a53aeeb96a",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e814166fe751f7b3d4327b",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e0a69bb31dcda7878b7fef",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ef936e337f1aeaaa699c61",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e735f5ac76085466d15bd3",
+        "asset": "USDT",
+        "available": "8299.600000",
+        "locked": "1700.400000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e5aea866d1e9a4e9dea01b",
+        "asset": "USDT",
+        "available": "5744.500000",
+        "locked": "4255.500000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66eb11cd7d56a5b0a5a5c52c",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66eb21d80092f022d069f6ff",
+        "asset": "USDT",
+        "available": "7870.300000",
+        "locked": "2129.700000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e49df4c823b3fdefc208ae",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e3acfa0c837f0b8199c95d",
+        "asset": "USDT",
+        "available": "7158.400000",
+        "locked": "2841.600000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e8511ed0bed63e69fa7b7f",
+        "asset": "USDT",
+        "available": "6417.280000",
+        "locked": "3582.720000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ec592ea6018fc051e13d59",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ea6633e3029057ad5d2fdd",
+        "asset": "USDT",
+        "available": "7757.500000",
+        "locked": "2242.500000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e38b53254927e7d5a58e2a",
+        "asset": "USDT",
+        "available": "8801.840000",
+        "locked": "1198.160000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e75223af7394eb101fc84f",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e7b67e7ac83bbe82632163",
+        "asset": "USDT",
+        "available": "8500.000000",
+        "locked": "1500.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66eef5d1cceb052d961b7746",
+        "asset": "USDT",
+        "available": "8446.625000",
+        "locked": "1553.375000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ea1a6db22b71bd9df38b92",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e822c3d19f0c874f92c426",
+        "asset": "USDT",
+        "available": "9398.400000",
+        "locked": "601.600000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e7d0a5c057db01f4a7d07b",
+        "asset": "USDT",
+        "available": "8758.434000",
+        "locked": "1241.566000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ee322a09c13f49319b7c74",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e4b132e4c10a4dd78374bd",
+        "asset": "USDT",
+        "available": "8140.450000",
+        "locked": "1859.550000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ee6eb709d689ffedd0b2d6",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e67f59e026f7335c82d9e6",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66eae2abec7c10302d6ebeaa",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e3e0cf997ac988bf34670a",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e5eb0bcb10ac883e581a87",
+        "asset": "USDT",
+        "available": "3800.000000",
+        "locked": "6200.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e4a3c52ee60fe3df588efe",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ebf7522e2409467b646f4b",
+        "asset": "USDT",
+        "available": "6278.200000",
+        "locked": "3721.800000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e3d542bc76cb9db6e8a29c",
+        "asset": "USDT",
+        "available": "8448.500000",
+        "locked": "1551.500000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e45c5763822e3989656163",
+        "asset": "USDT",
+        "available": "9500.000000",
+        "locked": "0.000000",
+        "total": "9500.000000"
+      },
+      {
+        "userId": "66e41f81a04b465e17ba9c25",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e6094f5b19d64d9e4ffdbf",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e90170cebcf624fac05864",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66ebacb512016b6f673f6630",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e8d47b2c9f5a1e3d6b0a12",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e9c9e03ea6db24b2d0d100",
+        "asset": "USDT",
+        "available": "6894.530000",
+        "locked": "3105.470000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e694a4328055dff69ca026",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66eb45d0e609d9e4b9c2afc2",
+        "asset": "USDT",
+        "available": "8212.000000",
+        "locked": "1788.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e1d92bc8acfd7b4a280b81",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66eb12efc9a7606c758d5bfb",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e62281a147fcf69e90d5a1",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e41269047f231ee3b387ee",
+        "asset": "USDT",
+        "available": "6316.000000",
+        "locked": "3684.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66eb45d0e609d9e4b9c2afc2",
+        "asset": "BTC",
+        "available": "0.02000000",
+        "locked": "0.05000000",
+        "total": "0.07000000"
+      },
+      {
+        "userId": "66ee916e9d2888d5ca403b97",
+        "asset": "USDT",
+        "available": "10000.000000",
+        "locked": "0.000000",
+        "total": "10000.000000"
+      },
+      {
+        "userId": "66e9c9e03ea6db24b2d0d100",
+        "asset": "ETH",
+        "available": "0.25000000",
+        "locked": "0.75000000",
+        "total": "1.00000000"
+      }
+    ]
+  }
+}

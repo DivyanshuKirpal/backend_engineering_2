@@ -1,0 +1,77 @@
+{
+  "success": true,
+  "data": {
+    "trades": [
+      {
+        "id": "66f3c4db10d50538bab8587a",
+        "price": "588.90",
+        "quantity": "1.250",
+        "takerSide": "sell",
+        "time": "2026-10-25T13:04:52.418Z"
+      },
+      {
+        "id": "66f3248d0c5070e52d14ae94",
+        "price": "589.10",
+        "quantity": "0.400",
+        "takerSide": "buy",
+        "time": "2026-10-25T13:04:11.062Z"
+      },
+      {
+        "id": "66f3f4f041e2c9b238c258c1",
+        "price": "588.95",
+        "quantity": "2.100",
+        "takerSide": "sell",
+        "time": "2026-10-25T13:03:37.795Z"
+      },
+      {
+        "id": "66f399d3e8a524ff3b5cf4d9",
+        "price": "589.30",
+        "quantity": "0.650",
+        "takerSide": "buy",
+        "time": "2026-10-25T13:02:58.331Z"
+      },
+      {
+        "id": "66f39e93878e15de9a8a8428",
+        "price": "589.05",
+        "quantity": "1.800",
+        "takerSide": "sell",
+        "time": "2026-10-25T13:02:20.904Z"
+      },
+      {
+        "id": "66f37ab438d5513c70c8c204",
+        "price": "589.40",
+        "quantity": "0.300",
+        "takerSide": "buy",
+        "time": "2026-10-25T13:01:44.587Z"
+      },
+      {
+        "id": "66f32f07206f8181c933c059",
+        "price": "589.20",
+        "quantity": "3.000",
+        "takerSide": "sell",
+        "time": "2026-10-25T13:01:05.126Z"
+      },
+      {
+        "id": "66f39ec35ef70305eb6cb5e2",
+        "price": "589.55",
+        "quantity": "0.900",
+        "takerSide": "buy",
+        "time": "2026-10-25T13:00:29.771Z"
+      },
+      {
+        "id": "66f38dee6f164e93c1190221",
+        "price": "589.35",
+        "quantity": "1.150",
+        "takerSide": "sell",
+        "time": "2026-10-25T12:59:51.443Z"
+      },
+      {
+        "id": "66f3a6a155c060543b994f89",
+        "price": "589.60",
+        "quantity": "0.500",
+        "takerSide": "buy",
+        "time": "2026-10-25T12:59:12.018Z"
+      }
+    ]
+  }
+}

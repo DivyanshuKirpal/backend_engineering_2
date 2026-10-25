@@ -1,0 +1,77 @@
+{
+  "success": true,
+  "data": {
+    "assets": [
+      {
+        "code": "USDT",
+        "name": "Tether USD",
+        "decimals": 6,
+        "iconUrl": "/assets/coins/usdt.svg",
+        "description": "A dollar-pegged stablecoin. Every Orichal market is priced in it, and new accounts start with 10,000 of it.",
+        "circulatingSupply": "118200000000",
+        "depositEnabled": true,
+        "withdrawEnabled": true,
+        "withdrawFee": "1",
+        "minWithdraw": "10",
+        "demoDepositLimit": "10000",
+        "status": "active"
+      },
+      {
+        "code": "BTC",
+        "name": "Bitcoin",
+        "decimals": 8,
+        "iconUrl": "/assets/coins/btc.svg",
+        "description": "The first cryptocurrency, with a fixed supply of 21 million coins.",
+        "circulatingSupply": "19760000",
+        "depositEnabled": true,
+        "withdrawEnabled": true,
+        "withdrawFee": "0.0002",
+        "minWithdraw": "0.001",
+        "demoDepositLimit": "1",
+        "status": "active"
+      },
+      {
+        "code": "ETH",
+        "name": "Ethereum",
+        "decimals": 8,
+        "iconUrl": "/assets/coins/eth.svg",
+        "description": "The native coin of the Ethereum network, used to pay for computation on it.",
+        "circulatingSupply": "120400000",
+        "depositEnabled": true,
+        "withdrawEnabled": true,
+        "withdrawFee": "0.002",
+        "minWithdraw": "0.01",
+        "demoDepositLimit": "10",
+        "status": "active"
+      },
+      {
+        "code": "SOL",
+        "name": "Solana",
+        "decimals": 8,
+        "iconUrl": "/assets/coins/sol.svg",
+        "description": "The native coin of the Solana network, built for fast, cheap transactions.",
+        "circulatingSupply": "471000000",
+        "depositEnabled": true,
+        "withdrawEnabled": true,
+        "withdrawFee": "0.01",
+        "minWithdraw": "0.1",
+        "demoDepositLimit": "100",
+        "status": "active"
+      },
+      {
+        "code": "BNB",
+        "name": "BNB",
+        "decimals": 8,
+        "iconUrl": "/assets/coins/bnb.svg",
+        "description": "The native coin of the BNB Chain.",
+        "circulatingSupply": "145900000",
+        "depositEnabled": true,
+        "withdrawEnabled": true,
+        "withdrawFee": "0.002",
+        "minWithdraw": "0.02",
+        "demoDepositLimit": "20",
+        "status": "active"
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "userId": "66f19a3c5e7b2d4f8a1c0e01",
+        "watchlist": [
+          "BTC-USDT",
+          "ETH-USDT"
+        ]
+      }
+    ]
+  }
+}

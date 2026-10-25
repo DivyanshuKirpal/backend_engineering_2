@@ -1,0 +1,27 @@
+{
+  "name": "orichal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Orichal, a simulated spot crypto exchange. Static frontend phase: plain HTML, CSS and JavaScript on demo data.",
+  "type": "module",
+  "scripts": {
+    "dev": "serve client --listen 5173",
+    "check:data": "node scripts/check-data.mjs",
+    "boards": "node scripts/extract-boards.mjs",
+    "vendor": "node scripts/copy-vendor.mjs",
+    "shots": "node scripts/screenshots.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/azeret-mono": "^5.3.0",
+    "@fontsource/barlow-semi-condensed": "^5.3.0",
+    "playwright": "^1.64.1",
+    "qrcode-generator": "^2.0.4",
+    "serve": "^14.2.6"
+  },
+  "overrides": {
+    "compression": "1.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

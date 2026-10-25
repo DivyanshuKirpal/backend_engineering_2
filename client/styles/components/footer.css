@@ -1,0 +1,67 @@
+/* The footer (Components board, AppFooter): ink, the brand and a line about
+   the simulator, three link columns, a 1 px rule, then the small print. */
+
+.app-footer {
+  background: var(--ink-surface);
+  color: var(--on-ink);
+  padding-top: 39px;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2.15fr 1fr 1fr 1fr;
+  gap: 24px;
+  padding-bottom: 33px;
+  border-bottom: 1px solid var(--line-on-ink);
+}
+
+.footer-about p {
+  max-width: 440px;
+  margin-top: 14px;
+  color: var(--on-ink-2);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.footer-title {
+  color: var(--brass-light);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.footer-col ul { margin-top: 12px; }
+.footer-col li + li { margin-top: 10px; }
+
+.footer-col a {
+  color: var(--on-ink);
+  font-size: 14px;
+  line-height: 19px;
+  text-decoration: none;
+}
+
+.footer-col a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 21px 0 26px;
+  color: var(--on-ink-3);
+  font-size: 13px;
+}
+
+.app-footer :focus-visible { outline-color: var(--on-ink); }
+
+@media (max-width: 899px) {
+  .footer-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .footer-about { grid-column: 1 / -1; }
+}
+
+@media (max-width: 519px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}

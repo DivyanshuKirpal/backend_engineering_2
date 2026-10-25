@@ -1,0 +1,96 @@
+/* Buttons (UI kit, "Buttons and tabs"): 44 px tall, square, 16 px bold.
+   Primary is ink; Secondary is outlined in ink; Quiet sits on the inset
+   colour; Buy and Sell carry the market colours; a halted market's button is
+   flat and grey. */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.btn-primary { background: var(--ink); color: var(--on-fill); }
+.btn-primary:hover:not(:disabled) { background: #2a2826; }
+
+.btn-secondary { border-color: var(--ink); color: var(--ink); }
+.btn-secondary:hover:not(:disabled) { background: var(--bg-inset); }
+
+.btn-quiet { background: var(--bg-inset); border-color: var(--line); font-weight: 600; font-size: 15px; }
+.btn-quiet:hover:not(:disabled) { background: var(--bg-row-hover); }
+
+/* A text-only button in the header (Log in) */
+.btn-quiet-flat { color: var(--ink); font-weight: 600; }
+.btn-quiet-flat:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.btn-buy { background: var(--buy); color: var(--on-fill); }
+.btn-buy:hover:not(:disabled) { background: #054d22; }
+
+.btn-sell { background: var(--sell); color: var(--on-fill); }
+.btn-sell:hover:not(:disabled) { background: #9d2220; }
+
+.btn-danger-outline { background: var(--bg-inset); border-color: var(--sell); color: var(--sell); }
+.btn-danger-outline:hover:not(:disabled) { background: #f6e3dc; }
+
+/* Market halted, and any other button that can't be used right now */
+.btn-muted,
+.btn-primary:disabled,
+.btn-buy:disabled,
+.btn-sell:disabled {
+  background: var(--bg-muted);
+  border-color: transparent;
+  color: var(--ink-3);
+}
+
+.btn-secondary:disabled,
+.btn-quiet:disabled,
+.btn-danger-outline:disabled {
+  border-color: var(--line);
+  color: var(--ink-3);
+  background: transparent;
+}
+
+.btn-sm { min-height: 34px; padding: 0 14px; font-size: 14px; }
+.btn-xs { min-height: 28px; padding: 0 10px; font-size: 13px; }
+.btn-block { display: flex; width: 100%; }
+
+.btn .icon { width: 16px; height: 16px; }
+
+/* Square icon buttons in the header: bell, theme, menu */
+.icon-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 33px;
+  height: 33px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  background: var(--bg-inset);
+  color: var(--ink);
+}
+
+.icon-btn:hover { background: var(--bg-row-hover); }
+
+@media (max-width: 767px) {
+  .btn { min-height: var(--touch); }
+  .icon-btn { width: var(--touch); height: var(--touch); }
+}

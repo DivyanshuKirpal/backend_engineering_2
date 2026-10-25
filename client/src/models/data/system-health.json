@@ -1,0 +1,78 @@
+{
+  "success": true,
+  "data": {
+    "checkedAt": "2026-10-25T14:32:12.000Z",
+    "mongo": {
+      "status": "healthy",
+      "replicaSet": "rs0",
+      "primary": 1,
+      "secondaries": 2,
+      "pingMs": 3
+    },
+    "redis": {
+      "status": "healthy",
+      "aof": true,
+      "usedMemory": 42991616,
+      "maxMemory": 268435456
+    },
+    "engine": {
+      "leaderId": "engine-7f2c",
+      "heartbeatAt": "2026-10-25T14:32:10.000Z",
+      "marketsLoaded": 4,
+      "streamLag": 1,
+      "oldestWaitMs": 200,
+      "markets": [
+        {
+          "symbol": "BTC-USDT",
+          "waiting": 0,
+          "lastCommand": {
+            "type": "place",
+            "at": "2026-10-25T14:32:10.091Z"
+          },
+          "maker": "quoting"
+        },
+        {
+          "symbol": "ETH-USDT",
+          "waiting": 0,
+          "lastCommand": {
+            "type": "cancel",
+            "at": "2026-10-25T14:31:58.402Z"
+          },
+          "maker": "quoting"
+        },
+        {
+          "symbol": "SOL-USDT",
+          "waiting": 1,
+          "lastCommand": {
+            "type": "place",
+            "at": "2026-10-25T14:32:09.877Z"
+          },
+          "maker": "quoting"
+        },
+        {
+          "symbol": "BNB-USDT",
+          "waiting": 0,
+          "lastCommand": {
+            "type": "config",
+            "detail": "halt",
+            "at": "2026-10-25T13:05:00.120Z"
+          },
+          "maker": "cancelled"
+        }
+      ]
+    },
+    "apiInstances": [
+      {
+        "id": "api-1",
+        "ready": true,
+        "sockets": 21
+      },
+      {
+        "id": "api-2",
+        "ready": true,
+        "sockets": 17
+      }
+    ],
+    "sockets": 38
+  }
+}
