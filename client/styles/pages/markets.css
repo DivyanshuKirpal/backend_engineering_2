@@ -1,0 +1,133 @@
+/* Markets (board Markets). Column widths reproduce the board's right edges:
+   last price 489, change 622, high 766, low 911, volume 1080 px. */
+
+.markets-page { padding-top: 46px; padding-bottom: 60px; }
+.markets-page .page-head { margin-bottom: 21px; }
+.markets-page .page-head p { margin-top: 11px; }
+
+.markets-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.markets-tools .search { width: 320px; }
+.markets-panel { min-height: 120px; }
+
+.market-table { table-layout: fixed; }
+.market-table th { height: 39px; }
+.market-table td,
+.market-table tbody th { height: 62px; padding: 0 16px; }
+.market-table .col-star { width: 57px; padding: 0 0 0 14px; }
+.market-table .col-market { width: 208px; }
+.market-table .col-last { width: 133px; }
+.market-table .col-change { width: 128px; }
+.market-table .col-high { width: 148.3px; }
+.market-table .col-low { width: 145.2px; }
+.market-table .col-volume { width: 170.3px; }
+.market-table .col-status { width: 94.4px; padding-left: 8px; }
+.market-table .col-action { width: 130px; text-align: right; }
+.market-table .status { gap: 5px; }
+.market-table .status-mark { width: 10px; height: 10px; }
+.market-table .status-mark-pause { width: 12px; }
+
+/* 24h change reads left-aligned on the board: header and values start together */
+.market-table .col-change { padding-left: 44px; text-align: left; }
+
+.market-table tbody th { font-weight: 400; }
+
+.market-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.market-names { display: grid; }
+.market-pair { font-size: 16px; font-weight: 700; line-height: 19px; }
+.market-name { color: var(--ink-3); font-size: 13px; line-height: 16px; }
+.market-link:hover .market-pair { text-decoration: underline; text-underline-offset: 3px; }
+
+td.col-last { font-size: 15px; font-weight: 500; }
+td.col-change .change,
+td.col-high,
+td.col-low { font-size: 14px; }
+
+.col-volume .volume-quote { display: block; font-size: 14px; line-height: 17px; }
+.col-volume .volume-base { display: block; color: var(--ink-3); font-size: 12px; line-height: 15px; }
+
+.col-status .status { font-size: 14px; }
+.btn-row { min-height: 33px; padding: 0 14px; font-size: 14px; }
+.btn-quiet.btn-row { color: var(--ink-2); font-weight: 600; }
+
+/* Sortable headers */
+.sort-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.sort-btn:hover { color: var(--ink); }
+/* The arrow hangs outside the label, so labels stay aligned with their numbers */
+.sort-mark { position: absolute; right: -12px; font-size: 9px; }
+
+.star-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+}
+
+.star-btn:hover { background: var(--bg-row-hover); }
+.star-btn .icon { stroke-width: 1.5; }
+
+.markets-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 19px;
+  font-size: 14px;
+}
+
+.markets-note { color: var(--ink-2); }
+.markets-foot .link { font-size: 14px; font-weight: 600; }
+
+@media (max-width: 1199px) {
+  .market-table .col-high,
+  .market-table .col-low { display: none; }
+}
+
+@media (max-width: 899px) {
+  .market-table .col-status { display: none; }
+  .markets-tools { flex-wrap: wrap; }
+  .markets-tools .search { width: 100%; }
+}
+
+@media (max-width: 767px) {
+  .markets-page { padding-top: 28px; }
+  .markets-tabs { width: 100%; overflow-x: auto; }
+  .market-table { table-layout: auto; }
+  .market-table .col-volume,
+  .market-table .col-action { display: none; }
+  .market-table .col-star { width: 44px; padding-left: 6px; }
+  .market-table .col-market { width: auto; padding-right: 8px; }
+  .market-table .col-last,
+  .market-table .col-change { width: auto; padding-left: 8px; }
+  .market-table td.col-last { font-size: 14px; }
+  .market-link { gap: 10px; }
+  .markets-foot { flex-direction: column; }
+}

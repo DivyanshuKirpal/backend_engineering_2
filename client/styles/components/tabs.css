@@ -8,9 +8,9 @@
 .tabs-segment .tab {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
   min-height: 36px;
-  padding: 0 15px;
+  padding: 0 16.5px;
   border: 0;
   border-left: 1px solid var(--line-soft);
   background: none;
@@ -24,7 +24,7 @@
 .tabs-segment .tab:hover:not(.current) { background: var(--bg-row-hover); }
 .tabs-segment .tab.current { background: var(--ink); color: var(--on-fill); }
 
-.tab-count { font-size: 13px; font-weight: 500; color: var(--ink-3); }
+.tab-count { position: relative; top: 1.5px; font-size: 12px; font-weight: 500; color: var(--ink-3); }
 .tab.current .tab-count { color: var(--on-ink-2); }
 
 .tabs-underline { gap: 18px; }

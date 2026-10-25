@@ -1983,6 +1983,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - Views: `views/components/home/` (HeroSection, TickerStrip, TopMoversCard, FeatureGrid, CtaBanner) and `views/components/trade/OrderBook.js`, a real table whose prices become buttons on the trade page. Styles: `styles/pages/home.css` and `styles/components/ladder.css`.
   - Pages now load their own style sheet before drawing (`views/loadStyle.js`, awaited by the router).
   - `scripts/compare.mjs` (`npm run compare`) checks a page against a board's text layer. Home matches within 3 px everywhere except the live prices and times.
+- **26 Oct 2026 · Markets.** `presenters/market/markets.presenter.js` (useMarketsPresenter) builds tabs with live counts, search by code or name, sorting on the five number columns, the watchlist star (optimistic, put back if the request fails) and the halted-market footnote.
+  - Views: `views/components/market/MarketTable.js` (MarketTable, MarketRow, WatchlistStar) and `views/pages/market/MarketsPage.js`; styles in `styles/pages/markets.css`.
+  - The board's column edges are reproduced with fixed column widths. Every text run is within 2 px of the board, offset only by the verify-email banner, which shows while the demo address is unconfirmed.
 
 ### Conflicts and differences
 
@@ -2014,6 +2017,8 @@ The owner approved these decisions on 25 Oct 2026.
 | Ladder bars | — | Each side's bars measured against the larger of both sides' biggest levels (0.40 is 95% of 0.42) | The same: one scale for both sides |
 | Home when signed in | — | Only the signed-out board | "Open the trade screen" replaces "Create a demo account", and the sign-up note and banner are hidden. Not drawn |
 | Space above the footer on Home | — | The export splits Home over two pages, so the gap before the footer is unclear (about 104 px on page 1, more after the break) | 104 px |
+| Markets: sorting, search, watchlist | Search, sort and the four tabs | The tabs and the search field; no sort marks | The number column headers are sort buttons (aria-sort; an arrow appears beside the label once sorted). A guest who stars a market is sent to log in, since the watchlist lives on the account. Not drawn |
+| Markets on a phone | — | Only the 1440 px board | High, low, volume, status and the Trade button fold away below 768 px; the row's pair links to the trade page |
 
 ### Checklist
 
@@ -2039,7 +2044,7 @@ Components
 Pages drawn
 
 - [x] Home
-- [ ] Markets
+- [x] Markets
 - [ ] Trade, desktop
 - [ ] Trade, phone
 - [ ] Log in and its 2FA step
@@ -2113,6 +2118,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | HeroSection, TickerStrip, TopMoversCard, FeatureGrid, CtaBanner | `views/components/home/*.js` |
 | OrderBook, OrderBookRow | `views/components/trade/OrderBook.js`; rows built by `presenters/trade/ladder.js` |
 | useOrderBookPresenter's live book (flow C) | `presenters/shared/liveBook.js` |
+| MarketsPage, useMarketsPresenter | `views/pages/market/MarketsPage.js`, `presenters/market/markets.presenter.js` |
+| MarketTable, MarketRow, WatchlistStar | `views/components/market/MarketTable.js` |
+| MarketFilterTabs, SearchInput | `Tabs` and `SearchInput` from `views/components/ui/` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |
