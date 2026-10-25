@@ -1,0 +1,146 @@
+/* Data display: status markers, asset tiles, price changes, tables,
+   pagination and copy buttons. */
+
+/* Status markers (section 7) */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.status-sm { font-size: 14px; gap: 7px; }
+.status-mark { flex: none; width: 12px; height: 12px; }
+.status-neutral { color: var(--ink); }
+.status-neutral.status-hollow,
+.status-muted { color: var(--ink-3); }
+.status-wait { color: var(--brass); }
+.status-buy { color: var(--buy); }
+.status-sell { color: var(--sell); }
+
+/* A market that is open: green square, ink word */
+.status-buy .status-mark-square + .status-label { color: var(--ink); }
+
+.status-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border: 1px solid var(--ink-3);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* Asset tiles: lettered stand-ins for /coins/*.svg */
+.asset-tile {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.asset-tile-sm { width: 20px; height: 20px; font-size: 10px; }
+.asset-tile-lg { width: 30px; height: 30px; font-size: 13px; }
+.asset-usdt { background: var(--asset-usdt); color: var(--asset-usdt-text); }
+.asset-btc { background: var(--asset-btc); color: var(--asset-btc-text); }
+.asset-eth { background: var(--asset-eth); color: var(--asset-eth-text); }
+.asset-sol { background: var(--asset-sol); color: var(--asset-sol-text); }
+.asset-bnb { background: var(--asset-bnb); color: var(--asset-bnb-text); }
+
+/* PriceChange */
+.change { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.change-arrow { font-size: 0.8em; }
+.tone-flat { color: var(--ink-3); }
+
+/* Tables */
+.table-wrap { width: 100%; overflow-x: auto; }
+.table { width: 100%; font-size: 15px; }
+
+.table th {
+  padding: 0 16px;
+  height: 38px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table td,
+.table tbody th {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-row);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table tbody th { font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ink); height: auto; }
+.table tbody tr:last-child td,
+.table tbody tr:last-child th { border-bottom: 0; }
+.table tbody tr:hover { background: var(--bg-row-hover); }
+.table .num { text-align: right; }
+.table .center { text-align: center; }
+.table-empty { padding: 0 !important; }
+.table-empty:hover, .table tbody tr:has(.table-empty):hover { background: none; }
+
+.table-dense { font-size: 12px; }
+.table-dense td { padding: 6px 12px; font-family: var(--font-mono); }
+.table-dense th { height: 30px; padding: 0 12px; }
+
+/* Pagination */
+.pagination { display: flex; align-items: center; gap: 6px; }
+.pagination ul { display: flex; gap: 6px; }
+
+.page-btn {
+  min-width: 33px;
+  height: 33px;
+  padding: 0 10px;
+  border: 1px solid var(--line-soft);
+  background: var(--bg-inset);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.page-btn.current { background: var(--ink); border-color: var(--ink); color: var(--on-fill); }
+.page-btn:hover:not(:disabled):not(.current) { background: var(--bg-row-hover); }
+.page-step { font-family: var(--font-sans); font-size: 14px; }
+.page-step:disabled { color: var(--ink-3); background: var(--bg-panel); cursor: not-allowed; }
+.page-next { border-color: var(--ink); font-weight: 700; }
+
+/* Copy buttons */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--bg-inset);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.copy-btn:hover { background: var(--bg-row-hover); }
+.copy-btn[data-copied] { color: var(--buy); }
+
+.copy-icon-only {
+  width: 30px;
+  height: 30px;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--line);
+}

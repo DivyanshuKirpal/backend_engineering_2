@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 51px;
+  min-height: 56px;
   padding: 0 22px;
   background: var(--bg-panel);
   border-bottom: var(--rule);

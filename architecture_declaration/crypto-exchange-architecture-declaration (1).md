@@ -1975,6 +1975,10 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - *Model.* `models/domain/money.js` does BigInt fixed-point arithmetic at 18 places with explicit rounding, and reproduces every board total. Beside it sit `order.rules`, `withdrawal.rules`, `portfolio.rules`, `password.rules`, `orderBook.model` (seq, buffering, grouping) and `candles.model`. `models/data/` holds 25 seed files in the section 4 envelope and DTO shapes. `models/api/` has one client per section 4 group, all through `http.js`, which also holds the `fetch` transport for the real API. `models/realtime/socket.js` is an EventTarget with Socket.IO's interface. The stores cover session, preferences, balances, tickers, connection and notifications.
   - *The mock backend* (`models/api/mock/`). `db.js` seeds and saves; `market.js` simulates the bot ladder, the bot taker, tickers, candles and book deltas; `engine.js` handles orders and settlement; `wallet.js` is the only balance writer; `session.js` covers sign-in, tickets and lockout; `routes/` has every Core endpoint; `server.js` is the router, the latency and the socket gateway. A browser run placed, filled, cancelled, deposited, withdrew and approved, and every wallet still matched its ledger.
   - *App and views.* `app/routes.js` lists all 34 routes and `app/router.js` is a History API router. `app/guards.js` applies the Guest, User and Admin rules, and `app/main.js` starts it all. `views/dom.js` builds and patches the DOM. There are five layouts and the shared navigation components. Each Core page has a placeholder until its step, and the Stretch pages share a "not built yet" page. The 404 page is built from the UI kit's empty state.
+- **25 Oct 2026 · Shared components (step 4).** Built from the UI kit board and checked two ways: a scratchpad page rendered the kit's parts with the app's own components for a side-by-side look, and a script compared every text run's position and size in the page with the board's text layer. The header, footer, admin sidebar and admin topbar now sit within 2 px of their boards.
+  - `views/components/ui/`: Field, NumberField, Select, SearchInput, Checkbox and RadioCards in `Field.js`; segmented, underline and Buy/Sell tabs in `Tabs.js`, with arrow keys; `StatusMarker.js` draws the section 7 markers in SVG; `Table.js`; `OtpInput.js` is one real input under six drawn boxes, so autofill and paste work; `CopyButton.js`; `EmptyState.js` with Skeleton and ErrorState; `Panel.js`; Drawer, Modal and ConfirmDialog in `Overlay.js`, which trap focus and give it back; `Pagination.js`.
+  - Also `market/AssetIcon.js`, `market/PriceChange.js`, `trade/MarketStatusBanner.js` and `wallet/KycRequiredNotice.js`.
+  - Styles in `styles/components/`: `fields.css`, `tabs.css`, `data.css` (markers, tiles, tables, pagination, copy), `panels.css` and `overlays.css`.
 
 ### Conflicts and differences
 
@@ -1999,6 +2003,8 @@ The owner approved these decisions on 25 Oct 2026.
 | API needs in section 7 | Not yet in sections 3 and 4 | Used by the boards | All eight are in the mock and still pending for the real API: `appliedAt` on orders; `GET /orders/:id` returns `ledger`; an `engine.status` socket event; ledger `?type=` lists with a `total`, and transactions `?status=`; `googleLinked`, `twoFactorEnabledAt` and `INVALID_2FA_CODE.details.attemptsLeft`; `usersNew7d`, `volumePrev24h` and `openOrdersBot` on `/admin/stats`; `userDisplayName` and `userCreatedAt` on the admin lists, plus `userKycStatus` on admin withdrawals (the board shows it); `redis` and `engine.markets` on the system health |
 | Header badge | — | "Simulator · demo funds", a static tag | A button that opens the demo controls (what is mocked, the demo accounts, reset the demo data, drop the connection, fail the next request). Marked as not drawn |
 | Theme toggle | Switches the theme | The moon button | Kept; it explains in a toast that only the light theme is drawn |
+| Panel labels | 13 / 700, capitals, 0.1em | 13 px on Trade and Wallet; 12 px on Withdraw, Profile and some other panels | 13 px everywhere, as section 7 sets exact sizes. Field labels (EMAIL, TO ADDRESS) stay 12 px, as every board draws them; section 7 doesn't size them |
+| Toasts | sonner | Ink boxes without a close button | Same boxes with a small dismiss button: toasts disappear on a timer, so a way to close them sooner (and to reach them by keyboard) helps |
 
 ### Checklist
 
@@ -2012,14 +2018,14 @@ Foundations
 
 Components
 
-- [ ] AppHeader: Navbar, ConnectionStatus, UserMenu, NotificationBell, ThemeToggle
-- [ ] AppFooter
-- [ ] AdminSidebar and AdminTopbar, AccountSidebar
-- [ ] Buttons, fields, select, checkbox and radio, tabs
-- [ ] Status markers, tables
-- [ ] OtpInput, CopyButton
-- [ ] Banners and notices: MarketStatusBanner, VerifyEmailBanner, KycRequiredNotice
-- [ ] EmptyState, toasts
+- [x] AppHeader: Navbar, ConnectionStatus, UserMenu, NotificationBell, ThemeToggle
+- [x] AppFooter
+- [x] AdminSidebar and AdminTopbar, AccountSidebar
+- [x] Buttons, fields, select, checkbox and radio, tabs
+- [x] Status markers, tables
+- [x] OtpInput, CopyButton
+- [x] Banners and notices: MarketStatusBanner, VerifyEmailBanner, KycRequiredNotice
+- [x] EmptyState, toasts
 
 Pages drawn
 
@@ -2080,7 +2086,20 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | VerifyEmailBanner | `views/components/navigation/VerifyEmailBanner.js` |
 | AccountSidebar | `views/components/navigation/AccountSidebar.js` |
 | AdminSidebar, AdminTopbar | `views/components/navigation/AdminSidebar.js`, `AdminTopbar.js` |
-| Spinner, ErrorState | `views/components/ui/PageStates.js` |
+| Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
+| Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |
+| Input, NumberInput, Select, SearchInput | `views/components/ui/Field.js` (Field, NumberField, Select, SearchInput, Checkbox, RadioCards) |
+| Tabs | `views/components/ui/Tabs.js` |
+| Badge | `views/components/ui/StatusMarker.js` |
+| Table, Pagination | `views/components/ui/Table.js`, `Pagination.js` |
+| Card | `views/components/ui/Panel.js` |
+| Modal, Drawer, ConfirmDialog | `views/components/ui/Overlay.js` |
+| EmptyState, Skeleton | `views/components/ui/EmptyState.js` |
+| OtpInput, CopyButton | `views/components/ui/OtpInput.js`, `CopyButton.js` |
+| AssetIcon, PriceChange | `views/components/market/AssetIcon.js`, `PriceChange.js` |
+| MarketStatusBanner | `views/components/trade/MarketStatusBanner.js` |
+| KycRequiredNotice | `views/components/wallet/KycRequiredNotice.js` |
+| Toaster (sonner) | `views/components/ui/Toaster.js`, fed by `presenters/shared/toasts.js` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |

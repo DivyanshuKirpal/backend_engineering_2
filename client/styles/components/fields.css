@@ -1,0 +1,261 @@
+/* Fields (UI kit, "Fields"). Labels are 12 px capitals; inputs sit on the
+   inset colour inside a 1 px rule, and focus darkens that rule to ink
+   (section 7) instead of drawing an outline. */
+
+.field { display: grid; gap: 8px; min-width: 0; align-content: start; }
+
+.field-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+
+.field-label {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.input-wrap { position: relative; display: flex; align-items: stretch; }
+
+.input,
+.select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--bg-inset);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.input::placeholder { color: var(--ink-3); opacity: 1; }
+.input.t-mono { font-family: var(--font-mono); font-size: 15px; }
+
+.input:focus,
+.select:focus,
+.number-box:focus-within,
+.search:focus-within,
+.select-inline:focus-within {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.input:focus-visible,
+.select:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--ink); }
+
+.has-trailing .input { padding-right: 76px; }
+
+.input-trailing {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.field-invalid .input,
+.field-invalid .select,
+.field-invalid .number-box { border-color: var(--sell); }
+
+.field-hint { color: var(--ink-3); font-size: 13px; line-height: 1.35; }
+.field-error { color: var(--sell); font-size: 13px; font-weight: 700; line-height: 1.35; }
+
+/* Number with unit: the label inside on the left, the unit on the right */
+.number-field { display: grid; gap: 6px; }
+
+.number-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-inset);
+}
+
+.number-label { color: var(--ink-3); font-size: 13px; white-space: nowrap; }
+
+.number-input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.number-input:focus { outline: none; }
+.number-unit { color: var(--ink-3); font-size: 12px; }
+.is-disabled .number-box { background: var(--bg-panel); }
+
+/* Select */
+.select-wrap { position: relative; }
+.select { appearance: none; padding-right: 36px; font-weight: 600; cursor: pointer; }
+.select-chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--ink); }
+.has-leading .select { padding-left: 46px; }
+.select-wrap > .asset-tile { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+
+/* The compact filter select with its label inside: "Asset  All assets" */
+.select-inline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding-left: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-inset);
+}
+
+.select-inline-label { color: var(--ink-3); font-size: 13px; white-space: nowrap; }
+
+.select-inline .select {
+  min-height: 36px;
+  border: 0;
+  background: none;
+  padding: 0 32px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.select-inline .select:focus-visible { box-shadow: none; }
+.select-inline .select-chevron { right: 10px; }
+
+/* Search */
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  background: var(--bg-inset);
+}
+
+.search-icon { position: absolute; left: 14px; color: var(--ink-3); }
+
+.search-input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px 0 38px;
+  border: 0;
+  background: none;
+  font-size: 15px;
+}
+
+.search-input::placeholder { color: var(--ink-3); opacity: 1; }
+.search-input:focus { outline: none; }
+
+/* Checkbox: a real checkbox, drawn square in ink */
+.check { display: grid; grid-template-columns: auto 1fr; align-items: start; column-gap: 10px; row-gap: 4px; }
+.check .field-hint,
+.check .field-error { grid-column: 2; }
+
+.check-input {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  border: 1.5px solid var(--ink);
+  background: var(--bg-inset);
+  cursor: pointer;
+}
+
+.check-input:checked {
+  background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.3 6.4l2.4 2.4 5-5.4' fill='none' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+
+.check-input:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.check-label { font-size: 15px; line-height: 1.35; cursor: pointer; }
+
+/* Radio cards (Verification: document type) */
+.radio-cards { border: 0; margin: 0; padding: 0; min-width: 0; }
+.radio-cards legend { margin-bottom: 8px; padding: 0; }
+.radio-cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+.radio-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-inset);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.radio-card.checked { border: 2px solid var(--ink); padding: 0 11px; }
+
+.radio-input {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--bg-inset);
+}
+
+.radio-input:checked { background: radial-gradient(circle, var(--ink) 0 4px, var(--bg-inset) 4.5px); }
+.radio-card:focus-within { outline: var(--focus-ring); outline-offset: 2px; }
+.radio-input:focus-visible { outline: none; }
+
+/* Six-digit code: one input under six boxes */
+.otp-boxes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 40px);
+  gap: 6px;
+}
+
+.otp-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: 1px;
+  letter-spacing: 0;
+}
+
+.otp-input:focus { outline: none; }
+
+.otp-box {
+  display: grid;
+  place-items: center;
+  height: 47px;
+  border: 1px solid var(--line);
+  background: var(--bg-inset);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  color: var(--ink);
+}
+
+.otp-input:focus ~ .otp-box.active { border: 2px solid var(--ink); }
+.field-invalid .otp-box { border-color: var(--sell); }
+.otp-hint { display: flex; justify-content: space-between; gap: 12px; }
+
+.otp-lg .otp-boxes { grid-template-columns: repeat(6, 1fr); gap: 7px; }
+.otp-lg .otp-box { height: 60px; font-size: 24px; }
+
+@media (max-width: 767px) {
+  .input, .select { min-height: var(--touch); }
+  .radio-cards-row { grid-template-columns: 1fr; }
+  .otp-boxes { grid-template-columns: repeat(6, minmax(36px, 1fr)); }
+}

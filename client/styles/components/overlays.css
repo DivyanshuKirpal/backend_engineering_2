@@ -1,0 +1,68 @@
+/* Drawer, Modal and ConfirmDialog over a scrim. */
+
+.overlay { position: fixed; inset: 0; z-index: 50; }
+
+.overlay-scrim { position: absolute; inset: 0; background: var(--scrim); }
+
+.dialog {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  color: var(--ink);
+  box-shadow: -2px 0 0 var(--line);
+}
+
+.dialog:focus { outline: none; }
+
+.dialog-drawer {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 100vw);
+  overflow-y: auto;
+  border-left: var(--rule);
+}
+
+.dialog-modal {
+  top: 50%;
+  left: 50%;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  transform: translate(-50%, -50%);
+  border: var(--rule);
+  box-shadow: 8px 8px 0 rgba(22, 22, 22, 0.16);
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 21px 16px;
+}
+
+.dialog-title { font-size: 20px; font-weight: 700; line-height: 1.2; }
+.dialog-title:focus { outline: none; }
+
+.dialog-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+}
+
+.dialog-close:hover { background: var(--bg-row-hover); }
+.dialog-body { padding: 0 21px 20px; color: var(--ink-2); display: grid; gap: 14px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 21px 21px; border-top: 1px solid var(--line-soft); }
+
+@media (max-width: 767px) {
+  .dialog-drawer { width: 100vw; }
+  .dialog-actions { flex-direction: column-reverse; }
+  .dialog-actions .btn { width: 100%; }
+}

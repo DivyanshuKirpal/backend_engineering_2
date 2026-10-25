@@ -66,7 +66,7 @@
 .demo-badge-short { display: none; }
 
 .header-nav { margin-left: 24px; height: 100%; }
-.header-nav ul { display: flex; height: 100%; gap: 2px; }
+.header-nav ul { display: flex; height: 100%; gap: 2.6px; }
 
 .nav-link {
   display: flex;
@@ -142,7 +142,7 @@
   align-items: center;
   gap: 9px;
   height: 33px;
-  padding: 0 12px 0 3px;
+  padding: 0 9px 0 3px;
   border: 1px solid var(--line-soft);
   background: var(--bg-inset);
   color: var(--ink);

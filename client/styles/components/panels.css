@@ -1,0 +1,70 @@
+/* Panels (section 7, Shape), the halted-market banner, the KYC notice,
+   skeletons and error states. */
+
+.panel { background: var(--bg-panel); border: var(--rule); min-width: 0; }
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.panel-label {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.panel-body { padding: 20px; }
+.panel-flush { padding: 0; }
+
+/* MarketStatusBanner */
+.market-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 45px;
+  padding: 10px 17px;
+  background: var(--ink-surface);
+  color: var(--on-ink);
+  font-size: 15px;
+}
+
+.market-banner-icon { color: var(--brass-light); width: 16px; height: 16px; }
+
+/* KycRequiredNotice */
+.kyc-notice {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 14px;
+  padding: 20px 20px 22px;
+  background: var(--bg-panel);
+  border: 1px solid var(--brass);
+  font-size: 15px;
+}
+
+.kyc-notice-icon { color: var(--brass); width: 20px; height: 20px; margin-top: 1px; }
+.kyc-notice .btn { margin-top: 14px; }
+.btn-md { min-height: 38px; padding: 0 14px; font-size: 15px; }
+
+/* Skeleton and ErrorState */
+.skeleton { display: grid; gap: 12px; padding: 16px; }
+
+.skeleton-line {
+  display: block;
+  height: 14px;
+  background: linear-gradient(90deg, var(--line-row) 0%, var(--bg-inset) 50%, var(--line-row) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.error-state { display: grid; justify-items: start; gap: 8px; padding: 20px; color: var(--ink-2); }
+.error-state-title { color: var(--sell); font-weight: 700; }

@@ -11,13 +11,15 @@
   display: grid;
   grid-template-columns: 2.15fr 1fr 1fr 1fr;
   gap: 24px;
-  padding-bottom: 33px;
+  padding-bottom: 30px;
   border-bottom: 1px solid var(--line-on-ink);
 }
 
+.footer-about { padding-top: 2px; }
+
 .footer-about p {
-  max-width: 440px;
-  margin-top: 14px;
+  max-width: 415px;
+  margin-top: 9px;
   color: var(--on-ink-2);
   font-size: 14px;
   line-height: 21px;
@@ -33,7 +35,7 @@
   margin-top: 4px;
 }
 
-.footer-col ul { margin-top: 12px; }
+.footer-col ul { margin-top: 12px; font-size: 14px; line-height: 19px; }
 .footer-col li + li { margin-top: 10px; }
 
 .footer-col a {
@@ -50,7 +52,7 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px 24px;
-  padding: 21px 0 26px;
+  padding: 17px 0 29px;
   color: var(--on-ink-3);
   font-size: 13px;
 }
