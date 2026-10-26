@@ -4,6 +4,7 @@
 // openOrdersBot, userDisplayName, userCreatedAt, redis and engine.markets).
 
 import * as money from '../../../domain/money.js';
+import { CONFIG_FIELDS, validateConfig, validateNewMarket } from '../../../domain/market.rules.js';
 import { db, persist } from '../db.js';
 import { badRequest, conflict, notFound } from '../errors.js';
 import { adminUserDto, auditDto, kycDto, transactionDto } from '../mappers.js';
@@ -209,7 +210,14 @@ export default [
 
   ['POST', '/admin/markets', (ctx) => {
     session.requireAdmin(ctx);
-    throw conflict('New markets need the matching engine on the server. In this demo the four USDT markets are fixed.');
+    const body = ctx.body ?? {};
+    const errors = validateNewMarket(body, db().assets, db().markets);
+    const codes = Object.fromEntries(Object.entries(errors).map(([field, e]) => [field, e.code]));
+    if (Object.keys(errors).some((f) => errors[f].code !== 'taken')) throw badRequest('Some of the market\'s settings aren\'t valid.', codes);
+    if (errors.baseAsset) throw conflict(`${errors.baseAsset.symbol.replace('-', '/')} already exists.`, codes);
+    // Every rule passes. The simulator builds its books, tapes and candles from
+    // seed files, so a market can't start here; in this phase every asset has one.
+    throw conflict('A new market needs the matching engine on the server, which comes with the backend.');
   }],
 
   ['PATCH', '/admin/markets/:symbol', (ctx) => {
@@ -218,20 +226,25 @@ export default [
     if (!config) throw notFound('That market doesn\'t exist.');
     const body = ctx.body ?? {};
     const before = { ...config };
-    for (const field of ['makerFeeRate', 'takerFeeRate', 'minNotional', 'minQty']) {
-      if (body[field] == null) continue;
-      if (!money.isDecimal(String(body[field])) || money.isNegative(String(body[field]))) throw badRequest(`${field} must be a positive number.`, { [field]: 'value' });
-      config[field] = String(body[field]);
-    }
-    for (const field of ['tickSize', 'stepSize']) {
-      if (body[field] == null || body[field] === config[field]) continue;
+    // Check everything first, so a refused request changes nothing
+    const changes = Object.fromEntries(CONFIG_FIELDS
+      .filter((f) => body[f] != null && (!money.isDecimal(String(body[f])) || !money.eq(String(body[f]), config[f])))
+      .map((f) => [f, String(body[f]).trim()]));
+    const decimals = (code) => db().assets.find((a) => a.code === code)?.decimals;
+    const errors = validateConfig({ ...config, ...changes }, { base: decimals(config.baseAsset) ?? 8, quote: decimals(config.quoteAsset) ?? 6 });
+    const refused = Object.keys(errors).filter((f) => f in changes || (f === 'minQty' && 'stepSize' in changes));
+    if (refused.length) throw badRequest('Some of the market\'s settings aren\'t valid.', Object.fromEntries(refused.map((f) => [f, errors[f].code])));
+    const rules = 'tickSize' in changes || 'stepSize' in changes;
+    if (rules) {
       const open = db().orders.some((o) => o.market === config.symbol && OPEN.has(o.status));
-      if (config.status !== 'halted' || open) throw conflict('Tick and step change only while the market is halted with no open orders.');
-      config[field] = String(body[field]);
+      if (config.status !== 'halted' || open) throw conflict('Tick and step change only while the market is halted with no open orders.', { [('tickSize' in changes) ? 'tickSize' : 'stepSize']: 'live' });
     }
+    if (body.status && !['active', 'halted', 'delisted'].includes(body.status)) throw badRequest('Unknown status.', { status: 'value' });
+
+    Object.assign(config, changes);
+    if (rules) market.setRules(config.symbol, { tickSize: config.tickSize, stepSize: config.stepSize });
     let cancelled = 0;
     if (body.status && body.status !== config.status) {
-      if (!['active', 'halted', 'delisted'].includes(body.status)) throw badRequest('Unknown status.', { status: 'value' });
       config.status = body.status;
       if (body.status !== 'active' && (body.cancelOpenOrders || body.status === 'delisted')) {
         cancelled = systemCancel({ symbol: config.symbol, reason: 'market_halted' });
@@ -239,7 +252,7 @@ export default [
       market.setStatus(config.symbol, body.status, body.status === 'active' ? 'resume' : body.status === 'halted' ? 'halt' : 'delist');
       session.audit(admin, `admin.market_${body.status === 'active' ? 'resumed' : body.status}`, { targetType: 'market', targetId: config.symbol, metadata: { cancelOpenOrders: Boolean(body.cancelOpenOrders), ordersCancelled: cancelled } });
     }
-    if (['makerFeeRate', 'takerFeeRate', 'minNotional', 'minQty', 'tickSize', 'stepSize'].some((f) => before[f] !== config[f])) {
+    if (CONFIG_FIELDS.some((f) => before[f] !== config[f])) {
       session.audit(admin, 'admin.market_updated', { targetType: 'market', targetId: config.symbol, metadata: { before, after: { ...config } } });
     }
     persist();

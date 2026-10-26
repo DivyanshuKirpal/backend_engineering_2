@@ -109,6 +109,11 @@ export async function init() {
     s.typicalSize = Math.max(1, Math.round(toSteps(s, s.ticker.volume) / 4800));
     // A spare ladder for when a halted market resumes
     s.template = s.anon.bids.length ? null : defaultLadder(s);
+    // A market an admin halted stays halted after a reload: the bot's ladder waits for the resume
+    if (s.status !== 'active' && s.anon.bids.length) {
+      s.template = s.anon;
+      s.anon = { bids: [], asks: [] };
+    }
 
     s.lastTradeAt = s.trades[0]?.time ?? null;
     s.ready = false;
@@ -538,6 +543,28 @@ export function setStatus(symbol, next, detail) {
   }
   publish(`market:${symbol}`, 'market.status', { symbol, status: next });
   publishBook(s);
+}
+
+/**
+ * A new tick or step size (only while halted with no open orders, so the book
+ * is empty). The figures held in ticks and steps move onto the new sizes
+ * through their decimal values; the waiting ladder keeps its prices, rounded.
+ */
+export function setRules(symbol, { tickSize, stepSize }) {
+  const s = market(symbol);
+  const price = (t) => priceOf(s, t);
+  const size = (q) => qtyOf(s, q);
+  const ladder = s.template && ['bids', 'asks'].map((side) => [side, s.template[side].map((l) => ({ p: price(l.p), q: size(l.q) }))]);
+  const was = { mid: price(s.mid), baseMid: price(s.baseMid), typical: size(s.typicalSize), per15m: size(s.volumePer15m) };
+  Object.assign(s, { tick: tickSize, step: stepSize, tickDp: money.decimalsOf(tickSize), stepDp: money.decimalsOf(stepSize) });
+  s.mid = toTicks(s, was.mid);
+  s.baseMid = toTicks(s, was.baseMid);
+  s.sigma = Math.max(1, Math.round(toTicks(s, s.ticker.last) * 0.00004));
+  s.typicalSize = Math.max(1, toSteps(s, was.typical));
+  s.volumePer15m = Math.max(1, toSteps(s, was.per15m));
+  if (ladder) s.template = Object.fromEntries(ladder.map(([side, list]) => [side, list.map((l) => ({ p: toTicks(s, l.p), q: Math.max(1, toSteps(s, l.q)) }))]));
+  s.lastCommand = { type: 'config', detail: 'rules', at: new Date().toISOString() };
+  s.published = levels(s);
 }
 
 export function noteCommand(symbol, type) {

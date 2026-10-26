@@ -2128,6 +2128,11 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - Shared parts grew options: OpenOrdersTable `readOnly` (no Cancel; ids as text, since the drawer is the owner's), `AccountTransactionTable` beside TransactionTable, and RejectReasonModal's labels, tone and a line above the field.
   - Mock: `recentOrders` keeps the newest ten and adds any older order still open, so the page lists every open order. The seed gains the audit entry for Daniel Okafor's freeze, which was missing (section 4: every admin change is audited). It is added in `scripts/data/make-data.mjs` too, with a fixed id, so the generator still reproduces the data.
   - No board: marked "Not drawn yet". Thirty checks (`admin-user-detail.check.mjs`): reached from Users; the topbar, title, facts, balances, read-only open orders and the deposit; freezing (the reason is required, four orders cancelled as `account_frozen`, locks released, audited), unfreezing; backing out of a role change, promoting and demoting; your own page; the API refusing to demote the last admin; Daniel's reason; an unknown id; no sideways scroll on phones.
+- **26 Oct 2026 · Admin markets (undesigned).** `presenters/admin/markets.presenter.js` (useAdminMarketsPresenter) lists each market's status, fees, minimums, tick and step from `GET /admin/markets`. MarketFormModal edits fees and minimums at any time, and tick and step only while halted (the mock's 409 shows on the field if orders remain). Halt asks first, with "Also cancel every open order"; Resume asks too. Views: `views/components/admin/MarketAdmin.js`, `views/pages/admin/AdminMarketsPage.js`.
+  - *Rules.* `models/domain/market.rules.js`, shared by the form and the mock, sets what sections 3 and 4 leave open: tick and step are powers of ten within the assets' decimals, the smallest amount fits the step, fees run from 0 to under 100%, and a new market is quoted in USDT on an asset that has none.
+  - *Nothing can be created yet.* All five assets already have a USDT market, and adding assets is the stretch Assets page. The create form is built to the rules, and the page says why it can't be used. The mock's POST checks them (400, or 409 for an existing pair); a new pair can't be sent in this phase.
+  - *Mock.* PATCH checks every field before changing any, and a tick or step change rescales the halted market in the simulator (`market.setRules`). Fixed: a halted market rebuilt the bot's ladder from its seed book on reload (BNB only looked right because its seed book is empty).
+  - Thirty-three checks (`admin-markets.check.mjs`) cover the edits and refusals (Fees shows the new fee), both halts, the halt on Markets and Trade in the session and after a reload, resume bringing the book back, the new tick in the running book, the create form, the API's refusals and phones. The reload and new-tick checks fail against the old simulator.
 
 ### Conflicts and differences
 
@@ -2279,7 +2284,7 @@ Core pages not drawn, built simply and marked undesigned
 - [x] Legal
 - [x] 404
 - [x] Admin user detail
-- [ ] Admin markets
+- [x] Admin markets (nothing can be created yet: every asset has its USDT market)
 - [ ] OAuth callback, which waits for the backend
 
 Stretch pages come later.
@@ -2327,6 +2332,8 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | RejectReasonModal | `views/components/admin/RejectReasonModal.js` (KYC review, withdrawals, and freezing or unfreezing on Admin · User) |
 | AdminWithdrawalsPage, useAdminWithdrawalsPresenter | `views/pages/admin/AdminWithdrawalsPage.js`, `presenters/admin/withdrawals.presenter.js` |
 | WithdrawalQueueTable | `views/components/admin/WithdrawalQueueTable.js` |
+| AdminMarketsPage, useAdminMarketsPresenter | `views/pages/admin/AdminMarketsPage.js`, `presenters/admin/markets.presenter.js`; the rules in `models/domain/market.rules.js` |
+| MarketAdminTable, MarketFormModal | `views/components/admin/MarketAdmin.js`; halt and resume use ConfirmDialog |
 | AdminSystemPage, useAdminSystemPresenter | `views/pages/admin/AdminSystemPage.js`, `presenters/admin/system.presenter.js` |
 | HealthGrid, EngineStatusCard | `views/components/admin/SystemHealth.js` |
 | VolumeBarChart | `views/components/charts/VolumeBarChart.js` (HTML bars and a table) |
@@ -2606,6 +2613,8 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | Repository root | `scripts/checks/` holds a Playwright behaviour check per page (`npm run checks`); `scripts/data/` keeps the seed and candle generators as a record | The checks guard each page's behaviour from now on, and the record shows how the demo data was made |
 | Addition | 4 API | The mock's `GET /admin/users/:id` returns in `recentOrders` the newest ten orders plus any older one still open; a pending decision for the real API | The admin user page lists every open order, and freezing cancels them all |
 | Change | 3 Schemas (auditLogs), 8 | The seed's frozen user, Daniel Okafor, gains the `admin.user_frozen` audit entry with its reason | Every admin change writes an audit log (section 4), and the user page shows why an account is frozen |
+| Addition | 3 Schemas (markets), 4 API | `models/domain/market.rules.js`: tick and step are powers of ten within the assets' decimals, the smallest amount fits the step, fees run from 0 to under 100%, and a new market is quoted in USDT with an asset that has none | Sections 3 and 4 name the fields but not their limits; the admin form and the mock need the same ones |
+| Open | 2 Routes, 4 API | `/admin/markets` can't create a pair in this phase: every asset has a USDT market and adding assets is the stretch Assets page. The form, the rules and the mock's checks are built | Logged as the owner asked; it opens with the Assets page or the backend |
 
 ### Sources
 

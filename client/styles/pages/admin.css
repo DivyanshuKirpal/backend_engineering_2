@@ -265,7 +265,26 @@
 .user-detail td:has(.transaction-reason) { height: auto; padding-top: 8px; padding-bottom: 8px; }
 .user-missing { padding: 32px 16px; }
 
+/* Markets (not drawn): the fees and limits per market, two notes, and the
+   form for editing or creating one */
+.market-admin-table td,
+.market-admin-table tbody th { height: 56px; padding-top: 0; padding-bottom: 0; border-bottom-color: var(--line-soft); white-space: nowrap; }
+.market-admin-table td.t-mono { font-size: 14px; }
+.market-admin-table .status { gap: 5px; }
+.market-admin-name { display: inline-flex; align-items: center; gap: 10px; }
+.market-admin-actions { display: inline-flex; gap: 6px; }
+.market-admin-actions .btn + .btn { min-width: 84px; justify-content: center; }
+.market-admin-notes { margin-top: 16px; }
+
+.dialog.market-form-dialog { width: min(640px, calc(100vw - 32px)); }
+.market-form { display: grid; gap: 18px; }
+.market-form-group { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.market-form-group legend { margin-bottom: 10px; padding: 0; }
+.market-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; align-items: start; }
+.market-form-error { margin: 0; }
+
 @media (max-width: 1099px) {
+  .market-admin-table { min-width: 980px; }
   .user-detail-top { grid-template-columns: 1fr; }
   .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .engine-table { table-layout: auto; min-width: 1000px; }
@@ -278,6 +297,7 @@
 
 @media (max-width: 767px) {
   .stat-grid { grid-template-columns: 1fr; }
+  .market-form-row { grid-template-columns: 1fr; }
   .health-grid { grid-template-columns: 1fr; }
   .engine-head { flex-wrap: wrap; padding-bottom: 12px; }
   .engine-note { padding-bottom: 13px; }
