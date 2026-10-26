@@ -1990,6 +1990,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - *Model.* `models/stores/order.store.js` holds the signed-in user's open orders: loaded from `GET /orders`, merged from `order.update`, with a placed order added at once as pending. An update older than the one held is ignored, since the socket can beat the 202. `models/data/candles.BTC-USDT.15m.json` holds the board's 80 candles, digitised from the chart image and ending with the O, H, L and C it prints. The mock market now builds every interval from one 15-minute series, so 1m, 5m, 1h, 4h and 1d agree with what the board draws. It also waits for a demo reset to finish before answering requests.
   - *Views.* In `views/components/trade/`: MarketHeader (with the market switcher), RecentTrades, OrderForm (with PercentButtons, OrderSummary and LoginToTradeCTA) and MyOrdersPanel. Also `charts/PriceChart.js` (PriceChart and ChartToolbar in SVG), `orders/OrderTimeline.js`, `wallet/LedgerTable.js`, `ui/Popover.js` (shared with the header) and `views/pages/trade/TradePage.js`. Styles are in `styles/pages/trade.css`, `components/chart.css` and `components/orders.css`, plus a full-height variant in `ladder.css`.
   - *Checks.* Compared with both boards, every text run is within 2 to 3 px except live values. `npm run compare` and `npm run shots` gained `--verified`, which confirms the demo email first so the banner doesn't shift the page. A Playwright script exercised 48 behaviours: the ticket's maths, shares and tick errors; a ladder pick; placing a resting order, then its timeline, ledger and cancel; a taker fill; market orders; intervals and grouping; the market switcher; a halted market; an unknown market; the logged-out page; and the phone sheet.
+- **26 Oct 2026 · Log in and its 2FA step.** `presenters/auth/login.presenter.js` (useLoginPresenter) checks the fields, then calls `POST /auth/login`. When the account has two-factor on, it moves to the code step, which shows the tries left on the ticket (5 to start, from `INVALID_2FA_CODE.details.attemptsLeft`). A ticket that runs out of tries sends the user back to the password. A locked account is told the time sign-in reopens. After signing in, the page goes to `?next=` when that is a path on this site, otherwise `/admin` for an admin and `/markets` for everyone else.
+  - Views: `views/components/auth/LoginForm.js`, `TwoFactorPrompt.js` (shared with the OAuth callback page later) and `AuthParts.js` (GoogleButton, the "or" rule, PasswordField with its Show button, PasswordStrengthMeter, the brand panel's words, and the demo sign-in helper). The page is `views/pages/auth/LoginPage.js`, which fills both halves of AuthLayout. Styles are in `styles/pages/auth.css`. `Field` takes `describedBy` for an extra description.
+  - `npm run compare` gained `--height` (the sign-in boards are 900 and 960 px tall, and centre their cards) and ordered `--fill`, `--click` and `--wait-for` steps, so the code step can be measured. Both boards match with no run off by more than 2 px. A Playwright script went through 24 sign-in behaviours: empty fields, a wrong password, Show, the demo fill, a wrong code and the tries left, going back, signing in, the guest-only guard, `next` (and an outside `next` ignored), the lockout, and Google.
 
 ### Conflicts and differences
 
@@ -2037,6 +2040,10 @@ The owner approved these decisions on 25 Oct 2026.
 | Trade from 768 to 1199 px | Tabs below 768 px | Only 1440 and 390 px | Two columns that scroll: the chart and Your orders across, then the ladder beside the ticket and the tape. Not drawn |
 | Chart grid and volume bars | — | Grid lines every 300; grey volume bars | Grid lines at round steps (1, 2, 3 or 5 × 10ⁿ) at least 50 px apart. The bars use a new token, `--chart-volume` #CFC7B9, sampled from the board |
 | Phone header | — | 56 px, a bare bell and menu, the market switcher before the demo tag | Every page's header follows it below 768 px; from 768 px up it stays 52 px with framed buttons |
+| Log in: the demo accounts | The brief: a mock sign-in that is clearly a mock | The fields hold demo@orichal.app and a password | The fields start empty. Under the card, a dashed "Demo sign-in" box (marked not drawn) says the sign-in is a mock and fills in the trader or the admin; on the code step it offers the trader's code |
+| Log in: Google | GoogleButton starts `GET /auth/google` | "Continue with Google" | The button stays; until the backend exists it shows a toast saying so (approved: Google sign-in waits for the backend) |
+| Log in: the code | TwoFactorPrompt sends the code with a button | "Verify and log in" | The button stays, and six digits also send themselves, once, as authenticator fields usually do |
+| Log in: where it lands | GuestRoute sends signed-in users to `/markets` | — | After signing in: `?next=` when it is a path on this site; otherwise `/admin` for an admin and `/markets` for everyone else |
 
 ### Checklist
 
@@ -2065,7 +2072,7 @@ Pages drawn
 - [x] Markets
 - [x] Trade, desktop
 - [x] Trade, phone
-- [ ] Log in and its 2FA step
+- [x] Log in and its 2FA step
 - [ ] Register
 - [ ] Wallet
 - [ ] Deposit
@@ -2148,6 +2155,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | MyOrdersPanel | `views/components/trade/MyOrdersPanel.js` |
 | OrderTimeline | `views/components/orders/OrderTimeline.js` |
 | LedgerTable | `views/components/wallet/LedgerTable.js` (the per-order columns; History adds its own) |
+| LoginPage, useLoginPresenter | `views/pages/auth/LoginPage.js`, `presenters/auth/login.presenter.js` |
+| LoginForm, TwoFactorPrompt | `views/components/auth/LoginForm.js`, `TwoFactorPrompt.js` |
+| GoogleButton, PasswordStrengthMeter | `views/components/auth/AuthParts.js`, with the brand panel's words, PasswordField and the demo sign-in helper |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |

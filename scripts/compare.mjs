@@ -4,11 +4,14 @@
 // 2 px across, 3 px down, or in size are flagged.
 //
 // Usage: npm run compare -- <route> <board> [--as=demo|admin|guest] [--width=1440]
-//          [--fresh] [--verified] [--all] [--only=from:to] [--align=<selector>:<boardY>]
+//          [--height=920] [--fresh] [--verified] [--all] [--only=from:to] [--align=<selector>:<boardY>]
 //   <board>  a name in .boards/ without .txt, e.g. screens-p03-markets
 //   --only   keep board runs whose baseline is in that range
 //   --align  shift the page so that element's top sits at that board y
 //            (to compare a region, e.g. --align=.app-footer:652)
+//   --fill=<selector>=<text>, --click=<selector>, --wait-for=<selector>
+//            steps run in order once the page has loaded, to reach the
+//            state a board draws (the sign-in code step, an open drawer)
 
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -28,6 +31,8 @@ if (!routeArg || !boardName) {
 const route = routeArg === 'home' ? '/' : routeArg.startsWith('/') ? routeArg : `/${routeArg}`;
 const as = flag('as', 'guest');
 const width = Number(flag('width', '1440'));
+// The window's height: centred pages (the sign-in boards are 900 and 960 px tall) need the board's own
+const height = Number(flag('height', '920'));
 const wait = Number(flag('wait', '800'));
 const only = flag('only', null)?.split(':').map(Number);
 const align = flag('align', null);
@@ -35,6 +40,12 @@ const showAll = args.includes('--all');
 const fresh = args.includes('--fresh');
 const verified = args.includes('--verified');
 const ACCOUNTS = { demo: ['demo@orichal.app', 'orichal-demo', '123456'], admin: ['admin@orichal.app', 'orichal-demo', null] };
+const steps = args.filter((a) => /^--(fill|click|wait-for)=/.test(a)).map((a) => {
+  const [, kind, rest] = /^--(fill|click|wait-for)=(.*)$/.exec(a);
+  if (kind !== 'fill') return { kind, selector: rest };
+  const cut = rest.lastIndexOf('=');
+  return { kind, selector: rest.slice(0, cut), text: rest.slice(cut + 1) };
+});
 
 const board = readFileSync(join(root, '.boards', `${boardName}.txt`), 'utf8').trim().split('\n').map((line) => {
   const m = /^\s*([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s{2}(.*)$/.exec(line);
@@ -69,7 +80,7 @@ async function confirmEmail(page, email) {
 
 const browser = await chromium.launch();
 try {
-  const page = await browser.newPage({ viewport: { width, height: 920 } });
+  const page = await browser.newPage({ viewport: { width, height } });
   page.on('pageerror', (e) => console.log('[page error]', e.message));
   await page.goto(`${base}/`);
   await page.waitForSelector('.app-header, .auth-layout');
@@ -85,6 +96,12 @@ try {
   await page.goto(`${base}${route}`);
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(wait);
+  for (const s of steps) {
+    if (s.kind === 'fill') await page.fill(s.selector, s.text);
+    else if (s.kind === 'click') await page.click(s.selector);
+    else await page.waitForSelector(s.selector);
+  }
+  if (steps.length) await page.waitForTimeout(wait);
 
   let shift = 0;
   if (align) {

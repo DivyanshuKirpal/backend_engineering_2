@@ -1,0 +1,161 @@
+/* Log in, its code step, and Register (boards Log in, Log in · 2FA code and
+   Register): the brand panel's words on the left, the card on the right. */
+
+/* ------------------------------------------------------------ brand panel */
+.auth-aside { padding: 45px 56px 40px; }
+.auth-aside .brand { gap: 11px; }
+.auth-aside .brand-mark { width: 26px; height: 26px; }
+.auth-aside .wordmark { font-size: 19px; }
+.auth-aside-foot { font-size: 14px; }
+
+.auth-pitch { max-width: 520px; }
+
+.auth-pitch-title {
+  color: var(--on-ink);
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 48px;
+  letter-spacing: -0.01em;
+}
+
+.auth-pitch-lede { margin-top: 16.4px; max-width: 510px; color: var(--on-ink-2); font-size: 18px; line-height: 26.1px; }
+
+/* Log in: four facts in a ruled grid */
+.auth-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 25.4px;
+  border: 1px solid var(--line-on-ink);
+}
+
+.auth-fact { padding: 11px 16px 14px; border-left: 1px solid var(--line-on-ink); }
+.auth-fact:nth-child(odd) { border-left: 0; }
+.auth-fact:nth-child(n + 3) { border-top: 1px solid var(--line-on-ink); }
+.auth-fact dt { color: var(--brass-light); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; line-height: 15px; }
+.auth-fact dd { margin-top: 3.8px; color: var(--on-ink); font-size: 15px; line-height: 20.2px; }
+.auth-fact dd.t-mono { font-size: 14px; }
+
+/* Register: the credit and three steps */
+.auth-credit { display: flex; align-items: baseline; gap: 12px; color: var(--on-ink); }
+.auth-credit-amount { font-size: 88px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.auth-credit-asset { color: var(--brass-light); font-size: 24px; font-weight: 700; }
+.auth-credit-line { margin-top: 18px; max-width: 520px; color: var(--on-ink); font-size: 30px; font-weight: 700; line-height: 33px; }
+
+.auth-steps { margin: 22.7px 0 0; padding: 0; list-style: none; border-bottom: 1px solid var(--line-on-ink); }
+
+.auth-steps li {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  min-height: 46.4px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line-on-ink);
+  color: var(--on-ink);
+  font-size: 15px;
+}
+
+.auth-step-no { position: relative; top: -2.8px; flex: none; width: 30.9px; color: var(--brass-light); font-size: 13px; }
+
+/* ------------------------------------------------------------ the card */
+.auth-main { position: relative; }
+.auth-stack { width: 100%; max-width: 440px; }
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 36.8px 32px 33.3px;
+  background: var(--bg-panel);
+  border: var(--rule);
+}
+
+.auth-card-wide { max-width: 460px; }
+.auth-stack:has(.auth-card-wide) { max-width: 460px; }
+
+.auth-title { font-size: 34px; font-weight: 700; line-height: 1.1; }
+.auth-sub { margin-top: 11.2px; color: var(--ink-2); font-size: 15px; }
+.auth-sub-long { margin-top: 13.8px; line-height: 21.8px; }
+.auth-sub strong { color: var(--ink); font-weight: 700; }
+
+.auth-form { display: grid; gap: 16.3px; margin-top: 21.8px; }
+.auth-card .input { min-height: 46px; }
+.auth-form .field { gap: 8px; }
+.auth-forgot { font-size: 14px; font-weight: 600; line-height: 14px; letter-spacing: 0; text-transform: none; }
+.auth-form .input-trailing { font-size: 14px; font-weight: 700; }
+.auth-submit { margin-top: -0.3px; min-height: 48px; font-size: 17px; }
+
+.auth-error {
+  padding: 10px 12px;
+  border: 1px solid var(--sell);
+  background: var(--bg-inset);
+  color: var(--sell);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* The rule with "or" between the form and Google */
+.auth-or { position: relative; margin: 18.9px 0 19.5px; text-align: center; }
+.auth-or::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line); }
+.auth-or span { position: relative; padding: 0 12px; background: var(--bg-panel); color: var(--ink-3); font-size: 13px; }
+
+.google-btn { min-height: 48px; border-color: var(--ink); font-size: 16px; }
+.auth-note { margin-top: 18.8px; color: var(--ink-3); font-size: 13px; }
+
+/* The code step */
+.auth-card-code .auth-form { margin-top: 21px; gap: 15.6px; }
+.auth-card .otp-lg .otp-boxes { gap: 8px; }
+.auth-card .otp-lg .otp-box { height: 62px; font-size: 26px; }
+.auth-card .otp-hint { margin-top: 12.4px; color: var(--ink-2); font-size: 14px; }
+.auth-switch { margin-top: 20px; color: var(--ink-2); font-size: 14px; }
+.auth-switch .link { font-size: 14px; }
+
+/* Register: the meter under the password, the tick */
+.auth-password { display: grid; gap: 7.5px; }
+.strength-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.strength-bar { height: 4px; background: var(--line-soft); }
+.strength-bar.on { background: var(--ink); }
+.strength-sell .strength-bar.on { background: var(--sell); }
+.strength-wait .strength-bar.on { background: var(--brass); }
+.strength-buy .strength-bar.on { background: var(--buy); }
+.strength-text { margin-top: 8px; color: var(--ink-3); font-size: 13px; }
+.strength-text strong { color: var(--ink); }
+.auth-card .check-label { font-size: 14px; line-height: 20.3px; }
+
+/* ------------------------------------------------------------ the demo helper (not drawn) */
+.demo-signin {
+  margin-top: 16px;
+  padding: 10px 14px 11px;
+  border: 1px dashed var(--line);
+  background: var(--bg-panel);
+  font-size: 13px;
+}
+
+.demo-signin-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.demo-signin-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.demo-signin .undesigned-note { margin: 0; padding: 1px 6px; font-size: 12px; }
+.demo-signin-body { margin-top: 2px; color: var(--ink-2); font-size: 12px; }
+.demo-signin-list { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; margin-top: 6px; }
+.demo-signin-row { display: contents; }
+.demo-signin-row strong { font-size: 12px; white-space: nowrap; }
+.demo-signin-detail { color: var(--ink-2); font-size: 11px; overflow-wrap: anywhere; }
+.demo-signin .link { font-size: 12px; white-space: nowrap; }
+.demo-signin-code { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 6px; }
+
+/* On a tall enough window the card stays centred as drawn, with the helper below it */
+@media (min-width: 900px) and (min-height: 860px) {
+  .auth-stack { display: contents; }
+  .demo-signin { position: absolute; left: 50%; bottom: 24px; width: 440px; margin: 0; transform: translateX(-50%); }
+}
+
+@media (max-width: 899px) {
+  .auth-aside { padding: 18px 16px; }
+  .auth-card { padding: 24px 20px; }
+  .auth-title { font-size: 30px; }
+}
+
+/* Register's own spacing (board Register) */
+.auth-card-wide .auth-form { margin-top: 19.8px; gap: 17px; }
+.auth-card-wide .auth-or { margin: 16.8px 0 17.1px; }
+.auth-card .check { column-gap: 9.8px; }
+.auth-card .check-input { width: 14px; height: 14px; margin-top: 3px; background-size: 10px; }
+/* The board centres this block a little higher than flexbox does */
+.auth-pitch-register { position: relative; top: -3.7px; }

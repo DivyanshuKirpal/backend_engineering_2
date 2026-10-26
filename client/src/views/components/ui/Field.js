@@ -6,7 +6,7 @@
 import { h, cx } from '../../dom.js';
 import { Icon } from './Icon.js';
 
-const describedBy = (id, hint, error) => [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(' ') || null;
+const describedBy = (id, hint, error, extra = null) => [hint ? `${id}-hint` : null, error ? `${id}-error` : null, extra].filter(Boolean).join(' ') || null;
 
 function Messages(id, hint, error) {
   return [
@@ -15,10 +15,14 @@ function Messages(id, hint, error) {
   ];
 }
 
-/** A labelled text input. `trailing` is a node inside the field's right edge (Show, Max). */
+/**
+ * A labelled text input. `trailing` is a node inside the field's right edge
+ * (Show, Max); `describedBy` names another element that describes it.
+ */
 export function Field({
   id, label, value, type = 'text', placeholder, hint, error, autocomplete, inputmode, required = false,
   disabled = false, readOnly = false, mono = false, trailing = null, onInput, onBlur, onKeyDown, labelExtra = null, maxlength,
+  describedBy: extraDescription = null,
 }) {
   return h('div', { class: cx('field', { 'field-invalid': error }) },
     h('div', { class: 'field-label-row' },
@@ -29,7 +33,7 @@ export function Field({
         id, type, value, placeholder, autocomplete, inputmode, required, disabled, readonly: readOnly, maxlength,
         class: cx('input', { 't-mono': mono }),
         'aria-invalid': error ? 'true' : null,
-        'aria-describedby': describedBy(id, hint, error),
+        'aria-describedby': describedBy(id, hint, error, extraDescription),
         onInput: onInput ? (e) => onInput(e.target.value) : null,
         onBlur, onKeyDown,
       }),
