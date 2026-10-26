@@ -1,0 +1,69 @@
+/* TransactionsPage (board History · Ledger tab): the tabs and filters, then
+   one table in a panel with its footer. */
+
+.history-page { padding-top: 31.9px; padding-bottom: 72px; }
+.history-page .page-head { margin-top: 27.3px; margin-bottom: 20.2px; }
+.history-page .page-head p { margin-top: 11px; }
+
+.history-tools { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18.8px; }
+.history-tools .tabs-segment .tab { min-height: 38px; padding: 0 15.7px; font-weight: 600; }
+.history-filters { display: flex; gap: 13px; }
+.history-filters .select-inline { min-height: 40px; }
+.history-filters .select-inline:first-child { min-width: 132px; }
+.history-filters .select-inline:last-child { width: 168px; }
+.history-filters .select-inline .select { padding-right: 26px; }
+.history-filters .select-inline .select-chevron { right: 8px; }
+.history-filters .select-inline-label { font-size: 14px; }
+
+/* The ledger */
+.ledger-history { table-layout: fixed; }
+.ledger-history th { height: 44px; }
+.ledger-history td { height: 44px; padding-top: 0; padding-bottom: 0; font-size: 13px; white-space: nowrap; }
+.ledger-history td.col-asset { font-size: 15px; }
+.ledger-history .col-time { width: 186.6px; }
+.ledger-history .col-type { width: 154.8px; }
+.ledger-history .col-asset { width: 100px; }
+.ledger-history .col-free-change { width: 146.7px; }
+.ledger-history .col-locked-change { width: 164.5px; }
+.ledger-history .col-free-after { width: 154.5px; }
+.ledger-history .col-locked-after { width: 154.5px; }
+.ledger-history .col-source { padding-left: 8px; }
+.ledger-history .col-source .link { font-size: 15px; }
+.ledger-history .ledger-empty { padding: 20px 16px; color: var(--ink-2); font-size: 15px; }
+
+/* Deposits and withdrawals */
+.transactions-table td { height: 48px; font-size: 14px; }
+.transactions-table td.t-mono { font-size: 13px; }
+.transaction-reason { display: block; margin-top: 2px; color: var(--ink-2); font-size: 13px; }
+.transactions-empty { padding: 20px 16px !important; color: var(--ink-2); }
+.transactions-table .copy-btn { margin-left: 4px; vertical-align: middle; }
+
+.history-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+  padding: 0 16px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.history-foot .btn { flex: none; min-height: 40px; padding: 0 19px; font-size: 15px; }
+.history-note { margin: 12px 16px 16px; }
+
+@media (max-width: 1099px) {
+  .ledger-history { table-layout: auto; min-width: 960px; }
+  .transactions-table { min-width: 760px; }
+}
+
+@media (max-width: 767px) {
+  .history-page { padding-top: 20px; }
+  .history-tools { flex-direction: column; align-items: stretch; }
+  .history-tools .tabs { width: 100%; }
+  .history-tools .tabs .tab { flex: 1; justify-content: center; }
+  .history-filters { flex-direction: column; }
+  .history-filters .select-inline { width: 100% !important; }
+  .history-foot { flex-direction: column; align-items: flex-start; padding: 14px 16px; }
+}

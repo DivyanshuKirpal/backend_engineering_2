@@ -173,6 +173,11 @@ a {
   stroke-linejoin: round;
 }
 
+/* Breadcrumbs: Wallet / Deposit */
+.crumbs { color: var(--ink-2); font-size: 14px; }
+.crumbs .link { font-size: 14px; }
+.crumbs-sep { margin: 0 1px 0 4px; }
+
 /* Placeholder note on pages and parts the design file hasn't drawn yet */
 .undesigned-note {
   display: inline-block;

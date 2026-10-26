@@ -2003,6 +2003,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · Withdraw.** `presenters/wallet/withdraw.presenter.js` (useWithdrawPresenter) follows flow D. It checks the address, the amount and the 2FA code with `withdrawal.rules`: a simulated address for that asset, the fee included, at least the minimum, more than the fee, within the decimals and the free balance. It shows what leaves the wallet, the fee and what they receive, and asks for confirmation before `POST /wallet/withdrawals` locks the amount. Pending withdrawals are listed with Cancel (`DELETE /wallet/withdrawals/:id`). Until KYC is approved, the form gives way to KycRequiredNotice, whose words follow the KYC status.
   - Views: `views/components/wallet/WithdrawForm.js` (WithdrawForm and WithdrawalSummary), `views/components/account/KycStatusCard.js`, the fees table in `FundsParts.js`, and `views/pages/wallet/WithdrawPage.js`. Styles are in `styles/pages/funds.css`.
   - The board matches, filled as drawn, except for a text-matching artifact and the 12 px panel labels. Nineteen checks covered the form's errors, Max, the summary, the confirmation, a wrong code (nothing locked), a right one (500 USDT locked and listed), cancelling (500 free again), `?asset=BTC`, and the KYC gate for a new account.
+- **26 Oct 2026 · History.** `presenters/wallet/transactions.presenter.js` (useTransactionsPresenter) runs the Deposits, Withdrawals and Ledger tabs from `?tab=`, each a "load more" list through the new `presenters/shared/cursorList.js` (useCursorList). The ledger shows each entry's change to free and locked, the balance after it and its source (an order, a trade, a deposit or withdrawal, or the sign-up credit), with links. It filters by asset and by entry group, sending the group as a comma-separated `?type=`. Its footer says how many of the total are shown (the `total` the mock adds, an API need from section 7). A pending withdrawal can be cancelled from its tab.
+  - Views: `LedgerHistoryTable` in `views/components/wallet/LedgerTable.js`, `views/components/wallet/TransactionTable.js` and `views/pages/wallet/TransactionsPage.js`; styles in `styles/pages/history.css`. The breadcrumb styles moved to `base.css`.
+  - This board was also drawn 1425 px wide. Every run matches except the times, which follow the real clock. Fourteen checks covered the first page (13 of 21), loading older entries, both filters together, the empty filter message, the Deposits tab and Back, and a withdrawal that is listed pending and then cancelled.
 
 ### Conflicts and differences
 
@@ -2065,6 +2068,10 @@ The owner approved these decisions on 25 Oct 2026.
 | Withdraw: confirming | ConfirmDialog | Not drawn | "Request withdrawal" opens a confirmation that says what arrives where and what stays locked; the request goes out from there |
 | Withdraw: before KYC | KycRequiredNotice until approved | Only the approved state | The notice replaces the form, with words for Not started, Pending review and Rejected (with the reason), and a link to Verification. Not drawn |
 | Withdraw: the form at rest | — | An address, 500.00 USDT and four code digits typed | Empty fields. Max fills the free amount (USDT to the cent, rounded down) |
+| History: the tab at first | Tabs for Deposits, Withdrawals and Ledger, in that order | The Ledger tab | The Ledger tab when the address names none, as drawn; `?tab=` otherwise |
+| History: the ledger's pages | Cursor feeds; "load more" | "Newest first, 13 of 21 shown" | Pages of 13, as drawn. The Deposits and Withdrawals tabs load 20 at a time |
+| History: Deposits and Withdrawals tabs | TransactionTable | Only the Ledger tab is drawn | Tables in the Ledger tab's style: time, asset, amount, method or fee and what arrives, address and hash with Copy, status, and Cancel on a pending withdrawal. Marked not drawn |
+| History: source links | — | Underlined sources | An order opens `/orders?order=`, a trade `/orders?tab=trades&trade=` (the Orders page answers both), and a deposit or withdrawal its tab here |
 
 ### Checklist
 
@@ -2098,7 +2105,7 @@ Pages drawn
 - [x] Wallet
 - [x] Deposit
 - [x] Withdraw
-- [ ] History
+- [x] History
 - [ ] Orders and the detail drawer
 - [ ] Profile
 - [ ] Security
@@ -2191,6 +2198,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | WithdrawForm, WithdrawalSummary | `views/components/wallet/WithdrawForm.js` |
 | KycStatusCard | `views/components/account/KycStatusCard.js` |
 | TransactionTable (pending withdrawals), Table (fees and minimums) | `RecentTransactions` and `FeesTable` in `views/components/wallet/FundsParts.js` |
+| TransactionsPage, useTransactionsPresenter, useCursorList | `views/pages/wallet/TransactionsPage.js`, `presenters/wallet/transactions.presenter.js`, `presenters/shared/cursorList.js` |
+| TransactionTable | `views/components/wallet/TransactionTable.js` |
+| LedgerTable (Ledger tab) | `LedgerHistoryTable` in `views/components/wallet/LedgerTable.js` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |

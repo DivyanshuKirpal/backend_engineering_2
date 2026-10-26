@@ -2,9 +2,6 @@
    left, recent transactions and the per-asset limits on the right. */
 
 .funds-page { padding-top: 31.9px; padding-bottom: 72px; }
-.crumbs { color: var(--ink-2); font-size: 14px; }
-.crumbs .link { font-size: 14px; }
-.crumbs-sep { margin: 0 1px 0 4px; }
 .funds-page .page-head { margin-top: 27.3px; margin-bottom: 17.8px; }
 .funds-page .page-head p { margin-top: 11px; }
 
