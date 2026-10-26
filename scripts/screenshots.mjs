@@ -40,7 +40,8 @@ const freePort = () => new Promise((resolve) => {
 });
 
 async function startServer(port) {
-  const child = spawn(process.execPath, [join(root, 'node_modules', 'serve', 'build', 'main.js'), 'client', '--listen', String(port), '--no-clipboard'], { cwd: root, stdio: 'pipe' });
+  // Its request log is never read, so it goes nowhere: an unread pipe fills up and stalls the server
+  const child = spawn(process.execPath, [join(root, 'node_modules', 'serve', 'build', 'main.js'), 'client', '--listen', String(port), '--no-clipboard'], { cwd: root, stdio: 'ignore' });
   for (let i = 0; i < 50; i += 1) {
     try {
       const res = await fetch(`http://localhost:${port}/`);

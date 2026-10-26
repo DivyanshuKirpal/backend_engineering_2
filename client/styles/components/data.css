@@ -61,7 +61,8 @@
 .tone-flat { color: var(--ink-3); }
 
 /* Tables */
-.table-wrap { width: 100%; overflow-x: auto; }
+/* Positioned, so screen-reader-only headers scroll with the table instead of widening the page */
+.table-wrap { position: relative; width: 100%; overflow-x: auto; }
 .table { width: 100%; font-size: 15px; }
 
 .table th {

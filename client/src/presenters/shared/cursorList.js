@@ -12,10 +12,10 @@ export function createCursorList(p, fetchPage, { limit = 20 } = {}) {
   let loadingMore = false;
   let token = 0;
 
-  async function load({ more = false } = {}) {
+  async function load({ more = false, quiet = false } = {}) {
     const mine = ++token;
     if (more) loadingMore = true;
-    else {
+    else if (!quiet) {
       status = 'loading';
       items = [];
       cursor = null;
@@ -32,7 +32,7 @@ export function createCursorList(p, fetchPage, { limit = 20 } = {}) {
     } catch (err) {
       if (mine !== token || p.disposed) return;
       if (more) errorToast('The older entries didn\'t load', err);
-      else status = 'error';
+      else if (!quiet) status = 'error';
     } finally {
       if (mine === token) loadingMore = false;
       p.changed();
@@ -47,6 +47,8 @@ export function createCursorList(p, fetchPage, { limit = 20 } = {}) {
     get loadingMore() { return loadingMore; },
     /** Loads the first page again (after a filter change or a retry). */
     reset: () => load(),
+    /** Loads the first page again but keeps the rows on screen until it arrives (a live update). */
+    refresh: () => load({ quiet: true }),
     loadMore() {
       if (cursor && !loadingMore) load({ more: true });
     },

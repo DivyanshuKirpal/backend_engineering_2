@@ -6,19 +6,23 @@
 
 import { h } from '../../dom.js';
 
-/** rows: [{ key, type, asset, available, locked }] */
-export function LedgerTable({ rows, caption, empty = 'No ledger entries yet.' }) {
+/**
+ * rows: [{ key, type, asset, available, locked }]. `heads` names the four
+ * columns: the trade page's board says Type and Available, the order drawer's
+ * Entry and Free.
+ */
+export function LedgerTable({ rows, caption, empty = 'No ledger entries yet.', heads = ['Type', 'Asset', 'Available', 'Locked'] }) {
   return h('table', { class: 'ledger-table' },
     h('caption', { class: 'sr-only' }, caption),
     h('thead', {}, h('tr', {},
-      h('th', { scope: 'col' }, 'Type'),
-      h('th', { scope: 'col' }, 'Asset'),
-      h('th', { scope: 'col', class: 'num' }, 'Available'),
-      h('th', { scope: 'col', class: 'num' }, 'Locked'))),
+      h('th', { scope: 'col' }, heads[0]),
+      h('th', { scope: 'col' }, heads[1]),
+      h('th', { scope: 'col', class: 'num' }, heads[2]),
+      h('th', { scope: 'col', class: 'num' }, heads[3]))),
     h('tbody', {}, rows.length
       ? rows.map((r) => h('tr', { key: r.key },
         h('td', { class: 't-mono ledger-type' }, r.type),
-        h('td', {}, r.asset),
+        h('td', { class: 't-mono' }, r.asset),
         h('td', { class: 'num t-mono' }, r.available),
         h('td', { class: 'num t-mono' }, r.locked)))
       : h('tr', {}, h('td', { colspan: 4, class: 'ledger-empty' }, empty))));

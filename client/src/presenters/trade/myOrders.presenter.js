@@ -5,26 +5,14 @@
 // fills or is cancelled, so its last step stays in view.
 
 import * as money from '../../models/domain/money.js';
-import * as rules from '../../models/domain/order.rules.js';
 import * as orderApi from '../../models/api/order.api.js';
 import { openOrders, loadOpenOrders } from '../../models/stores/order.store.js';
 import { marketBySymbol } from '../../models/stores/ticker.store.js';
-import { assetByCode } from '../../models/stores/asset.store.js';
 import { socket } from '../../models/realtime/socket.js';
-import { fixed, plain, price as fmtPrice, qty, signed } from '../formatters/number.format.js';
-import { precise } from '../formatters/date.format.js';
-import { cancelReason, orderStatus } from '../formatters/status.format.js';
+import { plain, price as fmtPrice, qty } from '../formatters/number.format.js';
+import { orderStatus } from '../formatters/status.format.js';
 import { toast, errorToast } from '../shared/toasts.js';
-
-const decimalsOf = (asset) => assetByCode(asset)?.decimals ?? 8;
-const remaining = (o) => money.sub(o.quantity ?? '0', o.filledQuantity ?? '0');
-
-/** An amount in the order's own terms: the base at the step (0.02500 BTC), the quote at the tick when it fits. */
-function inOrderTerms(m, asset, value) {
-  if (asset === m.baseAsset) return `${qty(value, m.stepSize)} ${asset}`;
-  const dp = money.decimalsOf(m.tickSize);
-  return `${money.eq(money.round(value, dp), value) ? fixed(value, dp) : plain(value)} ${asset}`;
-}
+import { lifecycle, ledgerRows } from '../orders/orderLifecycle.js';
 
 export function createMyOrdersPresenter(p, { symbol, signedIn }) {
   let picked = null;
@@ -107,62 +95,6 @@ export function createMyOrdersPresenter(p, { symbol, signedIn }) {
     return head;
   }
 
-  function timeline(o, fills, ledger) {
-    const m = marketBySymbol(o.market);
-    if (!m) return [];
-    const base = m.baseAsset;
-    const at = (v) => fmtPrice(v, m.tickSize);
-    const items = [];
-
-    const lockEntry = ledger.find((e) => e.type === 'order_lock');
-    const lock = lockEntry
-      ? { asset: lockEntry.asset, amount: lockEntry.deltaLocked }
-      : rules.lockFor(m, o);
-    items.push({
-      key: 'placed', time: precise(o.createdAt), title: 'Placed.', state: 'done',
-      body: `The API accepted it (202) and locked ${inOrderTerms(m, lock.asset, lock.amount)}.`,
-    });
-
-    if (o.status === 'rejected') {
-      items.push({ key: 'rejected', time: precise(o.updatedAt), title: 'Rejected.', state: 'stopped', body: `${o.rejectReason ?? 'The engine turned it down'}. The lock went back to free.` });
-      return items;
-    }
-    if (!o.appliedAt) {
-      items.push({ key: 'now', time: 'now', title: 'Waiting for the engine.', state: 'now', body: 'It goes on the book, or fills, in a moment.' });
-      return items;
-    }
-
-    const takenOnArrival = fills.filter((f) => f.role === 'taker');
-    if (o.type === 'market') {
-      items.push({ key: 'applied', time: precise(o.appliedAt), title: 'Matched.', state: 'done', body: 'The engine ran it against the book straight away.' });
-    } else if (takenOnArrival.length && !money.isPositive(remaining(o)) && o.status === 'filled' && takenOnArrival.length === fills.length) {
-      items.push({ key: 'applied', time: precise(o.appliedAt), title: 'Matched on arrival.', state: 'done', body: 'It crossed the book, so it never rested.' });
-    } else if (takenOnArrival.length) {
-      items.push({ key: 'applied', time: precise(o.appliedAt), title: 'On the book.', state: 'done', body: `The engine matched part of it on arrival and queued the rest at ${at(o.price)}.` });
-    } else {
-      items.push({ key: 'applied', time: precise(o.appliedAt), title: 'On the book.', state: 'done', body: `The engine queued it at ${at(o.price)}.` });
-    }
-
-    let done = '0';
-    fills.forEach((f, i) => {
-      done = money.add(done, f.quantity);
-      const complete = o.status === 'filled' && i === fills.length - 1;
-      items.push({
-        key: f.id, time: precise(f.time), title: complete ? 'Filled.' : 'Partly filled.', state: complete ? 'done' : 'part',
-        body: `${qty(f.quantity, m.stepSize)} ${base} at ${at(f.price)}. You were the ${f.role}.`,
-      });
-    });
-
-    if (o.status === 'open' || o.status === 'partially_filled') {
-      items.push({ key: 'now', time: 'now', title: 'Waiting.', state: 'now', body: `${qty(remaining(o), m.stepSize)} ${base} left at ${at(o.price)}.` });
-    } else if (o.status === 'cancelled') {
-      const unlock = ledger.filter((e) => e.type === 'order_unlock').at(-1);
-      const back = unlock ? ` ${inOrderTerms(m, unlock.asset, unlock.deltaAvailable)} went back to free.` : '';
-      items.push({ key: 'cancelled', time: precise(o.updatedAt), title: 'Cancelled.', state: 'stopped', body: `${cancelReason(o.cancelReason)}.${back}` });
-    }
-    return items;
-  }
-
   return {
     vm() {
       if (!signedIn()) return { status: 'guest', next: `/trade/${symbol}` };
@@ -198,16 +130,8 @@ export function createMyOrdersPresenter(p, { symbol, signedIn }) {
             title: o ? stripLabel(o) : '',
             canCancel: pickedOpen,
             cancelling,
-            timeline: o ? timeline(o, detail.fills, detail.ledger) : [],
-            ledger: o
-              ? detail.ledger.map((e) => ({
-                key: e.id,
-                type: e.type,
-                asset: e.asset,
-                available: signed(e.deltaAvailable, decimalsOf(e.asset)),
-                locked: signed(e.deltaLocked, decimalsOf(e.asset)),
-              }))
-              : [],
+            timeline: o ? lifecycle(o, detail.fills, detail.ledger) : [],
+            ledger: o ? ledgerRows(detail.ledger) : [],
           }
           : null,
       };

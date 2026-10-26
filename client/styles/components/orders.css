@@ -55,7 +55,7 @@
   border-bottom: 1px solid var(--line-soft);
   color: var(--ink-3);
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 600;
   text-align: left;
   vertical-align: bottom;
 }
@@ -75,3 +75,65 @@
 .ledger-type { color: var(--ink); }
 .ledger-empty { color: var(--ink-3); padding: 10px 0 !important; }
 .ledger-note { margin-top: 3.9px; color: var(--ink-3); font-size: 13px; }
+
+/* OrderDetailDrawer (board Orders · detail drawer open): sections divided by
+   soft rules, 24 px in from the drawer's edges */
+.order-drawer .dialog-head { min-height: 64px; padding: 0 18.6px 0 23.7px; border-bottom: 1px solid var(--line); }
+.order-drawer .dialog-title { font-size: 20px; }
+.order-drawer-id { font-size: 17px; font-weight: 500; letter-spacing: 0; }
+
+.drawer-section { padding: 18px 24.4px 22px 23.7px; border-bottom: 1px solid var(--line-soft); }
+.drawer-section:last-child { border-bottom: 0; }
+.drawer-section > .panel-label { margin-bottom: 13px; }
+
+.order-summary { padding-top: 20.3px; padding-bottom: 19.8px; }
+.order-facts-section { padding-bottom: 27.6px; }
+.order-lifecycle { padding-bottom: 15.3px; }
+.order-ledger { padding-bottom: 16px; }
+
+.order-kind { font-size: 15px; line-height: 21px; }
+.order-kind strong { margin-right: 3px; font-weight: 700; }
+.order-headline { margin-top: 7.7px; font-size: 24px; font-weight: 700; line-height: 30px; }
+
+.order-progress { display: flex; align-items: flex-start; gap: 12px; margin-top: 11.4px; }
+.order-progress-label { flex: none; color: var(--brass); font-size: 14px; font-weight: 600; line-height: 20px; }
+
+/* The filled share: brass, a 2 px gap, then the rest */
+.fill-bar { flex: 1; display: flex; gap: 2px; height: 10px; margin-top: 5.4px; border-radius: 4px; overflow: hidden; }
+.fill-bar-done { flex: 0 0 calc((100% - 2px) * var(--fill)); background: var(--brass); }
+.fill-bar-rest { flex: 1; background: var(--bg-muted); }
+.fill-bar-done:only-child { flex-basis: 100%; }
+
+.order-facts { display: grid; grid-template-columns: 1fr 1fr; row-gap: 21.1px; margin: 0; }
+.order-fact dt { color: var(--ink-3); font-size: 13px; line-height: 18px; }
+.order-fact dd { margin: 0; font-size: 14px; line-height: 20px; white-space: nowrap; }
+.order-fact-wide { grid-column: 1 / -1; }
+.order-fact .order-client-id { font-size: 13px; line-height: 18px; }
+
+/* The lifecycle, tighter to the drawer's edge than on the trade page */
+.order-drawer .timeline-item { grid-template-columns: 112px minmax(0, 1fr); padding-left: 30px; padding-bottom: 12.8px; }
+.order-drawer .timeline-item:last-child { padding-bottom: 0; }
+.order-drawer .timeline-dot { left: 0.5px; top: 3px; }
+.order-drawer .timeline-item:not(:last-child)::after { left: 6px; top: 16px; }
+.order-drawer .timeline-time { padding-top: 0; margin-top: -1.2px; }
+.order-drawer .timeline-text { font-size: 15px; line-height: 21px; }
+
+/* The ledger lines */
+.order-drawer .ledger-table { table-layout: fixed; }
+.order-drawer .ledger-table th { height: 20.8px; padding-bottom: 4.5px; border-bottom-color: var(--line-soft); }
+.order-drawer .ledger-table td { height: 30px; padding: 0; border-bottom: 1px solid var(--line-soft); vertical-align: middle; line-height: 20px; }
+.order-drawer .ledger-table th:nth-child(1) { width: 135.2px; }
+.order-drawer .ledger-table th:nth-child(2) { width: 70px; }
+.order-drawer .ledger-table th:nth-child(4) { width: 125.6px; }
+
+.order-cancel { padding-bottom: 24px; }
+.order-cancel .btn { min-height: 46px; }
+.order-cancel p { margin-top: 8.1px; color: var(--ink-3); font-size: 13px; line-height: 18px; }
+
+@media (max-width: 767px) {
+  .order-drawer .ledger-table { table-layout: auto; }
+  .order-drawer .ledger-table th { width: auto !important; }
+  .order-drawer .ledger-table td + td { padding-left: 10px; }
+  .order-facts { grid-template-columns: 1fr; }
+  .order-progress { flex-wrap: wrap; }
+}

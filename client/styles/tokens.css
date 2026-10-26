@@ -89,7 +89,7 @@
   --line-on-ink: #3A362F;
 
   /* Overlay behind drawers and dialogs */
-  --scrim: rgba(22, 22, 22, 0.32);
+  --scrim: rgba(22, 22, 22, 0.335);
 
   /* Asset identity colours, kept in the fixed order USDT, BTC, ETH, SOL, BNB */
   --asset-usdt: #2A78D6;

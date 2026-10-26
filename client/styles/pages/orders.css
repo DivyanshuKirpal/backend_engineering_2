@@ -1,0 +1,96 @@
+/* OrdersPage (board Orders · detail drawer open): tabs, filters and Cancel
+   all, then one table in a panel. The drawer's styles are in
+   components/orders.css. */
+
+.orders-page { padding-top: 46px; padding-bottom: 72px; }
+.orders-page .page-head { margin-bottom: 21.5px; }
+.orders-page .page-head p { margin-top: 11px; }
+
+.orders-tools { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.orders-tools .tabs-segment .tab { min-height: 38px; padding: 0 15.7px; font-weight: 600; }
+/* 2.4 px after the count, as this board and the kit's "Open 4" tab draw it */
+.orders-tools .tab-count { margin-right: 2.4px; }
+.orders-actions { display: flex; align-items: center; gap: 12px; }
+.orders-filters { display: flex; gap: 12px; }
+.orders-filters .select-inline { min-height: 40px; }
+.orders-filters .select-inline:first-child { width: 149.4px; }
+.orders-filters .select-inline:last-child { width: 139.3px; }
+.orders-filters .select-inline .select { padding-right: 26px; }
+.orders-filters .select-inline .select-chevron { right: 8px; }
+.orders-filters .select-inline-label { font-size: 14px; }
+.orders-actions .cancel-all { min-height: 40px; padding: 0 16.5px; }
+
+/* The tables: 56 px rows; the row the drawer shows is lit, with an ink bar */
+.orders-table { table-layout: fixed; }
+.orders-table th { height: 42px; }
+.orders-table td { height: 56px; padding-top: 0; padding-bottom: 0; white-space: nowrap; }
+.orders-table td.t-mono { font-size: 14px; }
+.orders-table td.col-placed { font-size: 13px; }
+.orders-table .col-market { font-weight: 700; }
+/* The board leaves a wider gap between the bold side and " · limit" */
+.orders-table .side-word { margin-right: 2.8px; font-weight: 700; }
+.orders-table .order-link { font-size: 13px; font-weight: 400; text-underline-offset: 3px; }
+.orders-table .order-link[aria-current] { font-weight: 600; }
+.orders-table tbody tr.current { background: var(--bg-row-hover); }
+.orders-table tbody tr.current td:first-child { box-shadow: inset 3px 0 0 var(--ink); }
+.orders-table .col-status { padding-left: 8.2px; }
+.orders-table td.col-status { padding-top: 2px; }
+.orders-table .status { gap: 3.8px; }
+.order-reason { display: block; margin-top: 2px; color: var(--ink-2); font-size: 13px; font-weight: 400; white-space: normal; }
+.orders-empty { padding: 28px 16px; }
+
+/* Open: column widths from the board */
+.orders-open .col-placed { width: 153.6px; }
+.orders-open .col-order { width: 121.9px; }
+.orders-open .col-market { width: 105.4px; }
+.orders-open .col-side { width: 116.4px; }
+.orders-open .col-price { width: 129.1px; }
+.orders-open .col-amount { width: 151.3px; }
+.orders-open .col-filled { width: 77.1px; }
+.orders-open .col-total { width: 121.5px; }
+.orders-open .col-status { width: 123.7px; }
+.orders-open .col-actions .btn { min-height: 34px; padding: 0 12px; }
+
+/* History and Trades (not drawn): the same rhythm */
+.orders-history .col-placed,
+.orders-trades .col-placed { width: 140px; }
+.orders-history .col-order,
+.orders-trades .col-order { width: 112px; }
+.orders-history .col-market,
+.orders-trades .col-market { width: 104px; }
+.orders-history .col-side { width: 112px; }
+.orders-history .col-status { width: 180px; }
+.orders-trades .col-side { width: 72px; }
+.orders-trades .col-role { width: 80px; }
+
+.orders-note { margin-top: 20px; color: var(--ink-2); font-size: 14px; }
+.undesigned-note.orders-note { margin-top: 12px; }
+
+.orders-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+  padding: 0 16px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.orders-foot .btn { flex: none; min-height: 40px; padding: 0 19px; font-size: 15px; }
+
+@media (max-width: 1099px) {
+  .orders-table { table-layout: auto; min-width: 1000px; }
+}
+
+@media (max-width: 767px) {
+  .orders-page { padding-top: 28px; }
+  .orders-tools { flex-direction: column; align-items: stretch; }
+  .orders-tools .tabs { width: 100%; }
+  .orders-tools .tabs .tab { flex: 1; justify-content: center; }
+  .orders-actions { flex-direction: column; align-items: stretch; }
+  .orders-filters { flex-direction: column; }
+  .orders-filters .select-inline { width: 100% !important; }
+  .orders-foot { flex-direction: column; align-items: flex-start; padding: 14px 16px; }
+}

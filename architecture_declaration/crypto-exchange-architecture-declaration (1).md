@@ -2006,6 +2006,20 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · History.** `presenters/wallet/transactions.presenter.js` (useTransactionsPresenter) runs the Deposits, Withdrawals and Ledger tabs from `?tab=`, each a "load more" list through the new `presenters/shared/cursorList.js` (useCursorList). The ledger shows each entry's change to free and locked, the balance after it and its source (an order, a trade, a deposit or withdrawal, or the sign-up credit), with links. It filters by asset and by entry group, sending the group as a comma-separated `?type=`. Its footer says how many of the total are shown (the `total` the mock adds, an API need from section 7). A pending withdrawal can be cancelled from its tab.
   - Views: `LedgerHistoryTable` in `views/components/wallet/LedgerTable.js`, `views/components/wallet/TransactionTable.js` and `views/pages/wallet/TransactionsPage.js`; styles in `styles/pages/history.css`. The breadcrumb styles moved to `base.css`.
   - This board was also drawn 1425 px wide. Every run matches except the times, which follow the real clock. Fourteen checks covered the first page (13 of 21), loading older entries, both filters together, the empty filter message, the Deposits tab and Back, and a withdrawal that is listed pending and then cancelled.
+- **26 Oct 2026 · Orders and the detail drawer.** `presenters/orders/orders.presenter.js` (useOrdersPresenter) runs the Open, History and Trades tabs across every market. Open reads `order.store`; History and Trades are "load more" lists of `GET /orders?state=history` and `GET /trades`. Each tab filters by market and side. Each open order has Cancel, and Cancel all asks first. The drawer shows one order from `GET /orders/:id`: the fill bar, average fill, what came in net of the fee, the fee with maker or taker, what it still locks, the client order id, its lifecycle and ledger lines, and "Cancel the remaining …" while it is open.
+  - The address bar leads. `?tab=` picks the tab, and `?order=` opens the drawer. When a link on the page opened it, Close and Escape step back, so Back and Forward open and close it too. A trade link (`?trade=`, from History) opens the order that trade filled and lights the trade's row. An order named without a tab moves the page to History once it turns out closed.
+  - `order.update` refreshes what is on screen without a skeleton (a new quiet `refresh()` in `presenters/shared/cursorList.js`). A cancel shows "Cancelling…" until the order's update arrives.
+  - `presenters/orders/orderLifecycle.js` now holds the lifecycle and ledger lines that Trade's useMyOrdersPresenter built. They come in two wordings: Trade's in full, and the drawer's shorter one, as each board draws them.
+  - Views: `views/components/orders/OrderTables.js` (OpenOrdersTable, OrderHistoryTable, TradeHistoryTable), `OrderDetailDrawer.js`, `OrderFilters.js` and `views/pages/orders/OrdersPage.js`. Page styles are in `styles/pages/orders.css` and the drawer's in `styles/components/orders.css`.
+  - Shared fixes, from this board and the kit:
+    - LedgerTable takes its column names, and draws the asset in mono with semibold headers, as the Trade board also does.
+    - The drawer has an ink edge and a 12 px hard shadow on the scrim. The scrim's measured ink is 33.5%.
+    - Here a tab's count is followed by 2.4 px, as in the kit's "Open 4" tab. Markets' tabs have no such gap, so the rule stays on this page.
+    - `.table-wrap` is positioned. A screen-reader-only header had widened the phone page to 999 px.
+    - `presenters/shared/navigation.js` gains `back()`.
+    - `scripts/screenshots.mjs` no longer pipes `serve`'s output: the unread pipe filled and stalled the server after a few dozen page loads.
+  - The board matches apart from these: the times, which follow the real clock; order A91C, which is Pending for a moment after the demo starts, as drawn, and then Open; and the 13 px panel labels.
+  - Thirty-seven checks covered the tabs and Back; opening the drawer from a link, then Escape, Back, Forward and Close; focus moving in and back; both filters; cancelling one order and then all BTC/USDT orders (after "Keep them"); the History drawer of the cancelled order; a trade link; an untabbed link to a filled order; and the phone drawer's ledger. Trade's 48 checks still pass.
 
 ### Conflicts and differences
 
@@ -2072,6 +2086,14 @@ The owner approved these decisions on 25 Oct 2026.
 | History: the ledger's pages | Cursor feeds; "load more" | "Newest first, 13 of 21 shown" | Pages of 13, as drawn. The Deposits and Withdrawals tabs load 20 at a time |
 | History: Deposits and Withdrawals tabs | TransactionTable | Only the Ledger tab is drawn | Tables in the Ledger tab's style: time, asset, amount, method or fee and what arrives, address and hash with Copy, status, and Cancel on a pending withdrawal. Marked not drawn |
 | History: source links | — | Underlined sources | An order opens `/orders?order=`, a trade `/orders?tab=trades&trade=` (the Orders page answers both), and a deposit or withdrawal its tab here |
+| Orders: the filters | OrderFilters → Select x2 (market, side) | Two selects under the drawer; only "Market" and "Side" show | History's inline selects: Market · All and Side · Both sides, at the board's widths |
+| Orders: the Side filter | `GET /orders` and `GET /trades` take market, cursor and limit | A Side select | The mock also takes `?side=`. Like section 7's API needs, a pending decision for the real API |
+| Orders: Cancel all | `DELETE /orders`, `?market=` optional; ConfirmDialog | A "Cancel all" button | It asks first and names the orders ("Cancel all 3 open BTC/USDT orders?"). With a side picked, the shown orders are cancelled one by one, since the endpoint takes only a market |
+| Orders: History and Trades tabs | OrderHistoryTable, TradeHistoryTable | Only the Open tab is drawn | Tables in the Open tab's style: History adds the filled amount, average and why an order was cancelled; Trades has the order, maker or taker and the fee. Marked not drawn |
+| Orders: the drawer and the address bar | `?tab=` only | — | `?order=` opens the drawer and Close steps back; `?trade=` opens the order the trade filled; an untabbed closed order moves to History |
+| Orders: a closed order's drawer | — | Only an open order is drawn | The same layout without Cancel; "Received", and the closing status with its time in place of "Still locked" |
+| Orders: lifecycle words | Section 7, Order lifecycle | The drawer: "Accepted by the API, 0.02500 BTC locked."; Trade: "The API accepted it (202) and locked …" | Each as drawn, from one shared module |
+| Order ledger: column names | LedgerTable | Trade: Type, Asset, Available, Locked. The drawer: Entry, Asset, Free, Locked | Each as drawn |
 
 ### Checklist
 
@@ -2106,7 +2128,7 @@ Pages drawn
 - [x] Deposit
 - [x] Withdraw
 - [x] History
-- [ ] Orders and the detail drawer
+- [x] Orders and the detail drawer
 - [ ] Profile
 - [ ] Security
 - [ ] Verification
@@ -2181,8 +2203,12 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | RecentTrades | `views/components/trade/RecentTrades.js` |
 | OrderForm, PercentButtons, OrderSummary, LoginToTradeCTA | `views/components/trade/OrderForm.js` |
 | MyOrdersPanel | `views/components/trade/MyOrdersPanel.js` |
-| OrderTimeline | `views/components/orders/OrderTimeline.js` |
-| LedgerTable | `views/components/wallet/LedgerTable.js` (the per-order columns; History adds its own) |
+| OrderTimeline | `views/components/orders/OrderTimeline.js`, its steps from `presenters/orders/orderLifecycle.js` |
+| LedgerTable | `views/components/wallet/LedgerTable.js` (the per-order columns, named per board; History adds its own) |
+| OrdersPage, useOrdersPresenter | `views/pages/orders/OrdersPage.js`, `presenters/orders/orders.presenter.js` |
+| OrderFilters | `views/components/orders/OrderFilters.js` |
+| OpenOrdersTable, OrderHistoryTable, TradeHistoryTable | `views/components/orders/OrderTables.js` |
+| OrderDetailDrawer | `views/components/orders/OrderDetailDrawer.js` (in a Drawer from `views/components/ui/Overlay.js`) |
 | LoginPage, useLoginPresenter | `views/pages/auth/LoginPage.js`, `presenters/auth/login.presenter.js` |
 | RegisterPage, useRegisterPresenter | `views/pages/auth/RegisterPage.js`, `presenters/auth/register.presenter.js` |
 | RegisterForm | `views/components/auth/RegisterForm.js` |
@@ -2410,6 +2436,9 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | 4 API | The mock answers the eight API needs of section 7 (and the admin withdrawals' `userKycStatus`) | The boards need them; each stays a pending decision for the real API |
 | Addition | Repository root | `scripts/` with `check-data`, `extract-boards`, `screenshots` and `copy-vendor`; `serve` and Playwright as dev dependencies | Tooling for the static phase; Node runs only these |
 | Change | 6 Flow A, step 7 | Open orders live in `models/stores/order.store.js`, which merges `order.update` and ignores copies older than the one it holds | The ladder's "You" tags, Your orders and the Orders page read one list, and a late 202 can't undo an update the socket already delivered |
+| Addition | 4 API | The mock's `GET /orders` and `GET /trades` also take `?side=` | The Orders board filters by side; a pending decision for the real API |
+| Change | 2 Routes, 5 Components | `/orders` also answers `?order=` (the drawer, which Close and Back shut) and `?trade=` (the order that trade filled) | History links to orders and trades, and the drawer belongs in the browser's history |
+| Change | 7 Patterns, Order lifecycle | One module builds the lifecycle and ledger lines for Trade and the order drawer, in each board's wording | The two boards word the same steps differently |
 | Change | 7 UI design, 8 | The Trade board's 14:15 candle reaches 62,400.00, and every candle interval comes from one 15-minute series | The board's sell order filled at 62,400.00 inside that candle, and the intervals must agree with each other |
 
 ### Sources
