@@ -2020,6 +2020,14 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
     - `scripts/screenshots.mjs` no longer pipes `serve`'s output: the unread pipe filled and stalled the server after a few dozen page loads.
   - The board matches apart from these: the times, which follow the real clock; order A91C, which is Pending for a moment after the demo starts, as drawn, and then Open; and the 13 px panel labels.
   - Thirty-seven checks covered the tabs and Back; opening the drawer from a link, then Escape, Back, Forward and Close; focus moving in and back; both filters; cancelling one order and then all BTC/USDT orders (after "Keep them"); the History drawer of the cancelled order; a trade link; an untabbed link to a filled order; and the phone drawer's ledger. Trade's 48 checks still pass.
+- **26 Oct 2026 · Profile.** `presenters/account/profile.presenter.js` (useProfilePresenter) edits the display name (2 to 40 characters, as on Register) and saves it with `PATCH /users/me`; the header shows the new name at once. Discard puts the saved name back. Beside it: the email with a Not confirmed or Confirmed tag, Google sign-in (`googleLinked`, one of section 7's API needs) and the join date. Preferences (theme, hide small balances) save together to the account and to this browser. They reach the Wallet, and Dark is listed but disabled until it is designed.
+  - Views: `views/components/account/ProfileForm.js`, `PreferencesForm.js` and `views/pages/account/ProfilePage.js`. Styles are in `styles/pages/account.css`, which Security and Verification will share. Panel gains a footer row of actions and can be a form.
+  - This board is the first to draw the account layout:
+    - The sidebar is 220 px, not 217.
+    - The banner is 54 px with 15 px text and a small secondary "Resend link", as the kit draws it too. It had been 36 px with 14 px text. On other boards the signed-in pages are compared with `--verified`, and CLAUDE.md now says the banner pushes a page 55 px.
+    - Status tags take a tone: brass while something waits, green once done.
+  - Checkboxes are now the browser's own, in ink (`accent-color`). The boards draw them so: white with a grey edge when clear (here), and ink with a white tick when checked (Register, the kit). The square ink box drawn before matched neither.
+  - The board matches apart from the join date, which moves with the demo clock (24 Oct on the board), and the 13 px panel labels. Fourteen checks covered a refused short name, saving with Enter (header and reload), Discard, preferences reaching the Wallet, the disabled Dark theme, "Resend link" turning the tag to Confirmed, `/account` opening Profile, and no sideways scroll on phones. The Auth (33), Wallet (13) and Trade (48) checks still pass.
 
 ### Conflicts and differences
 
@@ -2028,7 +2036,7 @@ The owner approved these decisions on 25 Oct 2026.
 | Where | Sections 1 to 7 | Boards | Decision |
 | --- | --- | --- | --- |
 | Demo trader's KYC | One user has one kycStatus | Verification shows Not started; Withdraw and Admin · Users show Approved. Section 7 says boards show different moments on purpose | Approved. Newly registered accounts start at Not started and see the drawn form |
-| VerifyEmailBanner | In the Public, Trade and Account layouts while the email is unconfirmed | Only Account · Profile shows it | On every page while unconfirmed. "Resend link" confirms the address a moment later, standing in for the emailed link |
+| VerifyEmailBanner | In the Public, Trade and Account layouts while the email is unconfirmed | Only Account · Profile shows it, 54 px tall with 15 px text | On every page while unconfirmed, at the drawn size. "Resend link" confirms the address a moment later, standing in for the emailed link |
 | ConnectionStatus | Always shown | Missing from the signed-out header and the phone header | Follow the boards |
 | Admin account | `SEED_ADMIN_EMAIL`, no address given | Rohan Sethi, rohan.sethi@example.com; the brief asks for admin@orichal.app | Rohan Sethi signs in as admin@orichal.app, and his row shows that address |
 | USDT in the wallet table | Amounts follow the asset's decimals, 6 for USDT | 2 decimals (6,823.50), while the ledger shows 6 (1,616.000800) | Follow the boards |
@@ -2094,6 +2102,10 @@ The owner approved these decisions on 25 Oct 2026.
 | Orders: a closed order's drawer | — | Only an open order is drawn | The same layout without Cancel; "Received", and the closing status with its time in place of "Still locked" |
 | Orders: lifecycle words | Section 7, Order lifecycle | The drawer: "Accepted by the API, 0.02500 BTC locked."; Trade: "The API accepted it (202) and locked …" | Each as drawn, from one shared module |
 | Order ledger: column names | LedgerTable | Trade: Type, Asset, Available, Locked. The drawer: Entry, Asset, Free, Locked | Each as drawn |
+| Profile: Save changes at rest | ProfileForm → Button | Discard and Save changes look ready while nothing has changed | As drawn: both stay enabled. Saving an unchanged name saves it again; Discard puts the saved name back |
+| Profile: the theme | `preferences.theme` light or dark; only light is drawn | A Theme select showing Light | Light, and "Dark (not designed yet)" listed but disabled. The header's toggle explains the same |
+| Profile: Member since | — | 24 Oct 2026 | The join date moves with the demo clock like every other time, so it can read a day later |
+| Checkboxes | UI kit: an ink box with a white tick | Unchecked on Profile: the browser's white box with a grey edge | The browser's checkbox in ink, which gives both drawn states |
 
 ### Checklist
 
@@ -2129,7 +2141,7 @@ Pages drawn
 - [x] Withdraw
 - [x] History
 - [x] Orders and the detail drawer
-- [ ] Profile
+- [x] Profile
 - [ ] Security
 - [ ] Verification
 - [ ] Admin dashboard
@@ -2174,6 +2186,8 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | Footer | `views/components/navigation/AppFooter.js` |
 | VerifyEmailBanner | `views/components/navigation/VerifyEmailBanner.js` |
 | AccountSidebar | `views/components/navigation/AccountSidebar.js` |
+| ProfilePage, useProfilePresenter | `views/pages/account/ProfilePage.js`, `presenters/account/profile.presenter.js` |
+| ProfileForm, PreferencesForm | `views/components/account/ProfileForm.js`, `PreferencesForm.js` |
 | AdminSidebar, AdminTopbar | `views/components/navigation/AdminSidebar.js`, `AdminTopbar.js` |
 | Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
 | Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |
@@ -2436,6 +2450,7 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | 4 API | The mock answers the eight API needs of section 7 (and the admin withdrawals' `userKycStatus`) | The boards need them; each stays a pending decision for the real API |
 | Addition | Repository root | `scripts/` with `check-data`, `extract-boards`, `screenshots` and `copy-vendor`; `serve` and Playwright as dev dependencies | Tooling for the static phase; Node runs only these |
 | Change | 6 Flow A, step 7 | Open orders live in `models/stores/order.store.js`, which merges `order.update` and ignores copies older than the one it holds | The ladder's "You" tags, Your orders and the Orders page read one list, and a late 202 can't undo an update the socket already delivered |
+| Change | 7 UI design | VerifyEmailBanner is 54 px tall with 15 px text and a small secondary button; checkboxes are the browser's own in ink | As the Profile board and the kit draw them |
 | Addition | 4 API | The mock's `GET /orders` and `GET /trades` also take `?side=` | The Orders board filters by side; a pending decision for the real API |
 | Change | 2 Routes, 5 Components | `/orders` also answers `?order=` (the drawer, which Close and Back shut) and `?trade=` (the order that trade filled) | History links to orders and trades, and the drawer belongs in the browser's history |
 | Change | 7 Patterns, Order lifecycle | One module builds the lifecycle and ledger lines for Trade and the order drawer, in each board's wording | The two boards word the same steps differently |

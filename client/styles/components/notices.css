@@ -1,18 +1,19 @@
 /* Notices (UI kit, "Banners, notices and toasts"): the verify-email bar,
    empty states, page loading and error states, toasts. */
 
+/* VerifyEmailBanner, as the kit and Account · Profile draw it: 54 px tall */
 .notice-bar {
   background: var(--bg-inset);
   border-bottom: var(--rule);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .notice-bar-inner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 35px;
-  padding-block: 4px;
+  gap: 18px;
+  min-height: 54px;
+  padding-block: 8px;
 }
 
 .notice-bar-icon { color: var(--brass); }

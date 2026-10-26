@@ -35,6 +35,10 @@
   white-space: nowrap;
 }
 
+/* A tag in a tone: brass while something waits (Not confirmed), green once done */
+.status-tag-wait { border-color: var(--brass); color: var(--brass); }
+.status-tag-buy { border-color: var(--buy); color: var(--buy); }
+
 /* Asset tiles: lettered stand-ins for /coins/*.svg */
 .asset-tile {
   display: inline-grid;

@@ -22,7 +22,7 @@ const SHAPES = {
 
 /** { label, marker, tone } from status.format.js. `size` 'sm' fits dense tables. */
 export function StatusMarker({ label, marker, tone }, { size = 'md', className = '' } = {}) {
-  if (marker === 'tag') return h('span', { class: cx('status-tag', className) }, label);
+  if (marker === 'tag') return h('span', { class: cx('status-tag', `status-tag-${tone}`, className) }, label);
   const shape = SHAPES[marker];
   return h('span', { class: cx('status', `status-${tone}`, `status-${size}`, className) },
     shape ? s('svg', { class: `status-mark status-mark-${marker}`, viewBox: '0 0 12 12', width: 12, height: 12, 'aria-hidden': 'true' }, shape()) : null,

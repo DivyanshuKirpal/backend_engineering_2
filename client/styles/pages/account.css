@@ -1,0 +1,36 @@
+/* Account pages (boards Account · Profile, Security, Verification): the
+   page title over panels of forms, each with its actions under a rule. */
+
+.account-page > .t-title { margin: 6.1px 0 27px; }
+.account-page .panel + .panel { margin-top: 16px; }
+.account-page .panel-head { min-height: 46px; padding: 0 20px; }
+.account-page .panel-foot .btn { min-height: 42px; padding: 0 16px; font-size: 15px; }
+.account-page .panel-foot .btn-quiet { background: transparent; }
+.account-page .input,
+.account-page .select { min-height: 46px; font-size: 16px; }
+
+/* Profile: the name, then three facts under an inset rule */
+.profile-panel .field { max-width: 460px; }
+.profile-panel .panel-body { padding-bottom: 21.1px; }
+
+.profile-facts {
+  display: grid;
+  grid-template-columns: 315.5px 315.5px minmax(0, 1fr);
+  margin: 17.9px 0 0;
+  padding-top: 17px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.profile-fact dd { display: flex; align-items: center; flex-wrap: wrap; gap: 0 7.8px; margin: 5.8px 0 0; font-size: 16px; }
+.profile-fact .status-tag { padding: 1px 7px; font-size: 12px; }
+
+.prefs-panel .field { max-width: 300px; }
+.prefs-panel .select { padding-left: 16px; font-size: 17px; font-weight: 700; }
+.prefs-panel .check { margin-top: 18.7px; column-gap: 12px; row-gap: 2.4px; }
+.prefs-panel .check-label { font-size: 16px; font-weight: 700; }
+.prefs-panel .check .field-hint { font-size: 14px; }
+
+@media (max-width: 767px) {
+  .profile-facts { grid-template-columns: 1fr; row-gap: 16px; }
+  .account-page .panel-foot .btn { flex: 1; }
+}

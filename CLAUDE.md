@@ -9,7 +9,7 @@ Orichal is a simulated crypto exchange for a course project. This phase builds t
 - Section 7 wins on exact values (hex codes, sizes, token names). The PDF wins on layout, copy, numbers and states. When they disagree, follow the PDF for looks and the md for behaviour, and log the conflict in section 8.
 - File names hold spaces and brackets: always quote the paths.
 - pdftoppm isn't installed, so PDF page ranges fail. `npm run boards` writes one JPEG per board to `.boards/` (git-ignored); open single boards from there.
-- Before starting a page, reopen its board(s) and the md sections it touches. When it's done, screenshot it at 1440 and 390 px (`npm run shots`), compare with the board and fix what differs. `npm run compare -- <route> <board>` measures text positions and sizes against the board's text layer. Add `--verified` when signed in as the demo trader: their email is unconfirmed, and the banner would push the page 36 px down from its board.
+- Before starting a page, reopen its board(s) and the md sections it touches. When it's done, screenshot it at 1440 and 390 px (`npm run shots`), compare with the board and fix what differs. `npm run compare -- <route> <board>` measures text positions and sizes against the board's text layer. Add `--verified` when signed in as the demo trader: their email is unconfirmed, and the banner would push the page 55 px down from its board.
 - From Git Bash, prefix those two with `MSYS_NO_PATHCONV=1` (or leave out the route's leading slash), or Bash rewrites `/markets` into a Windows path.
 
 ## Scope

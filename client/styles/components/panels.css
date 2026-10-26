@@ -24,6 +24,9 @@
 .panel-body { padding: 20px; }
 .panel-flush { padding: 0; }
 
+/* Actions under a rule, on the right */
+.panel-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 13.5px 20px; border-top: 1px solid var(--line-soft); }
+
 /* MarketStatusBanner */
 .market-banner {
   display: flex;

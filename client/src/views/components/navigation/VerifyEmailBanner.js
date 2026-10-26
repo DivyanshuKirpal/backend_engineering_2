@@ -11,5 +11,5 @@ export function VerifyEmailBanner(banner, { resendVerification }) {
       h('p', {}, h('strong', {}, 'Confirm your email. '), `We sent a link to ${banner.email}. It works for 24 hours.`),
       banner.sent
         ? h('p', { class: 'notice-bar-done', role: 'status' }, 'Sent. Check your inbox.')
-        : h('button', { class: 'btn btn-secondary btn-xs', type: 'button', disabled: banner.sending, onClick: resendVerification }, banner.sending ? 'Sending…' : 'Resend link')));
+        : h('button', { class: 'btn btn-secondary btn-sm', type: 'button', disabled: banner.sending, onClick: resendVerification }, banner.sending ? 'Sending…' : 'Resend link')));
 }

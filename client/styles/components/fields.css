@@ -159,23 +159,18 @@
 .search-input::placeholder { color: var(--ink-3); opacity: 1; }
 .search-input:focus { outline: none; }
 
-/* Checkbox: a real checkbox, drawn square in ink */
+/* Checkbox: the browser's own, in ink. The boards draw it so: white with a
+   grey edge when clear, ink with a white tick when checked. */
 .check { display: grid; grid-template-columns: auto 1fr; align-items: start; column-gap: 10px; row-gap: 4px; }
 .check .field-hint,
 .check .field-error { grid-column: 2; }
 
 .check-input {
-  appearance: none;
   width: 18px;
   height: 18px;
   margin: 1px 0 0;
-  border: 1.5px solid var(--ink);
-  background: var(--bg-inset);
+  accent-color: var(--ink);
   cursor: pointer;
-}
-
-.check-input:checked {
-  background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.3 6.4l2.4 2.4 5-5.4' fill='none' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E") center / 12px no-repeat;
 }
 
 .check-input:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
