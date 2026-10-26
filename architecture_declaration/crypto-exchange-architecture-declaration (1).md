@@ -2053,6 +2053,22 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
     - sending (Pending review, with the summary and the session updated);
     - an approval, and a rejection that brings the form back filled;
     - no sideways scroll on phones.
+- **26 Oct 2026 · Admin dashboard.** `presenters/admin/dashboard.presenter.js` (useAdminDashboardPresenter) reads `GET /admin/stats` and the first three of each queue, oldest first. It reloads every 30 seconds, and the topbar says when it last did.
+  - Six numbers: users and how many joined this week; volume and fees over 24 hours, the volume with its change on the day before; open orders and how many belong to the market maker's ladder; and each queue's size with how long its oldest has waited. A queue with something waiting is outlined in brass.
+  - The traded volume of the last fourteen full days is shown as bars or as a table (Chart and Table tabs). The highest and the latest bars are labelled, and the bars read as one sentence to screen readers.
+  - The two queues show three rows each, the oldest wait in brass, with "Review the queue".
+  - Views: `views/components/admin/StatCard.js`, `QueueCard.js`, `views/components/charts/VolumeBarChart.js` (bars in HTML, sized by the presenter's numbers) and `views/pages/admin/AdminDashboardPage.js`, which fills the topbar's title slot. Styles are in `styles/pages/admin.css`, for every admin page.
+  - This is the first admin board, so it checked the layout:
+    - The topbar and page are padded 24.6 and 24.4 px, not 22.
+    - The sidebar's queue badges are 21.7 px wide on all five admin boards.
+    - The ink sidebar now runs the page's full height, with the menu sticky.
+  - The board matches apart from the live and clock-bound parts: the update time, the change on the day before, the dates of the fourteen days, waits a minute apart, and the ladder (see the conflicts). Twenty-one checks covered:
+    - the six numbers and the topbar;
+    - the bars, their scale, labels and summary;
+    - the table view and the arrow keys;
+    - the queues, their oldest-first order and their links;
+    - the sidebar badges, the phone menu and no sideways scroll;
+    - a trader being turned away from `/admin`.
 
 ### Conflicts and differences
 
@@ -2141,6 +2157,10 @@ The owner approved these decisions on 25 Oct 2026.
 | Verification: date of birth | Kyc.dateOfBirth (a date, 18 or older) | One field reading DD / MM / YYYY | That field, with the separators added as you type. It is sent as YYYY-MM-DD |
 | Verification: country | Kyc.country (ISO code) | A select showing India | Every inhabited country, by name, India first chosen as drawn |
 | Verification: the photos | Multipart images, JPEG or PNG, 5 MB each | Two dashed boxes: "Choose a file or drop it here" | FileDrop: a real file input under the box, which takes a dropped file too. The type and size are checked before sending; a chosen file shows its name, size and Remove (not drawn) |
+| Admin dashboard: the ladder | The bot quotes 5 levels a side on each market | "52 · 40 of them are the market maker's ladder" | The ladder counts the active markets only. With BNB/USDT halted, as on Markets, it is 30, and the 52 still holds (22 people's orders) |
+| Admin sidebar: queue badges | Components board: 34 px wide | Every admin screen board: 21.7 px | 21.7 px, as the five screen boards draw it |
+| Admin dashboard: the volume table | VolumeBarChart → Tabs (chart or table), Table | Only the chart is drawn | Day and volume, newest first. Not drawn |
+| Admin dashboard: freshness | — | "Updated 14:32:10" | The time of the last load; it reloads every 30 seconds |
 
 ### Checklist
 
@@ -2179,7 +2199,7 @@ Pages drawn
 - [x] Profile
 - [x] Security
 - [x] Verification
-- [ ] Admin dashboard
+- [x] Admin dashboard
 - [ ] Admin users
 - [ ] Admin KYC review
 - [ ] Admin withdrawals
@@ -2227,6 +2247,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | TwoFactorCard, TwoFactorSetupModal | `views/components/account/TwoFactorCard.js`, `TwoFactorSetupModal.js` (turning it on, and off) |
 | ChangePasswordForm, SessionList, ActivityTable | `views/components/account/ChangePasswordForm.js`, `SessionList.js`, `ActivityTable.js` |
 | AdminSidebar, AdminTopbar | `views/components/navigation/AdminSidebar.js`, `AdminTopbar.js` |
+| AdminDashboardPage, useAdminDashboardPresenter | `views/pages/admin/AdminDashboardPage.js`, `presenters/admin/dashboard.presenter.js` |
+| StatCard, QueueCard | `views/components/admin/StatCard.js`, `QueueCard.js` |
+| VolumeBarChart | `views/components/charts/VolumeBarChart.js` (HTML bars and a table) |
 | Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
 | Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |
 | Input, NumberInput, Select, SearchInput | `views/components/ui/Field.js` (Field, NumberField, Select, SearchInput, Checkbox, RadioCards) |
@@ -2491,6 +2514,7 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | Repository root | `scripts/` with `check-data`, `extract-boards`, `screenshots` and `copy-vendor`; `serve` and Playwright as dev dependencies | Tooling for the static phase; Node runs only these |
 | Change | 6 Flow A, step 7 | Open orders live in `models/stores/order.store.js`, which merges `order.update` and ignores copies older than the one it holds | The ladder's "You" tags, Your orders and the Orders page read one list, and a late 202 can't undo an update the socket already delivered |
 | Change | 7 UI design | VerifyEmailBanner is 54 px tall with 15 px text and a small secondary button; checkboxes are the browser's own in ink | As the Profile board and the kit draw them |
+| Change | 5 Components | The admin sidebar's ink runs the page's full height, its menu sticky; its queue badges are 21.7 px wide | As every admin screen board draws it |
 | Change | 5 Components | KycStatusCard is drawn two ways: a small card on Withdraw, and a status panel with three steps on Verification | The two boards draw it differently for different jobs |
 | Change | 2 Routes | `/account/security` builds two-factor, devices and activity now, not as stretch | The Security board draws them and the mock already serves their endpoints |
 | Addition | 4 API | The mock's `GET /orders` and `GET /trades` also take `?side=` | The Orders board filters by side; a pending decision for the real API |

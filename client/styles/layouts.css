@@ -44,6 +44,9 @@
 
 /* AdminLayout: ink sidebar, topbar, page */
 .admin-layout { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+/* The ink runs the page's full height; the menu itself stays in view */
+.admin-side { background: var(--ink-surface); }
+.admin-side .admin-sidebar { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
 .admin-body { display: flex; flex-direction: column; min-width: 0; }
 
 .admin-topbar {
@@ -52,14 +55,14 @@
   justify-content: space-between;
   gap: 16px;
   min-height: 56px;
-  padding: 0 22px;
+  padding: 0 24.6px;
   background: var(--bg-panel);
   border-bottom: var(--rule);
 }
 
 .admin-topbar-title { display: flex; align-items: center; gap: 16px; min-width: 0; flex-wrap: wrap; }
 .admin-topbar-tools { display: flex; align-items: center; gap: 8px; }
-.admin-main { flex: 1; padding: 22px; }
+.admin-main { flex: 1; padding: 24px 24.4px; }
 
 @media (max-width: 899px) {
   .admin-layout { grid-template-columns: 1fr; }

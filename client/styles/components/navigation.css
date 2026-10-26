@@ -64,8 +64,9 @@
   font-weight: 700;
 }
 
+/* 21.7 px on every admin screen board (the Components board draws 34) */
 .admin-badge {
-  min-width: 34px;
+  min-width: 21.7px;
   padding: 2px 0;
   background: var(--brass-light);
   color: var(--ink);
@@ -88,6 +89,7 @@
   text-decoration: none;
 }
 
+.admin-back .icon { width: 14px; height: 14px; }
 .admin-back:hover { color: var(--on-ink); }
 .admin-sidebar :focus-visible { outline-color: var(--on-ink); }
 
