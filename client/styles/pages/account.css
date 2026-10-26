@@ -34,3 +34,61 @@
   .profile-facts { grid-template-columns: 1fr; row-gap: 16px; }
   .account-page .panel-foot .btn { flex: 1; }
 }
+
+/* Security: two-factor, password, devices, activity */
+.twofa-card {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 27px;
+  min-height: 94px;
+  padding: 0 20px 0 23.7px;
+}
+
+.twofa-mark { display: grid; place-items: center; width: 25px; height: 25px; border: 1.5px solid var(--ink-3); color: var(--ink-3); }
+.twofa-mark.on { border: 0; background: var(--buy); color: var(--on-fill); }
+.twofa-title { font-size: 20px; font-weight: 700; line-height: 1.2; }
+.twofa-text p { margin-top: 3px; color: var(--ink-2); font-size: 15px; }
+.twofa-card .btn { min-height: 42px; padding: 0 15.3px; font-size: 15px; }
+
+.password-panel .panel-body { padding-top: 21.3px; }
+.password-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 15.4px; align-items: start; }
+.password-new { display: grid; gap: 8px; }
+.password-new .strength-text { margin-top: 7.6px; }
+.panel-foot-note { margin-right: auto; align-self: center; color: var(--ink-2); font-size: 14px; }
+
+.devices-panel .panel-head { min-height: 56px; }
+.device-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; column-gap: 20px; min-height: 72px; padding: 0 20px; }
+.device-row + .device-row { border-top: var(--rule-row); }
+.device-icon { color: var(--ink-2); }
+.device-name { display: flex; align-items: baseline; flex-wrap: wrap; gap: 9.6px; font-size: 16px; font-weight: 700; }
+.device-tag { padding: 1px 6.7px; background: var(--ink); color: var(--on-fill); font-size: 12px; font-weight: 700; }
+.device-meta { margin-top: 2px; color: var(--ink-2); font-size: 14px; }
+.device-meta .t-mono { font-size: 13px; color: var(--ink); }
+
+.activity-table th { height: 40px; padding: 0 20px; }
+.activity-table td { height: 46px; padding: 0 20px; border-bottom-color: var(--line-soft); }
+.activity-table td.t-mono { font-size: 13px; }
+.activity-table .col-when { width: 227.2px; }
+.activity-table .col-what { width: 258.8px; }
+.activity-table .col-device { width: 241px; }
+.activity-warning { color: var(--sell); font-weight: 700; }
+.activity-empty { color: var(--ink-3); }
+.activity-foot { padding: 12px 20px; border-top: 1px solid var(--line-soft); }
+
+/* The two-factor dialogs */
+.twofa-form { display: contents; }
+.twofa-setup { display: flex; align-items: center; gap: 20px; }
+.twofa-key-value { margin-top: 6px; color: var(--ink); font-size: 14px; word-break: break-all; }
+
+@media (max-width: 767px) {
+  .twofa-card { grid-template-columns: 25px minmax(0, 1fr); row-gap: 14px; padding: 18px 16px; }
+  .twofa-card .btn { grid-column: 1 / -1; }
+  .password-grid { grid-template-columns: 1fr; row-gap: 16px; }
+  .panel-foot-note { flex-basis: 100%; }
+  .devices-panel .panel-head { flex-wrap: wrap; padding-block: 11px; }
+  .devices-panel .panel-label { white-space: nowrap; }
+  .device-row { padding: 12px 16px; }
+  .activity-table { min-width: 640px; }
+  .twofa-setup { flex-direction: column; align-items: flex-start; }
+}

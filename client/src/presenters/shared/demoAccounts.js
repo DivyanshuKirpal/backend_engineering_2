@@ -6,3 +6,6 @@ export const DEMO_ACCOUNTS = [
   { key: 'trader', label: 'Demo trader', email: 'demo@orichal.app', password: 'orichal-demo', code: '123456' },
   { key: 'admin', label: 'Admin, Rohan Sethi', email: 'admin@orichal.app', password: 'orichal-demo', code: null },
 ];
+
+/** The simulator's authenticator code: every account's two-factor step takes it. */
+export const DEMO_CODE = '123456';

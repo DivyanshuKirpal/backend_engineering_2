@@ -35,7 +35,7 @@
 }
 
 @media (max-width: 899px) {
-  .account-layout { grid-template-columns: 1fr; gap: 16px; padding-block: 24px 48px; }
+  .account-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-block: 24px 48px; }
   .account-nav ul { display: flex; }
   .account-nav li { flex: 1; }
   .account-nav li + li { border-top: 0; border-left: var(--rule-row); }

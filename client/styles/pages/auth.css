@@ -110,14 +110,6 @@
 
 /* Register: the meter under the password, the tick */
 .auth-password { display: grid; gap: 7.5px; }
-.strength-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-.strength-bar { height: 4px; background: var(--line-soft); }
-.strength-bar.on { background: var(--ink); }
-.strength-sell .strength-bar.on { background: var(--sell); }
-.strength-wait .strength-bar.on { background: var(--brass); }
-.strength-buy .strength-bar.on { background: var(--buy); }
-.strength-text { margin-top: 8px; color: var(--ink-3); font-size: 13px; }
-.strength-text strong { color: var(--ink); }
 .auth-card .check-label { font-size: 14px; line-height: 20.3px; }
 
 /* ------------------------------------------------------------ the demo helper (not drawn) */

@@ -176,6 +176,16 @@
 .check-input:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
 .check-label { font-size: 15px; line-height: 1.35; cursor: pointer; }
 
+/* PasswordStrengthMeter (Register, Security): four bars and a word */
+.strength-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.strength-bar { height: 4px; background: var(--line-soft); }
+.strength-bar.on { background: var(--ink); }
+.strength-sell .strength-bar.on { background: var(--sell); }
+.strength-wait .strength-bar.on { background: var(--brass); }
+.strength-buy .strength-bar.on { background: var(--buy); }
+.strength-text { margin-top: 8px; color: var(--ink-3); font-size: 13px; }
+.strength-text strong { color: var(--ink); }
+
 /* Radio cards (Verification: document type) */
 .radio-cards { border: 0; margin: 0; padding: 0; min-width: 0; }
 .radio-cards legend { margin-bottom: 8px; padding: 0; }

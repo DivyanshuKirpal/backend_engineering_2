@@ -2028,6 +2028,15 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
     - Status tags take a tone: brass while something waits, green once done.
   - Checkboxes are now the browser's own, in ink (`accent-color`). The boards draw them so: white with a grey edge when clear (here), and ink with a white tick when checked (Register, the kit). The square ink box drawn before matched neither.
   - The board matches apart from the join date, which moves with the demo clock (24 Oct on the board), and the 13 px panel labels. Fourteen checks covered a refused short name, saving with Enter (header and reload), Discard, preferences reaching the Wallet, the disabled Dark theme, "Resend link" turning the tag to Confirmed, `/account` opening Profile, and no sideways scroll on phones. The Auth (33), Wallet (13) and Trade (48) checks still pass.
+- **26 Oct 2026 · Security.** `presenters/account/security.presenter.js` (useSecurityPresenter) runs four parts.
+  - Two-factor: since when it has been on (`twoFactorEnabledAt`, one of section 7's API needs). Turning it off asks for the password and a code. Turning it on shows the QR code and the key from `POST /users/me/2fa/setup`, then takes a code.
+  - Change password: the new password has Register's strength meter, and the new one is typed twice. Changing it signs out every other device. A Google-only account is told there is no password to change.
+  - Signed-in devices: each with its last use and IP. Any device but this one can be signed out, or all the others at once.
+  - Recent activity: from `GET /users/me/activity`, ten at a time, with failed attempts in red.
+  - The simulator's code (123456, now `DEMO_CODE` in `presenters/shared/demoAccounts.js`) is named in the dialogs, with "Use the demo code". Password and two-factor changes are confirmed by the account's own security notification, which the header shows as a toast, so they add no second one.
+  - Views: `views/components/account/TwoFactorCard.js`, `TwoFactorSetupModal.js`, `ChangePasswordForm.js`, `SessionList.js`, `ActivityTable.js` and `views/pages/account/SecurityPage.js`; styles in `styles/pages/account.css`. PasswordStrengthMeter's styles moved from `pages/auth.css` to `components/fields.css`, since two pages use it now. The account layout's phone column became `minmax(0, 1fr)`, so a wide table scrolls inside its panel instead of widening the page.
+  - The board matches apart from these: the dates, which follow the demo clock; the meter's words, since the board shows a typed password; and the 13 px panel labels. Signing in adds a "Logged in" row for now above the drawn rows.
+  - Twenty-seven checks covered the page at rest, signing out one device and then the rest, turning two-factor off (a wrong password, then right) and on again (a wrong code, then the demo code), Escape and focus, the password form's four refusals and its success, and the new password signing in. Register still matches its board at 960 px tall.
 
 ### Conflicts and differences
 
@@ -2106,6 +2115,11 @@ The owner approved these decisions on 25 Oct 2026.
 | Profile: the theme | `preferences.theme` light or dark; only light is drawn | A Theme select showing Light | Light, and "Dark (not designed yet)" listed but disabled. The header's toggle explains the same |
 | Profile: Member since | — | 24 Oct 2026 | The join date moves with the demo clock like every other time, so it can read a day later |
 | Checkboxes | UI kit: an ink box with a white tick | Unchecked on Profile: the browser's white box with a grey edge | The browser's checkbox in ink, which gives both drawn states |
+| Security: what is built | Section 2: change password is Core; 2FA, devices and activity are stretch | All four drawn | All four built, since the board draws them and the mock serves them |
+| Security: the password form at rest | — | Three typed passwords and "Strong." | Empty fields. The meter shows four grey bars and "At least 8 characters." from the start, so nothing jumps as you type |
+| Security: the order of devices | `GET /users/me/sessions` | This device, then Safari (used yesterday), then Firefox (used today) | This device first, then the others in the order they signed in, as drawn. The API sorts by last use, so the presenter reorders |
+| Security: turning two-factor on and off | TwoFactorSetupModal (QR from qrcode.react) | Only "Turn off" is drawn | Two dialogs in the confirm dialog's style: off asks for the password and a code; on shows the QR (the vendored encoder) and the key, then takes a code. Marked not drawn |
+| Security: recent activity | `GET /users/me/activity` | Six rows, the newest a login at 25 Oct 14:02 | Pages of ten. Signing in adds a row for now above the drawn ones |
 
 ### Checklist
 
@@ -2142,7 +2156,7 @@ Pages drawn
 - [x] History
 - [x] Orders and the detail drawer
 - [x] Profile
-- [ ] Security
+- [x] Security
 - [ ] Verification
 - [ ] Admin dashboard
 - [ ] Admin users
@@ -2188,6 +2202,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | AccountSidebar | `views/components/navigation/AccountSidebar.js` |
 | ProfilePage, useProfilePresenter | `views/pages/account/ProfilePage.js`, `presenters/account/profile.presenter.js` |
 | ProfileForm, PreferencesForm | `views/components/account/ProfileForm.js`, `PreferencesForm.js` |
+| SecurityPage, useSecurityPresenter | `views/pages/account/SecurityPage.js`, `presenters/account/security.presenter.js` |
+| TwoFactorCard, TwoFactorSetupModal | `views/components/account/TwoFactorCard.js`, `TwoFactorSetupModal.js` (turning it on, and off) |
+| ChangePasswordForm, SessionList, ActivityTable | `views/components/account/ChangePasswordForm.js`, `SessionList.js`, `ActivityTable.js` |
 | AdminSidebar, AdminTopbar | `views/components/navigation/AdminSidebar.js`, `AdminTopbar.js` |
 | Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
 | Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |
@@ -2451,6 +2468,7 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | Repository root | `scripts/` with `check-data`, `extract-boards`, `screenshots` and `copy-vendor`; `serve` and Playwright as dev dependencies | Tooling for the static phase; Node runs only these |
 | Change | 6 Flow A, step 7 | Open orders live in `models/stores/order.store.js`, which merges `order.update` and ignores copies older than the one it holds | The ladder's "You" tags, Your orders and the Orders page read one list, and a late 202 can't undo an update the socket already delivered |
 | Change | 7 UI design | VerifyEmailBanner is 54 px tall with 15 px text and a small secondary button; checkboxes are the browser's own in ink | As the Profile board and the kit draw them |
+| Change | 2 Routes | `/account/security` builds two-factor, devices and activity now, not as stretch | The Security board draws them and the mock already serves their endpoints |
 | Addition | 4 API | The mock's `GET /orders` and `GET /trades` also take `?side=` | The Orders board filters by side; a pending decision for the real API |
 | Change | 2 Routes, 5 Components | `/orders` also answers `?order=` (the drawer, which Close and Back shut) and `?trade=` (the order that trade filled) | History links to orders and trades, and the drawer belongs in the browser's history |
 | Change | 7 Patterns, Order lifecycle | One module builds the lifecycle and ledger lines for Trade and the order drawer, in each board's wording | The two boards word the same steps differently |
