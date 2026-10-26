@@ -1,0 +1,118 @@
+/* WalletPage (board Wallet): the value and allocation panels side by side,
+   then the balances table. */
+
+.wallet-page { padding-top: 46px; padding-bottom: 72px; }
+
+.wallet-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 23px; }
+.wallet-head p { margin-top: 11px; }
+.wallet-head-actions { display: flex; align-items: center; gap: 8px; margin-bottom: -0.4px; }
+.wallet-head-actions .btn { min-height: 42px; padding: 0 16.5px; font-size: 16px; font-weight: 600; }
+.wallet-head-actions .history-btn { min-height: 42px; padding: 0 14px; font-size: 16px; text-decoration: underline; text-underline-offset: 3px; }
+
+.wallet-top { display: grid; grid-template-columns: minmax(0, 549fr) minmax(0, 649fr); gap: 17px; }
+
+.wallet-total,
+.wallet-allocation { padding: 22px 24px 24px; }
+
+.wallet-note { margin-top: 12px; color: var(--ink-3); font-size: 13px; line-height: 18.8px; }
+
+/* Total value */
+.wallet-total-value { margin-top: 13px; display: flex; align-items: baseline; gap: 10px; }
+.wallet-total-amount { font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.wallet-total-unit { color: var(--ink-2); font-size: 18px; }
+
+.wallet-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 16.9px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.wallet-split > div { padding-top: 10.8px; }
+.wallet-split > div + div { padding-left: 16px; border-left: 1px solid var(--line-soft); }
+.wallet-split dt { color: var(--ink-2); font-size: 13px; }
+.wallet-split dd { margin-top: 2.1px; }
+.wallet-total .wallet-note { margin-top: 15.5px; }
+.wallet-split-amount { font-size: 20px; font-weight: 700; }
+.wallet-split-unit { font-size: 14px; }
+
+/* Allocation */
+.allocation-bar { display: flex; gap: 2px; height: 22px; margin-top: 15px; }
+.allocation-segment { min-width: 2px; }
+.allocation-segment.asset-usdt, .allocation-swatch.asset-usdt { background: var(--asset-usdt); }
+.allocation-segment.asset-btc, .allocation-swatch.asset-btc { background: var(--asset-btc); }
+.allocation-segment.asset-eth, .allocation-swatch.asset-eth { background: var(--asset-eth); }
+.allocation-segment.asset-sol, .allocation-swatch.asset-sol { background: var(--asset-sol); }
+.allocation-segment.asset-bnb, .allocation-swatch.asset-bnb { background: var(--asset-bnb); }
+
+.allocation-legend { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; margin-top: 13px; }
+
+.allocation-item {
+  display: grid;
+  grid-template-columns: 12px auto auto 1fr;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 32px;
+}
+
+.allocation-swatch { width: 12px; height: 12px; }
+.allocation-code { font-size: 15px; font-weight: 700; }
+.allocation-share { margin-left: -2px; color: var(--ink-3); font-size: 15px; }
+.allocation-value { font-size: 13px; text-align: right; }
+.allocation-empty { margin-top: 16px; color: var(--ink-2); }
+
+/* Balances */
+.wallet-balances { margin-top: 18.5px; }
+.wallet-balances .panel-head { min-height: 51px; }
+.wallet-balances .check { align-items: center; }
+.wallet-balances .check-label { font-size: 14px; }
+
+.balances-table { table-layout: fixed; }
+.balances-table th { height: 40px; }
+.balances-table td,
+.balances-table tbody th { height: 62px; font-size: 14px; }
+.balances-table .col-asset { width: 202px; }
+.balances-table .col-total { width: 185px; }
+.balances-table .col-free { width: 185px; }
+.balances-table .col-held { width: 185px; }
+.balances-table .col-value { width: 160px; font-weight: 600; }
+.balances-table thead .col-value { font-weight: 700; }
+.balances-table .col-actions { text-align: right; }
+
+.balance-asset { display: inline-flex; align-items: center; gap: 14px; }
+.balance-name { display: grid; line-height: 1.15; }
+.balance-code { font-size: 16px; font-weight: 700; }
+.balance-full { color: var(--ink-2); font-size: 13px; font-weight: 400; }
+
+.balance-actions { display: inline-flex; gap: 15px; font-size: 14px; }
+.balance-actions .link { font-size: 14px; }
+.link-off { color: var(--ink-3); font-weight: 500; cursor: default; }
+.balances-empty { padding: 20px 16px !important; color: var(--ink-2); }
+.balances-hidden { padding: 10px 16px; border-top: var(--rule-row); color: var(--ink-3); font-size: 13px; }
+
+@media (max-width: 1099px) {
+  .wallet-top { grid-template-columns: 1fr; }
+  .balances-table .col-asset { width: 230px; }
+  .balances-table .col-total, .balances-table .col-free, .balances-table .col-held { width: 140px; }
+  .balances-table .col-value { width: 120px; }
+}
+
+@media (max-width: 767px) {
+  .wallet-page { padding-top: 24px; }
+  .wallet-head { flex-direction: column; align-items: stretch; }
+  .wallet-head-actions { flex-wrap: wrap; }
+  .wallet-total, .wallet-allocation { padding: 18px 16px 20px; }
+  .wallet-total-amount { font-size: 40px; }
+  .wallet-split { grid-template-columns: 1fr; }
+  .wallet-split > div + div { padding-left: 0; border-left: 0; }
+  .allocation-legend { grid-template-columns: 1fr; }
+  /* The phone table keeps the asset, its total and value; free and held fold away */
+  .balances-table .col-free, .balances-table .col-held { display: none; }
+  .balances-table .col-asset { width: auto; }
+  .balances-table .col-total { width: 112px; }
+  .balances-table .col-value { width: 104px; }
+  .balances-table .col-actions { display: none; }
+  .balances-table th, .balances-table td { padding-left: 10px; padding-right: 10px; }
+  .balances-table thead .col-value { letter-spacing: 0.04em; }
+  .balance-asset { gap: 10px; }
+}

@@ -1994,7 +1994,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - Views: `views/components/auth/LoginForm.js`, `TwoFactorPrompt.js` (shared with the OAuth callback page later) and `AuthParts.js` (GoogleButton, the "or" rule, PasswordField with its Show button, PasswordStrengthMeter, the brand panel's words, and the demo sign-in helper). The page is `views/pages/auth/LoginPage.js`, which fills both halves of AuthLayout. Styles are in `styles/pages/auth.css`. `Field` takes `describedBy` for an extra description.
   - `npm run compare` gained `--height` (the sign-in boards are 900 and 960 px tall, and centre their cards) and ordered `--fill`, `--click` and `--wait-for` steps, so the code step can be measured. Both boards match with no run off by more than 2 px. A Playwright script went through 24 sign-in behaviours: empty fields, a wrong password, Show, the demo fill, a wrong code and the tries left, going back, signing in, the guest-only guard, `next` (and an outside `next` ignored), the lockout, and Google.
 - **26 Oct 2026 · Register.** `presenters/auth/register.presenter.js` (useRegisterPresenter) checks the display name (2 to 40 characters), the email and the password, and requires the tick for the Terms and the Risk notice (the form alone checks it, as section 7 says). It then calls `POST /auth/register`, starts the session and lands on `?next=` or `/markets` with a toast. The password meter comes from `password.rules`: four bars, a word (Too weak, Fair, Good, Strong) and what would raise it, tied to the field with `aria-describedby`. A taken email or a refused field shows under that field.
-  - Views: `views/components/auth/RegisterForm.js` and `views/pages/auth/RegisterPage.js`; the brand panel's "10,000 USDT" is in `AuthParts.js`. The board matches, filled the way it is drawn ("Good", box ticked), with no run off by more than 2 px. Nine checks covered the empty form, the meter's four levels, a taken email, and an account that signs in with 10,000 USDT and the confirm-email banner.
+  - Views: `views/components/auth/RegisterForm.js` and `views/pages/auth/RegisterPage.js`; the brand panel's "10,000 USDT" is in `AuthParts.js`. The board matches, filled the way it is drawn ("Good", box ticked), with no run off by more than 2 px. Nine checks covered the empty form, three of the meter's levels, a taken email, and an account that signs in with 10,000 USDT and the confirm-email banner.
+- **26 Oct 2026 · Wallet.** `presenters/wallet/wallet.presenter.js` (useWalletPresenter) values every balance at the live last prices through `portfolio.rules`. It gives the total and splits it into free and held (orders and pending withdrawals). It builds the allocation bar in the fixed asset order and one table row per asset. USDT shows to the cent, coins to their decimals, and zero as "0". Hide small balances drops rows worth under 1 USDT and is saved on the account with `PATCH /users/me`, so it follows the user. Balance events keep every figure live.
+  - Views: `views/components/wallet/BalanceOverviewCard.js`, `views/components/charts/AllocationBar.js` (plain HTML with 2 px gaps and a legend), `views/components/wallet/AssetBalanceTable.js` and `views/pages/wallet/WalletPage.js`; styles in `styles/pages/wallet.css`. The board matches except for its hidden "Actions" header. Thirteen checks covered the figures, the links, hiding small balances (kept after a reload and saved on the account), and an order that moves 500 USDT from free to held while the page is open.
 
 ### Conflicts and differences
 
@@ -2049,6 +2051,8 @@ The owner approved these decisions on 25 Oct 2026.
 | Register: after sign-up | — | Not drawn | The new account goes to `?next=` or `/markets`, with a toast that the 10,000 USDT is in the wallet and a confirmation link was sent. The confirm-email banner shows until "Resend link" is used |
 | Register: the Terms and Risk links | — | Underlined links inside the tick's label | They open in a new tab, so the half-filled form isn't lost |
 | Register: the tick box | UI kit: 18 px box | 14 px box on this board | 14 px here, as drawn; the whole label is the click target |
+| Wallet: Withdraw in a row | — | BNB's Withdraw is grey | Withdraw is grey text, not a link, when nothing of that asset is free or its withdrawals are off. USDT's Trade link opens the last market traded |
+| Wallet on a phone | — | Only the 1440 px board | The panels stack. The table keeps the asset, its total and its value; free, held and the row links fold away, and Deposit and Withdraw stay at the top |
 
 ### Checklist
 
@@ -2079,7 +2083,7 @@ Pages drawn
 - [x] Trade, phone
 - [x] Log in and its 2FA step
 - [x] Register
-- [ ] Wallet
+- [x] Wallet
 - [ ] Deposit
 - [ ] Withdraw
 - [ ] History
@@ -2165,6 +2169,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | RegisterForm | `views/components/auth/RegisterForm.js` |
 | LoginForm, TwoFactorPrompt | `views/components/auth/LoginForm.js`, `TwoFactorPrompt.js` |
 | GoogleButton, PasswordStrengthMeter | `views/components/auth/AuthParts.js`, with the brand panel's words, PasswordField and the demo sign-in helper |
+| WalletPage, useWalletPresenter | `views/pages/wallet/WalletPage.js`, `presenters/wallet/wallet.presenter.js` |
+| BalanceOverviewCard, AssetBalanceTable | `views/components/wallet/BalanceOverviewCard.js`, `AssetBalanceTable.js` |
+| AllocationBar | `views/components/charts/AllocationBar.js` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |
