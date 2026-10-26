@@ -2260,14 +2260,13 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | StatCard, QueueCard | `views/components/admin/StatCard.js`, `QueueCard.js` |
 | AdminUsersPage, useAdminUsersPresenter | `views/pages/admin/AdminUsersPage.js`, `presenters/admin/users.presenter.js` |
 | UserFilters, UserTable | `views/components/admin/UserTable.js` |
-| Pagination | `views/components/ui/Pagination.js` ("1 of 6" on phones) |
 | VolumeBarChart | `views/components/charts/VolumeBarChart.js` (HTML bars and a table) |
 | Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
 | Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |
 | Input, NumberInput, Select, SearchInput | `views/components/ui/Field.js` (Field, NumberField, Select, SearchInput, Checkbox, RadioCards) |
 | Tabs | `views/components/ui/Tabs.js` |
 | Badge | `views/components/ui/StatusMarker.js` |
-| Table, Pagination | `views/components/ui/Table.js`, `Pagination.js` |
+| Table, Pagination | `views/components/ui/Table.js`, `Pagination.js` ("1 of 6" on phones) |
 | Card | `views/components/ui/Panel.js` |
 | Modal, Drawer, ConfirmDialog | `views/components/ui/Overlay.js` |
 | EmptyState, Skeleton | `views/components/ui/EmptyState.js` |
