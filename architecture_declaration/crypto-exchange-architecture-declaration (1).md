@@ -1993,6 +1993,8 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · Log in and its 2FA step.** `presenters/auth/login.presenter.js` (useLoginPresenter) checks the fields, then calls `POST /auth/login`. When the account has two-factor on, it moves to the code step, which shows the tries left on the ticket (5 to start, from `INVALID_2FA_CODE.details.attemptsLeft`). A ticket that runs out of tries sends the user back to the password. A locked account is told the time sign-in reopens. After signing in, the page goes to `?next=` when that is a path on this site, otherwise `/admin` for an admin and `/markets` for everyone else.
   - Views: `views/components/auth/LoginForm.js`, `TwoFactorPrompt.js` (shared with the OAuth callback page later) and `AuthParts.js` (GoogleButton, the "or" rule, PasswordField with its Show button, PasswordStrengthMeter, the brand panel's words, and the demo sign-in helper). The page is `views/pages/auth/LoginPage.js`, which fills both halves of AuthLayout. Styles are in `styles/pages/auth.css`. `Field` takes `describedBy` for an extra description.
   - `npm run compare` gained `--height` (the sign-in boards are 900 and 960 px tall, and centre their cards) and ordered `--fill`, `--click` and `--wait-for` steps, so the code step can be measured. Both boards match with no run off by more than 2 px. A Playwright script went through 24 sign-in behaviours: empty fields, a wrong password, Show, the demo fill, a wrong code and the tries left, going back, signing in, the guest-only guard, `next` (and an outside `next` ignored), the lockout, and Google.
+- **26 Oct 2026 · Register.** `presenters/auth/register.presenter.js` (useRegisterPresenter) checks the display name (2 to 40 characters), the email and the password, and requires the tick for the Terms and the Risk notice (the form alone checks it, as section 7 says). It then calls `POST /auth/register`, starts the session and lands on `?next=` or `/markets` with a toast. The password meter comes from `password.rules`: four bars, a word (Too weak, Fair, Good, Strong) and what would raise it, tied to the field with `aria-describedby`. A taken email or a refused field shows under that field.
+  - Views: `views/components/auth/RegisterForm.js` and `views/pages/auth/RegisterPage.js`; the brand panel's "10,000 USDT" is in `AuthParts.js`. The board matches, filled the way it is drawn ("Good", box ticked), with no run off by more than 2 px. Nine checks covered the empty form, the meter's four levels, a taken email, and an account that signs in with 10,000 USDT and the confirm-email banner.
 
 ### Conflicts and differences
 
@@ -2044,6 +2046,9 @@ The owner approved these decisions on 25 Oct 2026.
 | Log in: Google | GoogleButton starts `GET /auth/google` | "Continue with Google" | The button stays; until the backend exists it shows a toast saying so (approved: Google sign-in waits for the backend) |
 | Log in: the code | TwoFactorPrompt sends the code with a button | "Verify and log in" | The button stays, and six digits also send themselves, once, as authenticator fields usually do |
 | Log in: where it lands | GuestRoute sends signed-in users to `/markets` | — | After signing in: `?next=` when it is a path on this site; otherwise `/admin` for an admin and `/markets` for everyone else |
+| Register: after sign-up | — | Not drawn | The new account goes to `?next=` or `/markets`, with a toast that the 10,000 USDT is in the wallet and a confirmation link was sent. The confirm-email banner shows until "Resend link" is used |
+| Register: the Terms and Risk links | — | Underlined links inside the tick's label | They open in a new tab, so the half-filled form isn't lost |
+| Register: the tick box | UI kit: 18 px box | 14 px box on this board | 14 px here, as drawn; the whole label is the click target |
 
 ### Checklist
 
@@ -2073,7 +2078,7 @@ Pages drawn
 - [x] Trade, desktop
 - [x] Trade, phone
 - [x] Log in and its 2FA step
-- [ ] Register
+- [x] Register
 - [ ] Wallet
 - [ ] Deposit
 - [ ] Withdraw
@@ -2156,6 +2161,8 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | OrderTimeline | `views/components/orders/OrderTimeline.js` |
 | LedgerTable | `views/components/wallet/LedgerTable.js` (the per-order columns; History adds its own) |
 | LoginPage, useLoginPresenter | `views/pages/auth/LoginPage.js`, `presenters/auth/login.presenter.js` |
+| RegisterPage, useRegisterPresenter | `views/pages/auth/RegisterPage.js`, `presenters/auth/register.presenter.js` |
+| RegisterForm | `views/components/auth/RegisterForm.js` |
 | LoginForm, TwoFactorPrompt | `views/components/auth/LoginForm.js`, `TwoFactorPrompt.js` |
 | GoogleButton, PasswordStrengthMeter | `views/components/auth/AuthParts.js`, with the brand panel's words, PasswordField and the demo sign-in helper |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
