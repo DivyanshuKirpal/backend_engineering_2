@@ -65,7 +65,7 @@
 .admin-main { flex: 1; padding: 24px 24.4px; }
 
 @media (max-width: 899px) {
-  .admin-layout { grid-template-columns: 1fr; }
+  .admin-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .admin-topbar { padding: 8px 16px; flex-wrap: wrap; }
   .admin-main { padding: 16px; }
 }

@@ -2088,6 +2088,18 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
     - approving, with the account approved;
     - the Approved and Rejected lists with their decisions;
     - no sideways scroll on phones.
+- **26 Oct 2026 · Admin withdrawals.** `presenters/admin/withdrawals.presenter.js` (useAdminWithdrawalsPresenter) lists requests by status from `GET /admin/withdrawals`: Pending oldest first, Completed and Rejected newest decision first. The tabs sit in the topbar, Pending with its count.
+  - Each row shows when the request came and how long it has waited (the oldest in brass), who sent it with their identity check (`userKycStatus`, one of section 7's API needs), the amount, fee and what arrives, and the address with Copy.
+  - Approve asks first, in a ConfirmDialog that says what will go where. Reject takes a reason in the shared RejectReasonModal. Both reload the sidebar's counts at once.
+  - Under the table, two cards say what each decision writes to the ledger, as drawn.
+  - Views: `views/components/admin/WithdrawalQueueTable.js` and `views/pages/admin/AdminWithdrawalsPage.js`.
+  - On phones the admin layout gives its spare height to the page, not the ink sidebar row.
+  - The board matches apart from the times and the KYC marks, which the board writes as characters. Thirteen checks covered:
+    - the queue and its facts, the oldest wait, and Copy;
+    - backing out of an approval, then approving, with `withdrawal` and `withdrawal_fee` written to the ledger and the sidebar count falling;
+    - rejecting with a common reason, with `withdrawal_unlock` written;
+    - the Completed (with the hash) and Rejected (with the reason) lists;
+    - no sideways scroll on phones.
 
 ### Conflicts and differences
 
@@ -2184,6 +2196,8 @@ The owner approved these decisions on 25 Oct 2026.
 | Admin KYC: after a decision | KycReviewPanel → Button | Only the pending queue is drawn | Approved and Rejected lists, newest decision first, with when (and why); the panel shows the decision instead of the buttons. Not drawn |
 | Admin KYC: rejecting | RejectReasonModal → Modal, Input, Button | "Reject with a reason" | A dialog with the reason the person sees and three common ones to pick. Not drawn |
 | Admin KYC: the images | `GET /admin/kyc/:id/document` streams the image | A placeholder drawing, "The real image is streamed to admins only" | Opening an application fetches its document image (audited); the mock answers with a placeholder, drawn as on the board. A selfie, when sent, opens on request (also audited; not drawn) |
+| Admin withdrawals: approving | ConfirmDialog in the tree | Approve and Reject buttons | Approve asks first, saying what goes to which address and the fee taken |
+| Admin withdrawals: after a decision | — | Only Pending is drawn | Completed and Rejected lists, newest first, with when, the hash or the reason. Not drawn |
 | Admin users: identity-check marks | Status markers: tick, clock, cross | Written as characters: "✓ Approved", "◷ Pending" | StatusMarker's drawn marks, as everywhere else; "Not started" plain, without a box |
 
 ### Checklist
@@ -2226,7 +2240,7 @@ Pages drawn
 - [x] Admin dashboard
 - [x] Admin users
 - [x] Admin KYC review
-- [ ] Admin withdrawals
+- [x] Admin withdrawals
 - [ ] Admin system
 
 Core pages not drawn, built simply and marked undesigned
@@ -2277,7 +2291,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | UserFilters, UserTable | `views/components/admin/UserTable.js` |
 | AdminKycPage, useAdminKycPresenter | `views/pages/admin/AdminKycPage.js`, `presenters/admin/kyc.presenter.js` |
 | KycQueueTable, KycReviewPanel | `views/components/admin/KycReview.js` |
-| RejectReasonModal | `views/components/admin/RejectReasonModal.js` |
+| RejectReasonModal | `views/components/admin/RejectReasonModal.js` (KYC review and withdrawals) |
+| AdminWithdrawalsPage, useAdminWithdrawalsPresenter | `views/pages/admin/AdminWithdrawalsPage.js`, `presenters/admin/withdrawals.presenter.js` |
+| WithdrawalQueueTable | `views/components/admin/WithdrawalQueueTable.js` |
 | VolumeBarChart | `views/components/charts/VolumeBarChart.js` (HTML bars and a table) |
 | Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
 | Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |

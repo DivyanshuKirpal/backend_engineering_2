@@ -145,7 +145,45 @@
 .doc-placeholder figcaption { min-height: 31.3px; padding: 8px 10.5px 0; background: rgba(22, 22, 22, 0.78); color: var(--on-fill); font-size: 13px; }
 .doc-loading .doc-shape { opacity: 0.5; }
 
+/* Withdrawals: the requests, then what each decision writes */
+.withdrawals-table { table-layout: fixed; }
+.withdrawals-table th { height: 43.7px; }
+.withdrawals-table td,
+.withdrawals-table tbody th { height: 64px; padding-top: 0; padding-bottom: 0; border-bottom-color: var(--line-soft); white-space: nowrap; }
+.withdrawals-table tbody tr:last-child td,
+.withdrawals-table tbody tr:last-child th { border-bottom: 0; }
+.withdrawals-table td.t-mono { font-size: 13px; }
+.withdrawals-table .col-requested { width: 143.6px; }
+.withdrawals-table td.col-requested { font-size: 13px; }
+.withdrawals-table .col-user { width: 123px; }
+.withdrawals-table .col-asset { width: 80px; }
+.withdrawals-table .col-amount { width: 120.4px; }
+.withdrawals-table .col-fee { width: 123.7px; }
+.withdrawals-table .col-receive { width: 123.8px; }
+.withdrawals-table .col-address { width: 259.4px; padding-left: 8.1px; }
+.withdrawals-table .col-decision { padding-right: 14.4px; }
+.withdrawals-table td.col-address { display: flex; align-items: center; gap: 8px; height: 64px; }
+.withdrawals-table .col-address .t-mono { font-size: 13px; }
+.wd-sub { display: block; margin-top: 0; color: var(--ink-2); font-size: 13px; font-weight: 400; line-height: 16.9px; }
+.wd-sub.queue-wait-oldest { color: var(--brass); }
+.withdrawals-table td.col-requested .wd-sub { margin-top: -1.8px; }
+.withdrawals-table .wd-kyc { display: flex; font-size: 13px; line-height: 16.9px; }
+.wd-asset { font-weight: 700; }
+.wd-receive { font-weight: 600; }
+.wd-reason { overflow: hidden; text-overflow: ellipsis; }
+.wd-actions { display: inline-flex; gap: 5.5px; }
+.wd-actions .btn { min-height: 36px; padding: 0 14px; font-size: 14px; }
+.wd-empty { padding: 24px 16px !important; color: var(--ink-2); }
+.withdrawals-panel .list-foot { min-height: 44px; }
+.wd-explain { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12.7px; margin-top: 16px; }
+.wd-card { min-height: 104px; padding: 15.8px 18px 16px; }
+.wd-card h2 { font-size: 16px; font-weight: 700; }
+.wd-card p { margin-top: 4.1px; color: var(--ink-2); font-size: 15px; line-height: 22.5px; }
+.wd-card code { padding: 0 1.5px; color: var(--ink); font-size: 13px; line-height: 1; }
+
 @media (max-width: 1099px) {
+  .withdrawals-table { table-layout: auto; min-width: 1100px; }
+  .wd-explain { grid-template-columns: 1fr; }
   .kyc-page { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .queue-grid { grid-template-columns: 1fr; }
