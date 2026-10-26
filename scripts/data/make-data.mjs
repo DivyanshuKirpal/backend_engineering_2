@@ -532,12 +532,16 @@ const audit = [
   [demoActor, 'auth.login_failed', 'user', DEMO, '198.51.100.7', 'Safari on iPhone', '2026-10-24T21:39:12Z'],
   [demoActor, 'auth.login', 'user', DEMO, '198.51.100.7', 'Safari on iPhone', '2026-10-24T21:40:03Z'],
   [demoActor, 'auth.login', 'user', DEMO, '192.0.2.44', 'Firefox on Windows', '2026-10-25T08:02:44Z'],
+  // Added with Admin · User detail: Daniel Okafor is frozen, so an audit entry says why. Its id is
+  // fixed, so the generator's other ids stay as they were.
+  [adminActor, 'admin.user_frozen', 'user', people.find((p) => p.user.email === 'd.okafor@example.com').user.id, '198.51.100.120', 'Chrome on Windows', '2026-10-22T18:24:30Z',
+    { reason: 'Flooding BTC/USDT with tiny orders that slowed the book', ordersCancelled: 0 }, '66f6a2d81c4e7b3f9a0d5e14'],
   [adminActor, 'admin.market_halted', 'market', 'BNB-USDT', '198.51.100.120', 'Chrome on Windows', '2026-10-25T13:05:00.120Z'],
   [adminActor, 'auth.login', 'user', ADMIN, '198.51.100.120', 'Chrome on Windows', '2026-10-25T13:58:42Z'],
   [demoActor, 'auth.login', 'user', DEMO, '203.0.113.24', 'Chrome on macOS', '2026-10-25T14:02:05Z'],
-].map(([actor, action, targetType, targetId, ip, device, at]) => ({
-  id: oid('66f7'), actor, action, targetType, targetId,
-  metadata: action === 'admin.market_halted' ? { cancelOpenOrders: true } : {},
+].map(([actor, action, targetType, targetId, ip, device, at, metadata, fixedId]) => ({
+  id: fixedId ?? oid('66f7'), actor, action, targetType, targetId,
+  metadata: metadata ?? (action === 'admin.market_halted' ? { cancelOpenOrders: true } : {}),
   ip, device, createdAt: iso(at),
 }));
 write('audit-logs.json', { items: audit });

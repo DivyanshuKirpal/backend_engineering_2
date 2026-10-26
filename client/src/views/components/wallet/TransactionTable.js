@@ -35,3 +35,21 @@ export function TransactionTable(list, { onCancel } = {}) {
         ]))
       : h('tr', {}, h('td', { colspan: head.length, class: 'transactions-empty' }, list.empty))));
 }
+
+/** Deposits and withdrawals together, newest first, read-only (Admin · User). list: { rows, empty }. */
+export function AccountTransactionTable(list) {
+  const head = [['Time'], ['Type'], ['Asset'], ['Amount', 'num'], ['Fee', 'num'], ['Address'], ['Status']];
+  return h('table', { class: 'table transactions-table transactions-account' },
+    h('caption', { class: 'sr-only' }, 'Their deposits and withdrawals, newest first'),
+    h('thead', {}, h('tr', {}, head.map(([label, cls]) => h('th', { scope: 'col', class: cls }, label)))),
+    h('tbody', {}, list.rows.length
+      ? list.rows.map((r) => h('tr', { key: r.key },
+        h('td', { class: 't-mono' }, r.time),
+        h('td', {}, r.type),
+        h('td', {}, r.asset),
+        h('td', { class: `num t-mono tone-${r.tone}` }, r.amount),
+        h('td', { class: 'num t-mono' }, r.fee),
+        h('td', { class: 't-mono' }, r.addressFull ? [r.address, ' ', CopyButton({ value: r.addressFull, iconOnly: true, label: 'Copy the address' })] : '—'),
+        h('td', {}, StatusMarker(r.status), r.reason ? h('span', { class: 'transaction-reason' }, r.reason) : null)))
+      : h('tr', {}, h('td', { colspan: head.length, class: 'transactions-empty' }, list.empty))));
+}

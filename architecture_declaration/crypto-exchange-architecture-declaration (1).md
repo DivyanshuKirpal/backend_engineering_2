@@ -2119,6 +2119,15 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - Twelve checks (`legal.check.mjs`): reached from the footer, the simulator note, titles, the current link, moving between the three and back, the unknown slug, and no sideways scroll on phones for each.
 - **26 Oct 2026 · 404 (undesigned).** `views/pages/info/NotFoundPage.js`, built with the foundations, stays as it was: section 5's EmptyState with the address, "Go to markets" and "Home", marked "Not drawn yet". One fix: a long address with no break points pushed phones sideways, so the address in `.empty-state-page` now wraps anywhere (`styles/components/notices.css`).
   - Twelve checks (`not-found.check.mjs`): the words, address and title, both ways back, a deeper unknown path, markup in the address kept as text, the same page when signed in, and no sideways scroll on phones, with a long address too.
+- **26 Oct 2026 · Admin user detail (undesigned).** `presenters/admin/userDetail.presenter.js` (useAdminUserDetailPresenter) reads `GET /admin/users/:id` and shows, as section 5 lists them:
+  - UserProfileCard: role, account status, email, identity check, two-factor, how they sign in, joined, last login, wrong passwords in a row, and holdings valued in USDT;
+  - UserActionsPanel: freeze or unfreeze with a reason in the shared RejectReasonModal (`PATCH …/status`). Freezing says how many open orders it cancels. A frozen account shows who froze it, when and why, from the newest `admin.user_frozen` audit entry (`GET /admin/audit-logs?action=`);
+  - the role select, then a ConfirmDialog (`PATCH …/role`). The only admin can't be made a user, and an admin can't freeze themselves or change their own role; the mock refuses both too;
+  - UserBalancesTable, OpenOrdersTable read-only, and the deposits and withdrawals.
+  - Views: `views/components/admin/UserDetail.js` and `views/pages/admin/AdminUserDetailPage.js`; styles in `styles/pages/admin.css`. The page title becomes the person's name once it loads.
+  - Shared parts grew options: OpenOrdersTable `readOnly` (no Cancel; ids as text, since the drawer is the owner's), `AccountTransactionTable` beside TransactionTable, and RejectReasonModal's labels, tone and a line above the field.
+  - Mock: `recentOrders` keeps the newest ten and adds any older order still open, so the page lists every open order. The seed gains the audit entry for Daniel Okafor's freeze, which was missing (section 4: every admin change is audited). It is added in `scripts/data/make-data.mjs` too, with a fixed id, so the generator still reproduces the data.
+  - No board: marked "Not drawn yet". Thirty checks (`admin-user-detail.check.mjs`): reached from Users; the topbar, title, facts, balances, read-only open orders and the deposit; freezing (the reason is required, four orders cancelled as `account_frozen`, locks released, audited), unfreezing; backing out of a role change, promoting and demoting; your own page; the API refusing to demote the last admin; Daniel's reason; an unknown id; no sideways scroll on phones.
 
 ### Conflicts and differences
 
@@ -2269,7 +2278,7 @@ Core pages not drawn, built simply and marked undesigned
 - [x] Fees
 - [x] Legal
 - [x] 404
-- [ ] Admin user detail
+- [x] Admin user detail
 - [ ] Admin markets
 - [ ] OAuth callback, which waits for the backend
 
@@ -2311,9 +2320,11 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | StatCard, QueueCard | `views/components/admin/StatCard.js`, `QueueCard.js` |
 | AdminUsersPage, useAdminUsersPresenter | `views/pages/admin/AdminUsersPage.js`, `presenters/admin/users.presenter.js` |
 | UserFilters, UserTable | `views/components/admin/UserTable.js` |
+| AdminUserDetailPage, useAdminUserDetailPresenter | `views/pages/admin/AdminUserDetailPage.js`, `presenters/admin/userDetail.presenter.js` |
+| UserProfileCard, UserActionsPanel, UserBalancesTable | `views/components/admin/UserDetail.js`; the open orders and transactions use OpenOrdersTable (`readOnly`) and `AccountTransactionTable` |
 | AdminKycPage, useAdminKycPresenter | `views/pages/admin/AdminKycPage.js`, `presenters/admin/kyc.presenter.js` |
 | KycQueueTable, KycReviewPanel | `views/components/admin/KycReview.js` |
-| RejectReasonModal | `views/components/admin/RejectReasonModal.js` (KYC review and withdrawals) |
+| RejectReasonModal | `views/components/admin/RejectReasonModal.js` (KYC review, withdrawals, and freezing or unfreezing on Admin · User) |
 | AdminWithdrawalsPage, useAdminWithdrawalsPresenter | `views/pages/admin/AdminWithdrawalsPage.js`, `presenters/admin/withdrawals.presenter.js` |
 | WithdrawalQueueTable | `views/components/admin/WithdrawalQueueTable.js` |
 | AdminSystemPage, useAdminSystemPresenter | `views/pages/admin/AdminSystemPage.js`, `presenters/admin/system.presenter.js` |
@@ -2351,7 +2362,7 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | LedgerTable | `views/components/wallet/LedgerTable.js` (the per-order columns, named per board; History adds its own) |
 | OrdersPage, useOrdersPresenter | `views/pages/orders/OrdersPage.js`, `presenters/orders/orders.presenter.js` |
 | OrderFilters | `views/components/orders/OrderFilters.js` |
-| OpenOrdersTable, OrderHistoryTable, TradeHistoryTable | `views/components/orders/OrderTables.js` |
+| OpenOrdersTable, OrderHistoryTable, TradeHistoryTable | `views/components/orders/OrderTables.js` (OpenOrdersTable takes `readOnly` for Admin · User) |
 | OrderDetailDrawer | `views/components/orders/OrderDetailDrawer.js` (in a Drawer from `views/components/ui/Overlay.js`) |
 | LoginPage, useLoginPresenter | `views/pages/auth/LoginPage.js`, `presenters/auth/login.presenter.js` |
 | RegisterPage, useRegisterPresenter | `views/pages/auth/RegisterPage.js`, `presenters/auth/register.presenter.js` |
@@ -2371,7 +2382,7 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | KycForm | `views/components/account/KycForm.js` (with KycApplication, what was sent) and `views/components/ui/FileDrop.js` |
 | TransactionTable (pending withdrawals), Table (fees and minimums) | `RecentTransactions` and `FeesTable` in `views/components/wallet/FundsParts.js` |
 | TransactionsPage, useTransactionsPresenter, useCursorList | `views/pages/wallet/TransactionsPage.js`, `presenters/wallet/transactions.presenter.js`, `presenters/shared/cursorList.js` |
-| TransactionTable | `views/components/wallet/TransactionTable.js` |
+| TransactionTable | `views/components/wallet/TransactionTable.js`, with `AccountTransactionTable` (both kinds, read-only) for Admin · User |
 | LedgerTable (Ledger tab) | `LedgerHistoryTable` in `views/components/wallet/LedgerTable.js` |
 | FeesPage, useFeesPresenter | `views/pages/info/FeesPage.js`, `presenters/info/fees.presenter.js` |
 | LegalPage, useLegalPresenter | `views/pages/info/LegalPage.js`, `presenters/info/legal.presenter.js` |
@@ -2593,6 +2604,8 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Change | 7 Patterns, Order lifecycle | One module builds the lifecycle and ledger lines for Trade and the order drawer, in each board's wording | The two boards word the same steps differently |
 | Change | 7 UI design, 8 | The Trade board's 14:15 candle reaches 62,400.00, and every candle interval comes from one 15-minute series | The board's sell order filled at 62,400.00 inside that candle, and the intervals must agree with each other |
 | Addition | Repository root | `scripts/checks/` holds a Playwright behaviour check per page (`npm run checks`); `scripts/data/` keeps the seed and candle generators as a record | The checks guard each page's behaviour from now on, and the record shows how the demo data was made |
+| Addition | 4 API | The mock's `GET /admin/users/:id` returns in `recentOrders` the newest ten orders plus any older one still open; a pending decision for the real API | The admin user page lists every open order, and freezing cancels them all |
+| Change | 3 Schemas (auditLogs), 8 | The seed's frozen user, Daniel Okafor, gains the `admin.user_frozen` audit entry with its reason | Every admin change writes an audit log (section 4), and the user page shows why an account is frozen |
 
 ### Sources
 

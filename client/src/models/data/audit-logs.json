@@ -123,6 +123,24 @@
         "createdAt": "2026-10-25T08:02:44.000Z"
       },
       {
+        "id": "66f6a2d81c4e7b3f9a0d5e14",
+        "actor": {
+          "id": "66e8d47b2c9f5a1e3d6b0a12",
+          "email": "admin@orichal.app",
+          "role": "admin"
+        },
+        "action": "admin.user_frozen",
+        "targetType": "user",
+        "targetId": "66e62281a147fcf69e90d5a1",
+        "metadata": {
+          "reason": "Flooding BTC/USDT with tiny orders that slowed the book",
+          "ordersCancelled": 0
+        },
+        "ip": "198.51.100.120",
+        "device": "Chrome on Windows",
+        "createdAt": "2026-10-22T18:24:30.000Z"
+      },
+      {
         "id": "66f702f704dca580c615cb73",
         "actor": {
           "id": "66e8d47b2c9f5a1e3d6b0a12",

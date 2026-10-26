@@ -18,6 +18,7 @@ function EmptyRow(span, empty) {
 }
 
 function OrderLink(r, what = 'order') {
+  if (!r.href) return h('span', { class: 'order-link t-mono' }, r.id ?? r.order);
   return h('a', {
     class: 'link order-link t-mono',
     href: r.href,
@@ -34,11 +35,15 @@ const OPEN_COLUMNS = [
   ['Status', 'col-status'], [null, 'col-actions'],
 ];
 
-/** list: { rows, empty }. onCancel(id) cancels one order. */
-export function OpenOrdersTable(list, { onCancel }) {
+/**
+ * list: { rows, empty }. onCancel(id) cancels one order. `readOnly` (Admin ·
+ * User) drops the Cancel column; rows without an href show the id as text.
+ */
+export function OpenOrdersTable(list, { onCancel, readOnly = false, caption = 'Your open orders, newest first' } = {}) {
+  const columns = readOnly ? OPEN_COLUMNS.slice(0, -1) : OPEN_COLUMNS;
   return h('table', { class: 'table orders-table orders-open' },
-    h('caption', { class: 'sr-only' }, 'Your open orders, newest first'),
-    Head(OPEN_COLUMNS),
+    h('caption', { class: 'sr-only' }, caption),
+    Head(columns),
     h('tbody', {}, list.rows.length
       ? list.rows.map((r) => h('tr', { key: r.key, class: cx({ current: r.current }) },
         h('td', { class: 't-mono col-placed' }, r.placed),
@@ -50,14 +55,14 @@ export function OpenOrdersTable(list, { onCancel }) {
         h('td', { class: 'num t-mono' }, r.filled),
         h('td', { class: 'num t-mono' }, r.total),
         h('td', { class: 'col-status' }, StatusMarker(r.status)),
-        h('td', { class: 'num col-actions' }, h('button', {
+        readOnly ? null : h('td', { class: 'num col-actions' }, h('button', {
           type: 'button',
           class: 'btn btn-quiet btn-sm',
           disabled: r.cancelling,
           'aria-label': r.cancelling ? `Cancelling order ${r.id}` : `Cancel order ${r.id}`,
           onClick: () => onCancel(r.key),
         }, r.cancelling ? 'Cancelling…' : 'Cancel'))))
-      : EmptyRow(OPEN_COLUMNS.length, list.empty)));
+      : EmptyRow(columns.length, list.empty)));
 }
 
 const HISTORY_COLUMNS = [

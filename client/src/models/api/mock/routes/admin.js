@@ -82,11 +82,13 @@ export default [
   ['GET', '/admin/users/:id', (ctx) => {
     session.requireAdmin(ctx);
     const u = userOr404(ctx.params.id);
+    // The newest ten, plus any older order that is still open, so the page can list every open one
+    const orders = db().orders.filter((o) => o.userId === u.id).sort(newestFirst());
     return {
       data: {
         user: adminUserDto(u),
         balances: wallet.balances(u.id),
-        recentOrders: db().orders.filter((o) => o.userId === u.id).sort(newestFirst()).slice(0, 10).map(toOrderDto),
+        recentOrders: orders.filter((o, i) => i < 10 || OPEN.has(o.status)).map(toOrderDto),
         recentTransactions: db().transactions.filter((t) => t.userId === u.id).sort(newestFirst()).slice(0, 10).map((t) => transactionDto(t)),
       },
     };

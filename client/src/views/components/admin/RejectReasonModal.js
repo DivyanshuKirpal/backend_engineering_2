@@ -1,13 +1,19 @@
 // RejectReasonModal (section 5): turning something down with the reason the
 // person will see, typed or picked from a few common ones. KYC review and
-// withdrawals both use it. Not drawn yet: it follows the confirm dialog.
+// withdrawals both use it, and Admin · User freezes and unfreezes with it.
+// Not drawn yet: it follows the confirm dialog.
 
 import { h } from '../../dom.js';
 import { Modal } from '../ui/Overlay.js';
 import { Field } from '../ui/Field.js';
 
-/** r: { title, hint, reason, error, busy, suggestions: [string] } */
+/**
+ * r: { title, hint, reason, error, busy, suggestions: [string] }, and
+ * optionally body (a line above the field), confirmLabel, busyLabel,
+ * cancelLabel and tone ('danger', the default, or 'primary').
+ */
 export function RejectReasonModal(r, { onInput, onConfirm, onCancel }) {
+  const { confirmLabel = 'Reject', busyLabel = 'Rejecting…', cancelLabel = 'Keep reviewing', tone = 'danger' } = r;
   return Modal({ title: r.title, titleId: 'reject-title', onClose: onCancel, className: 'reject-dialog' },
     h('form', {
       class: 'dialog-form',
@@ -18,6 +24,7 @@ export function RejectReasonModal(r, { onInput, onConfirm, onCancel }) {
       },
     },
     h('div', { class: 'dialog-body' },
+      r.body ? h('p', {}, r.body) : null,
       h('div', { ref: (el) => { if (!el.__focused) { el.__focused = true; requestAnimationFrame(() => el.querySelector('input')?.focus()); } } },
         Field({ id: 'reject-reason', label: 'Reason', value: r.reason, error: r.error, hint: r.hint, autocomplete: 'off', maxlength: 200, disabled: r.busy, onInput })),
       r.suggestions?.length
@@ -25,6 +32,6 @@ export function RejectReasonModal(r, { onInput, onConfirm, onCancel }) {
           r.suggestions.map((s) => h('button', { key: s, type: 'button', class: 'btn btn-quiet btn-xs', onClick: () => onInput(s) }, s)))
         : null),
     h('div', { class: 'dialog-actions' },
-      h('button', { type: 'button', class: 'btn btn-secondary', onClick: onCancel }, 'Keep reviewing'),
-      h('button', { type: 'submit', class: 'btn btn-danger-outline', disabled: r.busy }, r.busy ? 'Rejecting…' : 'Reject'))));
+      h('button', { type: 'button', class: 'btn btn-secondary', onClick: onCancel }, cancelLabel),
+      h('button', { type: 'submit', class: tone === 'danger' ? 'btn btn-danger-outline' : 'btn btn-primary', disabled: r.busy }, r.busy ? busyLabel : confirmLabel))));
 }

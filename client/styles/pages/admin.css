@@ -225,7 +225,48 @@
 .engine-note { min-height: 43.4px; padding: 10.7px 18px 0; border-top: var(--rule); color: var(--ink-2); font-size: 14px; }
 .engine-note code { padding: 0 3px 0 0; color: var(--ink); font-size: 13px; }
 
+/* User detail (not drawn): who they are beside what can be done, then their
+   balances, open orders and transactions in the shared tables */
+.user-back { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 14px; font-size: 14px; }
+.user-detail-top { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.user-profile-head { display: flex; align-items: center; gap: 14px; padding: 17.4px 19.8px 16px; border-bottom: var(--rule); }
+.user-profile-head .user-tile { width: 44px; height: 44px; margin: 0; font-size: 16px; }
+.user-profile-name { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.user-profile-email { margin-top: 2px; color: var(--ink-2); font-size: 14px; overflow-wrap: anywhere; }
+.user-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 0; padding: 17.2px 19.8px 19px; }
+.user-facts dt { color: var(--ink-2); font-size: 13px; }
+.user-facts dd { margin: 2px 0 0; font-size: 15px; font-weight: 700; }
+.user-facts dd.t-mono { font-size: 14px; font-weight: 600; }
+.user-facts .status { gap: 5px; }
+.user-action { display: grid; justify-items: start; gap: 10px; padding: 17px 19.8px 19px; }
+.user-action + .user-action { border-top: var(--rule); }
+.user-action-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; justify-self: stretch; }
+.user-action-head h2 { font-size: 17px; font-weight: 700; }
+.user-action-note { color: var(--ink-2); font-size: 14px; line-height: 1.45; }
+.user-action-why { color: var(--ink-3); font-size: 13px; }
+.user-role-now { font-size: 15px; font-weight: 700; }
+.user-role-row { display: flex; align-items: flex-start; gap: 8px; justify-self: stretch; }
+.user-role-row .field { flex: 1 1 auto; }
+.user-role-row .btn { margin-top: 24px; }
+
+.user-section { margin-top: 20px; }
+.user-detail .table td,
+.user-detail .table tbody th { height: 52px; padding-top: 0; padding-bottom: 0; border-bottom-color: var(--line-soft); white-space: nowrap; }
+.user-detail .table td.t-mono { font-size: 13px; }
+.user-asset { display: inline-flex; align-items: center; gap: 10px; }
+.user-asset-name { color: var(--ink-2); font-weight: 400; }
+.user-value { font-weight: 600; }
+.user-empty { padding: 20px 16px !important; color: var(--ink-2); }
+.user-detail .orders-table .col-market { font-weight: 700; }
+.user-detail .side-word { margin-right: 2.8px; font-weight: 700; }
+.user-detail .orders-empty { padding: 24px 16px; }
+.user-detail .transaction-reason { display: block; margin-top: 2px; color: var(--ink-2); font-size: 13px; }
+.user-detail .copy-btn { margin-left: 4px; vertical-align: middle; }
+.user-detail td:has(.transaction-reason) { height: auto; padding-top: 8px; padding-bottom: 8px; }
+.user-missing { padding: 32px 16px; }
+
 @media (max-width: 1099px) {
+  .user-detail-top { grid-template-columns: 1fr; }
   .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .engine-table { table-layout: auto; min-width: 1000px; }
   .withdrawals-table { table-layout: auto; min-width: 1100px; }
