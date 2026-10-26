@@ -2111,6 +2111,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · The checks join the repo.** The behaviour checks each page was built with had lived outside the repo. They are now `scripts/checks/<page>.check.mjs`, one file per page, unchanged apart from their set-up. `harness.mjs` starts the server and signs in as `screenshots.mjs` does, and prints only the failures and a count. `npm run checks` runs them all, and `npm run checks -- <page>` runs one.
   - All sixteen pass: Trade 48, Log in and Register 33, Wallet 13, Deposit 17, Withdraw 19, History 14, Orders 36 (37 with `--shots`, which adds the phone drawer's check), Profile 14, Security 27, Verification 17, the five admin pages 21, 16, 17, 13 and 12, and the mock end to end 36.
   - `scripts/data/` keeps the seed generator and the candle scripts as a record. They still reproduce all 26 data files byte for byte, but they write only to a folder you name: the committed JSON is the source of truth.
+- **26 Oct 2026 · Fees (undesigned).** `presenters/info/fees.presenter.js` (useFeesPresenter) reads `GET /markets` and `GET /assets` through the tickers and assets stores. `views/pages/info/FeesPage.js` draws two tables, as section 5 has it: per market the maker and taker rates, plus the smallest order, smallest amount, price step and status; per asset whether deposits are free, the withdrawal fee and the smallest withdrawal. Between them, two notes say who pays which rate and that the fee comes out of what you receive. Styles are in `styles/pages/info.css`, shared with Legal.
+  - No board: it follows the wallet's fee tables, and says "Not drawn yet". The extra columns go beyond section 2's list because they are the other limits a trader meets on the ticket.
+  - Eleven checks (`fees.check.mjs`): reached from the footer, the rates and limits, BNB/USDT halted, the five assets, the notes, a failed load with Try again, and the tables scrolling inside their panels on phones with no sideways scroll.
 
 ### Conflicts and differences
 
@@ -2258,7 +2261,7 @@ Pages drawn
 
 Core pages not drawn, built simply and marked undesigned
 
-- [ ] Fees
+- [x] Fees
 - [ ] Legal
 - [ ] 404
 - [ ] Admin user detail
@@ -2365,6 +2368,7 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | TransactionsPage, useTransactionsPresenter, useCursorList | `views/pages/wallet/TransactionsPage.js`, `presenters/wallet/transactions.presenter.js`, `presenters/shared/cursorList.js` |
 | TransactionTable | `views/components/wallet/TransactionTable.js` |
 | LedgerTable (Ledger tab) | `LedgerHistoryTable` in `views/components/wallet/LedgerTable.js` |
+| FeesPage, useFeesPresenter | `views/pages/info/FeesPage.js`, `presenters/info/fees.presenter.js` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |
