@@ -34,6 +34,7 @@
 .empty-state-title { color: var(--ink); font-size: 17px; font-weight: 700; }
 .empty-state-page { max-width: 560px; margin: 24px auto; padding: 48px 24px; background: var(--bg-panel); border: var(--rule); }
 .empty-state-page .empty-state-title { font-size: var(--fs-section); }
+.empty-state-page code { overflow-wrap: anywhere; }
 .empty-state-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
 
 /* The router's loading and error states */

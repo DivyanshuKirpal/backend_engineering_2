@@ -2117,6 +2117,8 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · Legal (undesigned).** `presenters/info/legal.presenter.js` (useLegalPresenter) holds the terms of use, privacy and risk notice, and `views/pages/info/LegalPage.js` shows one at a time in a panel (section 5's Card). Each opens with a brass-ruled note that Orichal is a simulator, as section 2 asks. The switcher is a row of real links marked `aria-current`, so Back and Forward move between them; an unknown slug says so and offers the three.
   - No board: set like the account pages' panels, and marked "Not drawn yet". Privacy says that this version keeps everything in the browser's local storage.
   - Twelve checks (`legal.check.mjs`): reached from the footer, the simulator note, titles, the current link, moving between the three and back, the unknown slug, and no sideways scroll on phones for each.
+- **26 Oct 2026 · 404 (undesigned).** `views/pages/info/NotFoundPage.js`, built with the foundations, stays as it was: section 5's EmptyState with the address, "Go to markets" and "Home", marked "Not drawn yet". One fix: a long address with no break points pushed phones sideways, so the address in `.empty-state-page` now wraps anywhere (`styles/components/notices.css`).
+  - Twelve checks (`not-found.check.mjs`): the words, address and title, both ways back, a deeper unknown path, markup in the address kept as text, the same page when signed in, and no sideways scroll on phones, with a long address too.
 
 ### Conflicts and differences
 
@@ -2266,7 +2268,7 @@ Core pages not drawn, built simply and marked undesigned
 
 - [x] Fees
 - [x] Legal
-- [ ] 404
+- [x] 404
 - [ ] Admin user detail
 - [ ] Admin markets
 - [ ] OAuth callback, which waits for the backend
