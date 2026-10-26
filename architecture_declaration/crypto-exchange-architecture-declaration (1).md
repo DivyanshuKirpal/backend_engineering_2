@@ -2000,6 +2000,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · Deposit.** `presenters/wallet/deposit.presenter.js` (useDepositPresenter) follows `?asset=` and keeps it in the address bar as the asset changes, so Back works. It loads the simulated address (`GET /wallet/deposit-address/:asset`) and checks a deposit against the asset's decimals and `demoDepositLimit` before `POST /wallet/deposits`. It lists the five latest deposits and the most per deposit from the assets list.
   - Views: `views/components/wallet/FundsParts.js` holds AssetSelect, DepositAddressCard, SimulateDepositForm, RecentTransactions (the short list beside a form) and LimitsTable, all of which Withdraw reuses. `views/components/ui/QrCode.js` draws the vendored encoder's modules as one SVG path. The page is `views/pages/wallet/DepositPage.js`, with styles in `styles/pages/funds.css`. `NumberField` gained `labelOutside` and `beside`.
   - The board was drawn 1425 px wide, leaving room for a scrollbar, so `npm run compare` gained `--dx` and measures it 7.6 px over. Every run is within 2 px except the 12 px panel labels, which stay 13 px as decided. Seventeen checks covered the default asset, the address and its QR, switching to BTC (and Back), Copy, the three amount errors, a 0.25 BTC deposit (toast, the recent list and the balance), and the card tab.
+- **26 Oct 2026 · Withdraw.** `presenters/wallet/withdraw.presenter.js` (useWithdrawPresenter) follows flow D. It checks the address, the amount and the 2FA code with `withdrawal.rules`: a simulated address for that asset, the fee included, at least the minimum, more than the fee, within the decimals and the free balance. It shows what leaves the wallet, the fee and what they receive, and asks for confirmation before `POST /wallet/withdrawals` locks the amount. Pending withdrawals are listed with Cancel (`DELETE /wallet/withdrawals/:id`). Until KYC is approved, the form gives way to KycRequiredNotice, whose words follow the KYC status.
+  - Views: `views/components/wallet/WithdrawForm.js` (WithdrawForm and WithdrawalSummary), `views/components/account/KycStatusCard.js`, the fees table in `FundsParts.js`, and `views/pages/wallet/WithdrawPage.js`. Styles are in `styles/pages/funds.css`.
+  - The board matches, filled as drawn, except for a text-matching artifact and the 12 px panel labels. Nineteen checks covered the form's errors, Max, the summary, the confirmation, a wrong code (nothing locked), a right one (500 USDT locked and listed), cancelling (500 free again), `?asset=BTC`, and the KYC gate for a new account.
 
 ### Conflicts and differences
 
@@ -2059,6 +2062,9 @@ The owner approved these decisions on 25 Oct 2026.
 | Deposit: the asset at first | `?asset=BTC` picks it | BTC | USDT when the address names no asset (the Wallet's Deposit button); `?asset=` otherwise. An unknown code falls back to USDT |
 | Deposit: the Card tab | CardDepositForm, Stretch | "Card · USDT, test mode" beside Simulated | Shown, and only for USDT. It explains that card deposits need Stripe on the server, and is marked not built |
 | Deposit: recent deposits | TransactionTable | One deposit with its hash | The five latest, with "All history" opening History's Deposits tab. The sign-up credit stays off the list, as the board's note says |
+| Withdraw: confirming | ConfirmDialog | Not drawn | "Request withdrawal" opens a confirmation that says what arrives where and what stays locked; the request goes out from there |
+| Withdraw: before KYC | KycRequiredNotice until approved | Only the approved state | The notice replaces the form, with words for Not started, Pending review and Rejected (with the reason), and a link to Verification. Not drawn |
+| Withdraw: the form at rest | — | An address, 500.00 USDT and four code digits typed | Empty fields. Max fills the free amount (USDT to the cent, rounded down) |
 
 ### Checklist
 
@@ -2091,7 +2097,7 @@ Pages drawn
 - [x] Register
 - [x] Wallet
 - [x] Deposit
-- [ ] Withdraw
+- [x] Withdraw
 - [ ] History
 - [ ] Orders and the detail drawer
 - [ ] Profile
@@ -2181,6 +2187,10 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | DepositPage, useDepositPresenter | `views/pages/wallet/DepositPage.js` (with the Card tab's note), `presenters/wallet/deposit.presenter.js` |
 | AssetSelect, DepositAddressCard, SimulateDepositForm | `views/components/wallet/FundsParts.js`, with the QR in `views/components/ui/QrCode.js` |
 | TransactionTable (recent deposits), Table (most per deposit) | `RecentTransactions` and `LimitsTable` in `views/components/wallet/FundsParts.js` |
+| WithdrawPage, useWithdrawPresenter | `views/pages/wallet/WithdrawPage.js`, `presenters/wallet/withdraw.presenter.js` |
+| WithdrawForm, WithdrawalSummary | `views/components/wallet/WithdrawForm.js` |
+| KycStatusCard | `views/components/account/KycStatusCard.js` |
+| TransactionTable (pending withdrawals), Table (fees and minimums) | `RecentTransactions` and `FeesTable` in `views/components/wallet/FundsParts.js` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |

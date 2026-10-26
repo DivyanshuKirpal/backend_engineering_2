@@ -83,7 +83,7 @@
 .recent-status .status { font-size: 13px; }
 .recent-meta { justify-content: space-between; margin-top: 4px; color: var(--ink-2); font-size: 13px; }
 .recent-hash { font-size: 13px; }
-.recent-state { padding: 16px; color: var(--ink-2); }
+.recent-state { padding: 16px 16px 19px; color: var(--ink-2); font-size: 14px; line-height: 20.3px; }
 .recent-note { padding: 14px 16px 16px; color: var(--ink-2); font-size: 14px; line-height: 20.3px; }
 
 /* The side: one row of limits */
@@ -93,6 +93,64 @@
 .limit:first-child { padding-left: 16.3px; border-left: 0; }
 .limit dt { color: var(--ink-2); font-size: 13px; }
 .limit dd { margin-top: 2px; font-size: 14px; }
+
+/* Withdraw */
+.withdraw-form { display: grid; gap: 18px; padding-top: 30px; }
+.withdraw-asset { position: relative; }
+.withdraw-free { position: absolute; top: -2px; right: 0; color: var(--ink-3); font-size: 14px; }
+.withdraw-free-amount { color: var(--ink); font-size: 14px; }
+.withdraw-form .input { min-height: 46px; padding: 0 13px; }
+.withdraw-form .input.t-mono { font-size: 15px; }
+.withdraw-form .field-hint { color: var(--ink-2); }
+.withdraw-form .number-box { min-height: 46px; padding: 0 5px 0 14px; }
+.withdraw-form .number-input { font-size: 16px; }
+.withdraw-form .number-unit { font-size: 14px; }
+
+.max-btn {
+  height: 36px;
+  margin-left: 4px;
+  padding: 0 11px;
+  border: var(--rule);
+  background: var(--bg-panel);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.max-btn:hover { background: var(--bg-row-hover); }
+
+.withdraw-summary { border-top: 1px solid var(--line-soft); border-bottom: 2px solid var(--ink); }
+.withdraw-summary-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; font-size: 15px; }
+.withdraw-summary-row + .withdraw-summary-row { border-top: 1px solid var(--line-soft); }
+.withdraw-summary-row dt { color: var(--ink-2); }
+.withdraw-summary-row dd { font-size: 15px; }
+.withdraw-summary-total dt { color: var(--ink); font-weight: 700; }
+.withdraw-summary-total { padding-top: 10px; }
+.withdraw-summary-total dd { font-size: 18px; font-weight: 600; line-height: 1.2; }
+
+.withdraw-code { margin-top: 3.6px; }
+.withdraw-code .otp-boxes { grid-template-columns: repeat(6, 48px); gap: 8px; }
+.withdraw-code .otp-box { height: 53px; font-size: 22px; }
+.withdraw-code .field-hint { margin-top: 4px; color: var(--ink-2); font-size: 13px; }
+.withdraw-submit { min-height: 50px; font-size: 17px; }
+.withdraw-note { margin-top: -4px; color: var(--ink-2); font-size: 14px; }
+.withdraw-error { margin-bottom: 2px; }
+
+/* The identity check */
+.kyc-card { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 18px; padding: 19.5px 20px 18.5px; }
+.kyc-card-mark { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; background: var(--ink-3); color: var(--on-fill); }
+.kyc-card-buy .kyc-card-mark { background: var(--buy); }
+.kyc-card-title { font-size: 17px; font-weight: 700; line-height: 1.25; }
+.kyc-card-body { margin-top: 4px; color: var(--ink-2); font-size: 14px; line-height: 20.3px; }
+
+/* Fees and minimums */
+.fees-table { width: 100%; font-size: 14px; }
+.fees-table th, .fees-table td { height: 37px; padding: 0 16px; border-bottom: 1px solid var(--line-row); text-align: left; }
+.fees-table thead th { height: 36px; color: var(--ink-2); font-weight: 400; }
+.fees-table tbody th { font-weight: 700; }
+.fees-table .num { text-align: right; }
+.fees-table td { font-size: 13px; }
+.fees-table tbody tr:last-child th, .fees-table tbody tr:last-child td { border-bottom: 0; }
 
 @media (max-width: 1099px) {
   .funds-grid { grid-template-columns: 1fr; }

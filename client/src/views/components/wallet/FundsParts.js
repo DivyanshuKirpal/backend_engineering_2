@@ -84,3 +84,19 @@ export function LimitsTable({ id, title, cells }) {
       h('dt', {}, c.code),
       h('dd', { class: 't-mono' }, c.value)))));
 }
+
+/** Withdrawal fees and minimums per asset, from the assets list. */
+export function FeesTable({ id, title, rows }) {
+  return h('section', { class: 'panel limits-panel fees-panel', 'aria-labelledby': id },
+    h('div', { class: 'panel-head' }, h('h2', { class: 'panel-label', id }, title)),
+    h('table', { class: 'fees-table' },
+      h('caption', { class: 'sr-only' }, 'Withdrawal fee and minimum per asset'),
+      h('thead', {}, h('tr', {},
+        h('th', { scope: 'col' }, 'Asset'),
+        h('th', { scope: 'col', class: 'num' }, 'Fee'),
+        h('th', { scope: 'col', class: 'num' }, 'Minimum'))),
+      h('tbody', {}, rows.map((r) => h('tr', { key: r.key },
+        h('th', { scope: 'row' }, r.code),
+        h('td', { class: 'num t-mono' }, r.fee),
+        h('td', { class: 'num t-mono' }, r.min))))));
+}
