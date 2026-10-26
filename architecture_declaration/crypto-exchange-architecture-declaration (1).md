@@ -2136,6 +2136,14 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · OAuth callback (undesigned).** `presenters/auth/oauthCallback.presenter.js` (useOAuthCallbackPresenter) reads `?error=` and `#ticket=` once and clears both from the address bar with `tidyAddress()`, a new helper in `presenters/shared/navigation.js` that leaves the router alone. The page shows the error, naming a few known codes and repeating only a short code otherwise. It says Google sign-in needs the server, and links to logging in by email or creating an account (Go to markets when signed in).
   - Views: AuthMessage (section 5's shared card) and the brand panel's OAuthAside in `views/components/auth/AuthParts.js`, and `views/pages/auth/OAuthCallbackPage.js`, in AuthLayout; styles in `styles/pages/auth.css`.
   - Fifteen checks (`oauth-callback.check.mjs`): the error and title, the address cleared and gone after a reload, an unknown code, markup not repeated, the ticket cleared, both links, the signed-in case, and no sideways scroll on phones.
+- **26 Oct 2026 · The static phase closes.**
+  - *Built.* The client, in plain HTML, CSS and JavaScript, on a mock backend that answers section 4's endpoints and socket events. It covers every drawn board, plus the six undesigned Core pages: Fees, Legal, the 404, Admin user detail, Admin markets and the OAuth callback.
+  - *Checked.* All 22 check files pass, 466 checks in all, and `check:data` passes 3,947 checks on its 26 files.
+  - *Last fixes.* The final run caught History drawing USDT ledger amounts with 8 decimals for a moment: the ledger sometimes arrived before the asset list. Its lists now wait for the assets (`presenters/wallet/transactions.presenter.js`). `views/pages/info/PlaceholderPage.js` went, since no Core page uses it now.
+  - *What waits.*
+    - The nine stretch pages, which show "not built yet": coin detail, convert, alerts, notifications, forgot and reset password, the email-confirmation page, admin assets and admin audit logs.
+    - The open items in the checklist: the dark theme, coin icons, Google sign-in and its "G" mark, the colour-blind pair, section 7's API needs, and creating markets (with the Assets page).
+    - The backend: `server/` with Express, MongoDB, Redis and the engine. Then `models/api/http.js` points at it and `models/api/mock/` is deleted; React follows, as the Overview plans.
 
 ### Conflicts and differences
 

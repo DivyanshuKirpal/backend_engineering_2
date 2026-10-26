@@ -76,12 +76,14 @@ export function createTransactionsPresenter({ tab: wantedTab, asset: wantedAsset
   open(tab);
 
   const dp = (code) => assetByCode(code)?.decimals ?? 8;
+  // Amounts take their asset's decimals, so a list waits for the assets before it shows
+  const shown = (l) => (l.status === 'ready' && !['ready', 'error'].includes(assets.get().status) ? 'loading' : l.status);
   const after = (code, value) => (money.isZero(value) ? '0' : amount(value, dp(code)));
 
   function ledgerVm() {
     const l = lists.ledger;
     return {
-      status: l.status,
+      status: shown(l),
       rows: l.items.map((e) => ({
         key: e.id,
         time: ledgerTime(e.time),
@@ -110,7 +112,7 @@ export function createTransactionsPresenter({ tab: wantedTab, asset: wantedAsset
     const l = lists[key];
     const deposits = key === 'deposits';
     return {
-      status: l.status,
+      status: shown(l),
       kind: key,
       rows: l.items.map((t) => ({
         key: t.id,
