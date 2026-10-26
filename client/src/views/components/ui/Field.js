@@ -43,26 +43,33 @@ export function Field({
 
 /**
  * A number field with its label inside on the left and a unit on the right
- * (UI kit, "Number with unit"; the order ticket). Decimal text, never a
+ * (UI kit, "Number with unit"; the order ticket), or with the label above it
+ * (`labelOutside`, as on Deposit and Withdraw). `beside` sits to the box's
+ * right, such as the deposit button. Decimal text, never an
  * <input type=number>, so values keep their exact digits.
  */
-export function NumberField({ id, label, value, unit, error, hint, disabled = false, readOnly = false, onInput, onBlur, trailing = null, placeholder = '' }) {
-  return h('div', { class: cx('number-field', { 'field-invalid': error, 'is-disabled': disabled }) },
-    h('div', { class: 'number-box' },
-      h('label', { class: 'number-label', for: id }, label),
-      h('input', {
-        id, value, placeholder, disabled, readonly: readOnly,
-        class: 'number-input t-mono',
-        inputmode: 'decimal',
-        autocomplete: 'off',
-        spellcheck: 'false',
-        'aria-invalid': error ? 'true' : null,
-        'aria-describedby': describedBy(id, hint, error),
-        onInput: onInput ? (e) => onInput(e.target.value) : null,
-        onBlur,
-      }),
-      unit ? h('span', { class: 'number-unit', 'aria-hidden': 'true' }, unit) : null,
-      trailing),
+export function NumberField({
+  id, label, value, unit, error, hint, disabled = false, readOnly = false, onInput, onBlur, trailing = null, placeholder = '', labelOutside = false,
+  beside = null,
+}) {
+  const box = h('div', { class: 'number-box' },
+    labelOutside ? null : h('label', { class: 'number-label', for: id }, label),
+    h('input', {
+      id, value, placeholder, disabled, readonly: readOnly,
+      class: 'number-input t-mono',
+      inputmode: 'decimal',
+      autocomplete: 'off',
+      spellcheck: 'false',
+      'aria-invalid': error ? 'true' : null,
+      'aria-describedby': describedBy(id, hint, error),
+      onInput: onInput ? (e) => onInput(e.target.value) : null,
+      onBlur,
+    }),
+    unit ? h('span', { class: 'number-unit', 'aria-hidden': 'true' }, unit) : null,
+    trailing);
+  return h('div', { class: cx('number-field', { 'field-invalid': error, 'is-disabled': disabled, 'number-field-outside': labelOutside }) },
+    labelOutside ? h('label', { class: 'field-label', for: id }, label) : null,
+    beside ? h('div', { class: 'number-row' }, box, beside) : box,
     Messages(id, hint, error));
 }
 

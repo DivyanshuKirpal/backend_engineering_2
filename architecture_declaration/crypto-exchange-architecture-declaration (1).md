@@ -1997,6 +1997,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - Views: `views/components/auth/RegisterForm.js` and `views/pages/auth/RegisterPage.js`; the brand panel's "10,000 USDT" is in `AuthParts.js`. The board matches, filled the way it is drawn ("Good", box ticked), with no run off by more than 2 px. Nine checks covered the empty form, three of the meter's levels, a taken email, and an account that signs in with 10,000 USDT and the confirm-email banner.
 - **26 Oct 2026 · Wallet.** `presenters/wallet/wallet.presenter.js` (useWalletPresenter) values every balance at the live last prices through `portfolio.rules`. It gives the total and splits it into free and held (orders and pending withdrawals). It builds the allocation bar in the fixed asset order and one table row per asset. USDT shows to the cent, coins to their decimals, and zero as "0". Hide small balances drops rows worth under 1 USDT and is saved on the account with `PATCH /users/me`, so it follows the user. Balance events keep every figure live.
   - Views: `views/components/wallet/BalanceOverviewCard.js`, `views/components/charts/AllocationBar.js` (plain HTML with 2 px gaps and a legend), `views/components/wallet/AssetBalanceTable.js` and `views/pages/wallet/WalletPage.js`; styles in `styles/pages/wallet.css`. The board matches except for its hidden "Actions" header. Thirteen checks covered the figures, the links, hiding small balances (kept after a reload and saved on the account), and an order that moves 500 USDT from free to held while the page is open.
+- **26 Oct 2026 · Deposit.** `presenters/wallet/deposit.presenter.js` (useDepositPresenter) follows `?asset=` and keeps it in the address bar as the asset changes, so Back works. It loads the simulated address (`GET /wallet/deposit-address/:asset`) and checks a deposit against the asset's decimals and `demoDepositLimit` before `POST /wallet/deposits`. It lists the five latest deposits and the most per deposit from the assets list.
+  - Views: `views/components/wallet/FundsParts.js` holds AssetSelect, DepositAddressCard, SimulateDepositForm, RecentTransactions (the short list beside a form) and LimitsTable, all of which Withdraw reuses. `views/components/ui/QrCode.js` draws the vendored encoder's modules as one SVG path. The page is `views/pages/wallet/DepositPage.js`, with styles in `styles/pages/funds.css`. `NumberField` gained `labelOutside` and `beside`.
+  - The board was drawn 1425 px wide, leaving room for a scrollbar, so `npm run compare` gained `--dx` and measures it 7.6 px over. Every run is within 2 px except the 12 px panel labels, which stay 13 px as decided. Seventeen checks covered the default asset, the address and its QR, switching to BTC (and Back), Copy, the three amount errors, a 0.25 BTC deposit (toast, the recent list and the balance), and the card tab.
 
 ### Conflicts and differences
 
@@ -2053,6 +2056,9 @@ The owner approved these decisions on 25 Oct 2026.
 | Register: the tick box | UI kit: 18 px box | 14 px box on this board | 14 px here, as drawn; the whole label is the click target |
 | Wallet: Withdraw in a row | — | BNB's Withdraw is grey | Withdraw is grey text, not a link, when nothing of that asset is free or its withdrawals are off. USDT's Trade link opens the last market traded |
 | Wallet on a phone | — | Only the 1440 px board | The panels stack. The table keeps the asset, its total and its value; free, held and the row links fold away, and Deposit and Withdraw stay at the top |
+| Deposit: the asset at first | `?asset=BTC` picks it | BTC | USDT when the address names no asset (the Wallet's Deposit button); `?asset=` otherwise. An unknown code falls back to USDT |
+| Deposit: the Card tab | CardDepositForm, Stretch | "Card · USDT, test mode" beside Simulated | Shown, and only for USDT. It explains that card deposits need Stripe on the server, and is marked not built |
+| Deposit: recent deposits | TransactionTable | One deposit with its hash | The five latest, with "All history" opening History's Deposits tab. The sign-up credit stays off the list, as the board's note says |
 
 ### Checklist
 
@@ -2084,7 +2090,7 @@ Pages drawn
 - [x] Log in and its 2FA step
 - [x] Register
 - [x] Wallet
-- [ ] Deposit
+- [x] Deposit
 - [ ] Withdraw
 - [ ] History
 - [ ] Orders and the detail drawer
@@ -2172,6 +2178,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | WalletPage, useWalletPresenter | `views/pages/wallet/WalletPage.js`, `presenters/wallet/wallet.presenter.js` |
 | BalanceOverviewCard, AssetBalanceTable | `views/components/wallet/BalanceOverviewCard.js`, `AssetBalanceTable.js` |
 | AllocationBar | `views/components/charts/AllocationBar.js` |
+| DepositPage, useDepositPresenter | `views/pages/wallet/DepositPage.js` (with the Card tab's note), `presenters/wallet/deposit.presenter.js` |
+| AssetSelect, DepositAddressCard, SimulateDepositForm | `views/components/wallet/FundsParts.js`, with the QR in `views/components/ui/QrCode.js` |
+| TransactionTable (recent deposits), Table (most per deposit) | `RecentTransactions` and `LimitsTable` in `views/components/wallet/FundsParts.js` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |

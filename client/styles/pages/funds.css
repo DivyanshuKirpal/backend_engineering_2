@@ -1,0 +1,112 @@
+/* Deposit and Withdraw (boards Deposit and Withdraw): the form card on the
+   left, recent transactions and the per-asset limits on the right. */
+
+.funds-page { padding-top: 31.9px; padding-bottom: 72px; }
+.crumbs { color: var(--ink-2); font-size: 14px; }
+.crumbs .link { font-size: 14px; }
+.crumbs-sep { margin: 0 1px 0 4px; }
+.funds-page .page-head { margin-top: 27.3px; margin-bottom: 17.8px; }
+.funds-page .page-head p { margin-top: 11px; }
+
+.funds-grid { display: grid; grid-template-columns: minmax(0, 859fr) minmax(0, 340fr); gap: 17px; align-items: start; }
+.funds-side { display: grid; gap: 16px; }
+
+/* The card and its sections, split by soft rules */
+.funds-section { padding: 24px; }
+.funds-section + .funds-section { border-top: 1px solid var(--line-soft); }
+.funds-title { font-size: 20px; font-weight: 700; line-height: 1.2; }
+.funds-error { color: var(--sell); font-weight: 700; }
+
+.funds-pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 16px; padding-bottom: 18.7px; }
+.funds-card .select { min-height: 46px; font-size: 16px; }
+.funds-card .has-leading .select { padding-left: 52px; }
+.funds-card .select-wrap > .asset-tile { left: 12px; }
+
+.deposit-methods .tab { min-height: 44px; padding: 0 17.5px; font-size: 15px; }
+.tab-note { color: var(--ink-3); font-size: 12px; font-weight: 400; }
+.tab.current .tab-note { color: var(--on-ink-2); }
+
+/* Address and QR */
+.deposit-address { display: grid; grid-template-columns: 167px minmax(0, 1fr); gap: 24px; align-items: start; }
+.qr-box { display: grid; place-items: center; width: 167px; height: 167px; border: var(--rule); background: var(--bg-inset); }
+.qr { display: block; }
+.qr path { fill: var(--ink); }
+.deposit-address-body { display: grid; gap: 13.5px; padding-top: 2px; }
+
+.address-field {
+  display: flex;
+  align-items: stretch;
+  min-height: 46px;
+  border: var(--rule);
+  background: var(--bg-inset);
+}
+
+.address-text { flex: 1; align-self: center; min-width: 0; padding: 0 14px; font-size: 15px; overflow-wrap: anywhere; }
+.address-copy { min-width: 78px; border: 0; border-left: var(--rule); font-size: 14px; font-weight: 700; }
+
+.funds-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  min-height: 41px;
+  padding: 0 14px;
+  border: 1px solid var(--brass);
+  background: var(--bg-inset);
+  font-size: 14px;
+}
+
+.funds-warning-icon { flex: none; color: var(--ink-2); }
+
+/* The simulated deposit */
+.deposit-form { display: grid; gap: 20.2px; padding-top: 25.5px; }
+.number-field-outside { gap: 8px; }
+.number-row { display: flex; gap: 12px; }
+.number-row .number-box { flex: 1; }
+.deposit-form .number-box { min-height: 46px; padding: 0 10px 0 14px; }
+.deposit-form .number-input { font-size: 16px; }
+.deposit-form .field-hint { margin-top: 6.6px; color: var(--ink-2); font-size: 14px; }
+.deposit-form .number-unit { font-size: 14px; }
+.deposit-submit { flex: none; width: 153px; min-height: 46px; font-size: 16px; }
+
+.card-deposit p { margin-top: 10px; max-width: 620px; color: var(--ink-2); }
+
+/* The side: recent transactions */
+.recent-panel .panel-head { min-height: 49px; padding-top: 5px; }
+.recent-panel .panel-head .link { font-size: 14px; }
+.recent-panel .recent-list { padding: 0 16px; }
+.recent-row { padding: 18px 0 13px; border-bottom: 1px solid var(--line-soft); }
+.recent-line { display: flex; align-items: baseline; gap: 6px; }
+.recent-asset { font-size: 15px; }
+.recent-amount { font-size: 14px; }
+.recent-status { margin-left: auto; }
+.recent-status .status { font-size: 13px; }
+.recent-meta { justify-content: space-between; margin-top: 4px; color: var(--ink-2); font-size: 13px; }
+.recent-hash { font-size: 13px; }
+.recent-state { padding: 16px; color: var(--ink-2); }
+.recent-note { padding: 14px 16px 16px; color: var(--ink-2); font-size: 14px; line-height: 20.3px; }
+
+/* The side: one row of limits */
+/* Column shares as drawn: the first a little narrower, the last a little wider */
+.limits { display: grid; grid-template-columns: minmax(0, 65.3fr) repeat(3, minmax(0, 68fr)) minmax(0, 69.3fr); }
+.limit { padding: 14px 4px 16px 14.6px; border-left: 1px solid var(--line-soft); }
+.limit:first-child { padding-left: 16.3px; border-left: 0; }
+.limit dt { color: var(--ink-2); font-size: 13px; }
+.limit dd { margin-top: 2px; font-size: 14px; }
+
+@media (max-width: 1099px) {
+  .funds-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 767px) {
+  .funds-page { padding-top: 20px; }
+  .funds-section { padding: 18px 16px; }
+  .funds-pick { grid-template-columns: 1fr; }
+  .deposit-methods { width: 100%; }
+  .deposit-methods .tab { flex: 1; justify-content: center; }
+  .deposit-address { grid-template-columns: 1fr; justify-items: start; }
+  .number-row { flex-direction: column; }
+  .deposit-submit { width: 100%; }
+  .limit { padding-left: 10px; }
+  .limit:first-child { padding-left: 12px; }
+}

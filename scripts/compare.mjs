@@ -7,6 +7,7 @@
 //          [--height=920] [--fresh] [--verified] [--all] [--only=from:to] [--align=<selector>:<boardY>]
 //   <board>  a name in .boards/ without .txt, e.g. screens-p03-markets
 //   --only   keep board runs whose baseline is in that range
+//   --dx     move the page this many px sideways before matching
 //   --align  shift the page so that element's top sits at that board y
 //            (to compare a region, e.g. --align=.app-footer:652)
 //   --fill=<selector>=<text>, --click=<selector>, --wait-for=<selector>
@@ -36,6 +37,8 @@ const height = Number(flag('height', '920'));
 const wait = Number(flag('wait', '800'));
 const only = flag('only', null)?.split(':').map(Number);
 const align = flag('align', null);
+// Shifts the page sideways before matching (the Deposit board was drawn 1425 px wide, leaving room for a scrollbar)
+const dx = Number(flag('dx', '0'));
 const showAll = args.includes('--all');
 const fresh = args.includes('--fresh');
 const verified = args.includes('--verified');
@@ -130,7 +133,10 @@ try {
     }
     return out;
   });
-  for (const d of dom) d.y += shift;
+  for (const d of dom) {
+    d.y += shift;
+    d.x += dx;
+  }
 
   const norm = (s) => s.replace(/\s+/g, ' ').replace(/[‘’]/g, "'").trim().toLowerCase();
   const used = new Set();
