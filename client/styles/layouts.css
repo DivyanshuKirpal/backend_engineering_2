@@ -60,7 +60,9 @@
   border-bottom: var(--rule);
 }
 
-.admin-topbar-title { display: flex; align-items: center; gap: 16px; min-width: 0; flex-wrap: wrap; }
+.admin-topbar-title { display: flex; flex: 1; align-items: center; gap: 16px; min-width: 0; flex-wrap: wrap; }
+/* A page's own action in the topbar sits at its right end */
+.admin-topbar-action { margin-left: auto; }
 .admin-topbar-tools { display: flex; align-items: center; gap: 8px; }
 .admin-main { flex: 1; padding: 24px 24.4px; }
 

@@ -181,7 +181,53 @@
 .wd-card p { margin-top: 4.1px; color: var(--ink-2); font-size: 15px; line-height: 22.5px; }
 .wd-card code { padding: 0 1.5px; color: var(--ink); font-size: 13px; line-height: 1; }
 
+/* System: a card per part of the stack, then the engine per market */
+.admin-topbar-action { gap: 6px; min-height: 36px; font-size: 14px; }
+.admin-topbar-action .icon { width: 12px; height: 12px; }
+.health-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.health-card { min-height: 114.7px; padding: 15.9px 18px 14px; }
+.health-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.health-head h2 { font-size: 17px; font-weight: 700; }
+.health-card .status { gap: 7px; font-size: 14px; }
+.health-body { margin-top: 8.9px; color: var(--ink-2); font-size: 15px; }
+.health-body code { padding: 0; color: var(--ink); font-size: 13px; }
+.health-body code.code-spaced { padding-right: 3px; }
+.health-mono { margin-top: 9px; font-size: 13px; }
+.health-meter { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+.health-meter .t-mono { flex: none; font-size: 13px; white-space: nowrap; }
+.health-bar { position: relative; flex: 1 1 auto; max-width: 236.3px; height: 8px; overflow: hidden; border-radius: 4px; background: color-mix(in srgb, var(--buy) 20%, var(--bg-panel)); }
+.health-bar span { position: absolute; inset: 0 auto 0 0; min-width: 4px; border-right: 2px solid var(--bg-panel); background: var(--buy); }
+
+.engine-card { margin-top: 20px; }
+.engine-head { display: flex; align-items: flex-start; gap: 11.9px; min-height: 53.4px; padding: 13.8px 18px 0; border-bottom: var(--rule); }
+.engine-head h2 { font-size: 17px; font-weight: 700; line-height: 22px; }
+.engine-head p { margin-top: 1.4px; color: var(--ink-2); font-size: 14px; line-height: 20px; }
+.engine-table { table-layout: fixed; }
+.engine-table th,
+.engine-table td,
+.engine-table tbody th { padding: 0 18px; }
+.engine-table th { height: 41.6px; }
+.engine-table td,
+.engine-table tbody th { height: 52px; border-bottom-color: var(--line-soft); white-space: nowrap; }
+.engine-table tbody tr:last-child td,
+.engine-table tbody tr:last-child th { border-bottom: 0; }
+.engine-table td.t-mono { font-size: 13px; }
+.engine-table .col-market { width: 114.8px; }
+.engine-table .col-status { width: 120px; }
+.engine-table .col-waiting { width: 86.6px; }
+.engine-table .col-last { width: 376.4px; padding-left: 6.1px; }
+.engine-table td:nth-child(4) { padding-left: 6.1px; }
+.engine-table .col-levels { width: 175.1px; }
+.engine-table .col-trade { width: 108.8px; padding-left: 6.1px; }
+.engine-table td:nth-child(6) { padding-left: 6.1px; }
+.engine-table .status { gap: 3px; }
+.engine-quiet { color: var(--ink-3); }
+.engine-note { min-height: 43.4px; padding: 10.7px 18px 0; border-top: var(--rule); color: var(--ink-2); font-size: 14px; }
+.engine-note code { padding: 0 3px 0 0; color: var(--ink); font-size: 13px; }
+
 @media (max-width: 1099px) {
+  .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .engine-table { table-layout: auto; min-width: 1000px; }
   .withdrawals-table { table-layout: auto; min-width: 1100px; }
   .wd-explain { grid-template-columns: 1fr; }
   .kyc-page { grid-template-columns: 1fr; }
@@ -191,6 +237,9 @@
 
 @media (max-width: 767px) {
   .stat-grid { grid-template-columns: 1fr; }
+  .health-grid { grid-template-columns: 1fr; }
+  .engine-head { flex-wrap: wrap; padding-bottom: 12px; }
+  .engine-note { padding-bottom: 13px; }
   .kyc-review-facts { grid-template-columns: 1fr 1fr; column-gap: 12px; }
   .doc-photo { left: 16px; width: 30%; }
   .doc-lines { left: calc(30% + 32px); right: 16px; }

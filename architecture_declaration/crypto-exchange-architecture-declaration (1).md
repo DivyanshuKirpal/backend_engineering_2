@@ -2100,6 +2100,14 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
     - rejecting with a common reason, with `withdrawal_unlock` written;
     - the Completed (with the hash) and Rejected (with the reason) lists;
     - no sideways scroll on phones.
+- **26 Oct 2026 · Admin system.** `presenters/admin/system.presenter.js` (useAdminSystemPresenter) reads `GET /admin/system/health` every 5 seconds, and the topbar says when it last did. It shows:
+  - a card for each part of the stack: MongoDB with its replica set and ping; Redis with its append-only file and a memory bar; the matching engine with its leader and heartbeat (it shows "No leader" once the lock would have lapsed); the command streams with what waits; WebSockets per API instance; and the API instances that answer `/health/ready`;
+  - the engine market by market: status, commands waiting, the last command to the millisecond, book levels, the last trade and whether the market maker is quoting;
+  - the note on Prometheus, as drawn.
+  - Redis and the per-market rows are section 7's API needs, and the mock serves them.
+  - "Open Grafana" explains that Grafana comes with the backend, since this phase has no docker-compose.
+  - Views: HealthGrid and EngineStatusCard in `views/components/admin/SystemHealth.js`, and `views/pages/admin/AdminSystemPage.js`. A page's own topbar action sits at the slot's right end (`.admin-topbar-action`); `seconds()` joins `date.format.js`.
+  - The board matches apart from the live numbers and Grafana's place: the board leaves out the theme toggle there, and the toggle stays. Twelve checks covered the six states, the Mongo, Redis and engine details, the four markets with BNB/USDT halted, the refresh, Grafana's note, and no sideways scroll on phones. The other admin pages' checks still pass.
 
 ### Conflicts and differences
 
@@ -2198,6 +2206,8 @@ The owner approved these decisions on 25 Oct 2026.
 | Admin KYC: the images | `GET /admin/kyc/:id/document` streams the image | A placeholder drawing, "The real image is streamed to admins only" | Opening an application fetches its document image (audited); the mock answers with a placeholder, drawn as on the board. A selfie, when sent, opens on request (also audited; not drawn) |
 | Admin withdrawals: approving | ConfirmDialog in the tree | Approve and Reject buttons | Approve asks first, saying what goes to which address and the fee taken |
 | Admin withdrawals: after a decision | — | Only Pending is drawn | Completed and Rejected lists, newest first, with when, the hash or the reason. Not drawn |
+| Admin system: the topbar | AdminTopbar → ThemeToggle, UserMenu; "link to Grafana" | "Open Grafana ↗" where the other boards have the theme toggle | The page's button sits left of the toggle, which stays. In this phase it explains that Grafana comes with the backend |
+| Admin system: inline code | — | A space after code is drawn wider, as if set in the code's type | 3 px more after code that a space follows |
 | Admin users: identity-check marks | Status markers: tick, clock, cross | Written as characters: "✓ Approved", "◷ Pending" | StatusMarker's drawn marks, as everywhere else; "Not started" plain, without a box |
 
 ### Checklist
@@ -2241,7 +2251,7 @@ Pages drawn
 - [x] Admin users
 - [x] Admin KYC review
 - [x] Admin withdrawals
-- [ ] Admin system
+- [x] Admin system
 
 Core pages not drawn, built simply and marked undesigned
 
@@ -2294,6 +2304,8 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | RejectReasonModal | `views/components/admin/RejectReasonModal.js` (KYC review and withdrawals) |
 | AdminWithdrawalsPage, useAdminWithdrawalsPresenter | `views/pages/admin/AdminWithdrawalsPage.js`, `presenters/admin/withdrawals.presenter.js` |
 | WithdrawalQueueTable | `views/components/admin/WithdrawalQueueTable.js` |
+| AdminSystemPage, useAdminSystemPresenter | `views/pages/admin/AdminSystemPage.js`, `presenters/admin/system.presenter.js` |
+| HealthGrid, EngineStatusCard | `views/components/admin/SystemHealth.js` |
 | VolumeBarChart | `views/components/charts/VolumeBarChart.js` (HTML bars and a table) |
 | Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
 | Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |

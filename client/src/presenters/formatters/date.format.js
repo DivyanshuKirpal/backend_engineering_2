@@ -69,6 +69,9 @@ export function waited(iso, now = Date.now()) {
   return `${Math.floor(hours / 24)} d ${hours % 24} h`;
 }
 
+/** A short duration in seconds: 200 -> "0.2 s". */
+export const seconds = (ms) => `${(Number(ms) / 1000).toFixed(1)} s`;
+
 /** "2 s ago", "4 min ago" */
 export function ago(iso, now = Date.now()) {
   const seconds = Math.max(0, Math.round((now - at(iso).getTime()) / 1000));
