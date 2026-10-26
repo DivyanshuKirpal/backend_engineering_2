@@ -2069,6 +2069,13 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
     - the queues, their oldest-first order and their links;
     - the sidebar badges, the phone menu and no sideways scroll;
     - a trader being turned away from `/admin`.
+- **26 Oct 2026 · Admin users.** `presenters/admin/users.presenter.js` (useAdminUsersPresenter) lists people from `GET /admin/users`, newest first and ten to a page. The search box looks up a name or an email and runs when you stop typing. Role and status filters sit beside it. Each row shows the initials (brass for an admin), name, email, role (an ink tag for Admin), account status, identity check, join date, last login, and a link to the person's page. The topbar counts everyone and says the two bot accounts are hidden.
+  - Views: UserFilters and UserTable in `views/components/admin/UserTable.js`, and `views/pages/admin/AdminUsersPage.js`; styles in `styles/pages/admin.css`.
+  - Pagination takes this board's measures: 35.7 px buttons on a 40 px pitch. On a phone the numbers give way to "1 of 6".
+  - The topbar's second line is `.admin-subtitle` on every admin page.
+  - A bug found by the checks: the "Showing 51–54" line changed before the page's rows did. It now follows the rows on screen.
+  - The board matches apart from these: the dates (the demo clock); Rohan's address; the KYC marks, which the board writes as characters (✓ ◷ ✕), so its labels start 15 px left of ours; and Frozen's lock, which is wider there.
+  - Sixteen checks covered paging to page 2 and to the last page, searching by name and by email, a search with no match, the role and status filters, the link to a person, and the phone pager with no sideways scroll.
 
 ### Conflicts and differences
 
@@ -2161,6 +2168,8 @@ The owner approved these decisions on 25 Oct 2026.
 | Admin sidebar: queue badges | Components board: 34 px wide | Every admin screen board: 21.7 px | 21.7 px, as the five screen boards draw it |
 | Admin dashboard: the volume table | VolumeBarChart → Tabs (chart or table), Table | Only the chart is drawn | Day and volume, newest first. Not drawn |
 | Admin dashboard: freshness | — | "Updated 14:32:10" | The time of the last load; it reloads every 30 seconds |
+| Admin users: search | `GET /admin/users?search=` (an email prefix) | "Search by name or email" | The mock matches the start of an email or of any word in the name. A pending decision for the real API |
+| Admin users: identity-check marks | Status markers: tick, clock, cross | Written as characters: "✓ Approved", "◷ Pending" | StatusMarker's drawn marks, as everywhere else; "Not started" plain, without a box |
 
 ### Checklist
 
@@ -2200,7 +2209,7 @@ Pages drawn
 - [x] Security
 - [x] Verification
 - [x] Admin dashboard
-- [ ] Admin users
+- [x] Admin users
 - [ ] Admin KYC review
 - [ ] Admin withdrawals
 - [ ] Admin system
@@ -2249,6 +2258,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | AdminSidebar, AdminTopbar | `views/components/navigation/AdminSidebar.js`, `AdminTopbar.js` |
 | AdminDashboardPage, useAdminDashboardPresenter | `views/pages/admin/AdminDashboardPage.js`, `presenters/admin/dashboard.presenter.js` |
 | StatCard, QueueCard | `views/components/admin/StatCard.js`, `QueueCard.js` |
+| AdminUsersPage, useAdminUsersPresenter | `views/pages/admin/AdminUsersPage.js`, `presenters/admin/users.presenter.js` |
+| UserFilters, UserTable | `views/components/admin/UserTable.js` |
+| Pagination | `views/components/ui/Pagination.js` ("1 of 6" on phones) |
 | VolumeBarChart | `views/components/charts/VolumeBarChart.js` (HTML bars and a table) |
 | Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
 | Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |

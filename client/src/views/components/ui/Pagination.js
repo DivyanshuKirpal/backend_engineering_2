@@ -1,4 +1,5 @@
-// Pagination (section 5; Admin · Users): Previous, numbered pages, Next.
+// Pagination (section 5; Admin · Users): Previous, numbered pages, Next. On
+// a phone the numbers give way to "1 of 6".
 
 import { h, cx } from '../../dom.js';
 
@@ -14,5 +15,6 @@ export function Pagination({ pages, current, onPage, label = 'Pages' }) {
         'aria-label': `Page ${n}`,
         onClick: () => onPage(n),
       }, String(n))))),
+    h('span', { class: 'page-of', 'aria-hidden': 'true' }, `${current} of ${pages}`),
     h('button', { type: 'button', class: 'page-btn page-step page-next', disabled: current >= pages, onClick: () => onPage(current + 1) }, 'Next'));
 }

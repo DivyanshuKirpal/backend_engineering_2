@@ -103,14 +103,14 @@
 .table-dense td { padding: 6px 12px; font-family: var(--font-mono); }
 .table-dense th { height: 30px; padding: 0 12px; }
 
-/* Pagination */
-.pagination { display: flex; align-items: center; gap: 6px; }
-.pagination ul { display: flex; gap: 6px; }
+/* Pagination, as Admin · Users draws it: 35.7 px buttons on a 40 px pitch */
+.pagination { display: flex; align-items: center; gap: 4.3px; }
+.pagination ul { display: flex; gap: 4.3px; }
 
 .page-btn {
-  min-width: 33px;
-  height: 33px;
-  padding: 0 10px;
+  min-width: 35.7px;
+  height: 35px;
+  padding: 0 11.1px;
   border: 1px solid var(--line-soft);
   background: var(--bg-inset);
   color: var(--ink);
@@ -123,6 +123,12 @@
 .page-step { font-family: var(--font-sans); font-size: 14px; }
 .page-step:disabled { color: var(--ink-3); background: var(--bg-panel); cursor: not-allowed; }
 .page-next { border-color: var(--ink); font-weight: 700; }
+.page-of { display: none; color: var(--ink-2); font-family: var(--font-mono); font-size: 13px; }
+
+@media (max-width: 767px) {
+  .pagination ul { display: none; }
+  .page-of { display: inline; padding: 0 6px; }
+}
 
 /* Copy buttons */
 .copy-btn {

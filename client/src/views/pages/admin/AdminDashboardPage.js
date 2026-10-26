@@ -12,7 +12,7 @@ export const styles = ['/styles/pages/admin.css'];
 export const title = () => 'Dashboard';
 
 function Topbar(vm) {
-  return [h('h1', { class: 'admin-title' }, 'Dashboard'), vm.updated ? h('p', { class: 'admin-updated' }, vm.updated) : null];
+  return [h('h1', { class: 'admin-title' }, 'Dashboard'), vm.updated ? h('p', { class: 'admin-subtitle' }, vm.updated) : null];
 }
 
 function DashboardView(vm, actions) {
