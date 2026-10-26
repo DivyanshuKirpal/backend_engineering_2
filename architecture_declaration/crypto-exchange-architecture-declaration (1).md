@@ -2114,6 +2114,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
 - **26 Oct 2026 · Fees (undesigned).** `presenters/info/fees.presenter.js` (useFeesPresenter) reads `GET /markets` and `GET /assets` through the tickers and assets stores. `views/pages/info/FeesPage.js` draws two tables, as section 5 has it: per market the maker and taker rates, plus the smallest order, smallest amount, price step and status; per asset whether deposits are free, the withdrawal fee and the smallest withdrawal. Between them, two notes say who pays which rate and that the fee comes out of what you receive. Styles are in `styles/pages/info.css`, shared with Legal.
   - No board: it follows the wallet's fee tables, and says "Not drawn yet". The extra columns go beyond section 2's list because they are the other limits a trader meets on the ticket.
   - Eleven checks (`fees.check.mjs`): reached from the footer, the rates and limits, BNB/USDT halted, the five assets, the notes, a failed load with Try again, and the tables scrolling inside their panels on phones with no sideways scroll.
+- **26 Oct 2026 · Legal (undesigned).** `presenters/info/legal.presenter.js` (useLegalPresenter) holds the terms of use, privacy and risk notice, and `views/pages/info/LegalPage.js` shows one at a time in a panel (section 5's Card). Each opens with a brass-ruled note that Orichal is a simulator, as section 2 asks. The switcher is a row of real links marked `aria-current`, so Back and Forward move between them; an unknown slug says so and offers the three.
+  - No board: set like the account pages' panels, and marked "Not drawn yet". Privacy says that this version keeps everything in the browser's local storage.
+  - Twelve checks (`legal.check.mjs`): reached from the footer, the simulator note, titles, the current link, moving between the three and back, the unknown slug, and no sideways scroll on phones for each.
 
 ### Conflicts and differences
 
@@ -2262,7 +2265,7 @@ Pages drawn
 Core pages not drawn, built simply and marked undesigned
 
 - [x] Fees
-- [ ] Legal
+- [x] Legal
 - [ ] 404
 - [ ] Admin user detail
 - [ ] Admin markets
@@ -2369,6 +2372,7 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | TransactionTable | `views/components/wallet/TransactionTable.js` |
 | LedgerTable (Ledger tab) | `LedgerHistoryTable` in `views/components/wallet/LedgerTable.js` |
 | FeesPage, useFeesPresenter | `views/pages/info/FeesPage.js`, `presenters/info/fees.presenter.js` |
+| LegalPage, useLegalPresenter | `views/pages/info/LegalPage.js`, `presenters/info/legal.presenter.js` |
 | NotFoundPage | `views/pages/info/NotFoundPage.js` |
 | httpClient | `models/api/http.js` |
 | socketClient | `models/realtime/socket.js` |
