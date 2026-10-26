@@ -37,6 +37,7 @@ The **Simulator · demo funds** badge in the header opens the demo controls: res
 | `npm run boards` | Cuts each design board out of the PDFs as a JPEG plus its text layer, into `.boards/` (git-ignored) |
 | `npm run shots -- --as=demo /wallet` | Screenshots pages at 1440 and 390 px into `.screenshots/` (git-ignored), with Playwright; `--fresh` resets the demo data first, `--verified` confirms the email so the verify banner doesn't show, `--kyc=none` puts the identity check back to Not started |
 | `npm run compare -- /markets screens-p03-markets` | Compares a page's text positions and sizes with a board's text layer (from `npm run boards`) and flags anything more than a few px off; takes `--as`, `--fresh`, `--verified`, `--kyc`, `--width`, `--height` and `--dx`, and `--fill`, `--click` and `--wait-for` steps to reach a state such as the code step |
+| `npm run checks` | Runs the Playwright behaviour checks in `scripts/checks/`, one file per page, each on a fresh copy of the demo data; `npm run checks -- trade` runs one. Each file prints its failures and its count; `--shots` also saves the few screenshots some checks take |
 | `npm run vendor` | Copies the fonts and the QR encoder out of `node_modules` into `client/assets` (the copies are committed) |
 
 ## How it fits together
@@ -53,7 +54,8 @@ client/
     ├── presenters/      one per page or widget: calls models, formats, returns { vm, actions }
     └── views/           layouts/, pages/, components/: build the DOM from vm and actions
 server/                  reserved for the Node/Express API
-scripts/                 tooling: data check, board extraction, screenshots, vendored files
+scripts/                 tooling: data check, board extraction, screenshots, vendored files,
+                         checks/ (behaviour checks), data/ (how the demo data was generated)
 ```
 
 - **Model, View, Presenter.** Views never import models and never format numbers or dates; only page and layout modules call presenters. Money stays a decimal string and is calculated only in `models/domain/money.js`, with BigInt.

@@ -2108,6 +2108,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - "Open Grafana" explains that Grafana comes with the backend, since this phase has no docker-compose.
   - Views: HealthGrid and EngineStatusCard in `views/components/admin/SystemHealth.js`, and `views/pages/admin/AdminSystemPage.js`. A page's own topbar action sits at the slot's right end (`.admin-topbar-action`); `seconds()` joins `date.format.js`.
   - The board matches apart from the live numbers and Grafana's place: the board leaves out the theme toggle there, and the toggle stays. Twelve checks covered the six states, the Mongo, Redis and engine details, the four markets with BNB/USDT halted, the refresh, Grafana's note, and no sideways scroll on phones. The other admin pages' checks still pass.
+- **26 Oct 2026 · The checks join the repo.** The behaviour checks each page was built with had lived outside the repo. They are now `scripts/checks/<page>.check.mjs`, one file per page, unchanged apart from their set-up. `harness.mjs` starts the server and signs in as `screenshots.mjs` does, and prints only the failures and a count. `npm run checks` runs them all, and `npm run checks -- <page>` runs one.
+  - All sixteen pass: Trade 48, Log in and Register 33, Wallet 13, Deposit 17, Withdraw 19, History 14, Orders 36 (37 with `--shots`, which adds the phone drawer's check), Profile 14, Security 27, Verification 17, the five admin pages 21, 16, 17, 13 and 12, and the mock end to end 36.
+  - `scripts/data/` keeps the seed generator and the candle scripts as a record. They still reproduce all 26 data files byte for byte, but they write only to a folder you name: the committed JSON is the source of truth.
 
 ### Conflicts and differences
 
@@ -2272,6 +2275,7 @@ Open items
 - [ ] Colour-blind pair: no setting yet
 - [ ] The API needs listed in section 7
 - [x] Visual checks with Playwright at 1440 and 390 px (approved), plus `npm run compare` against the boards' text layers
+- [x] Behaviour checks for every page in `scripts/checks/` (`npm run checks`)
 
 ### Component map
 
@@ -2578,6 +2582,7 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Change | 2 Routes, 5 Components | `/orders` also answers `?order=` (the drawer, which Close and Back shut) and `?trade=` (the order that trade filled) | History links to orders and trades, and the drawer belongs in the browser's history |
 | Change | 7 Patterns, Order lifecycle | One module builds the lifecycle and ledger lines for Trade and the order drawer, in each board's wording | The two boards word the same steps differently |
 | Change | 7 UI design, 8 | The Trade board's 14:15 candle reaches 62,400.00, and every candle interval comes from one 15-minute series | The board's sell order filled at 62,400.00 inside that candle, and the intervals must agree with each other |
+| Addition | Repository root | `scripts/checks/` holds a Playwright behaviour check per page (`npm run checks`); `scripts/data/` keeps the seed and candle generators as a record | The checks guard each page's behaviour from now on, and the record shows how the demo data was made |
 
 ### Sources
 

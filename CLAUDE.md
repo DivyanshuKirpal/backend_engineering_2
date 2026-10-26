@@ -38,6 +38,7 @@ Orichal is a simulated crypto exchange for a course project. This phase builds t
 - Build order: foundations, shared components, then the pages in the order checklisted in md section 8, then the undesigned Core pages (marked undesigned). Stretch pages wait.
 - Finish each page fully, give a one-line update and keep going. Ask only when something is unclear or hard to undo.
 - Run `npm run check:data` after any change to the static data.
+- After changing a page, run its checks (`npm run checks -- <page>`, from `scripts/checks/`), and run them all (`npm run checks`) before closing a step.
 - Commit after each finished page, with a clear message.
 - After each file or group of related files that changes something, update md section 8: a dated log entry (what, which files, how), any difference from the md or the PDF and why, the checklist and the component map. Each real change also gets a review-log row in the existing format. Never delete sections 1 to 7; mark what this phase does differently.
 
