@@ -65,5 +65,5 @@ scripts/                 tooling: data check, board extraction, screenshots, ven
 ## Not built yet
 
 - Stretch pages (coin detail, convert, alerts, notifications, password reset, email verification page, admin assets and audit logs) show a "not built yet" page.
-- Google sign-in, the OAuth callback and card deposits need the backend.
+- Google sign-in and card deposits need the backend. The OAuth callback page shows Google's error, if any, and says so.
 - The dark theme isn't designed; the theme toggle stays, and the tokens are ready for a dark set.

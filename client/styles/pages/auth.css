@@ -98,6 +98,14 @@
 .auth-or span { position: relative; padding: 0 12px; background: var(--bg-panel); color: var(--ink-3); font-size: 13px; }
 
 .google-btn { min-height: 48px; border-color: var(--ink); font-size: 16px; }
+
+/* AuthMessage (not drawn): the OAuth callback's card */
+.auth-message .auth-error { margin-top: 18px; }
+.auth-message-text { margin-top: 14px; color: var(--ink-2); font-size: 15px; line-height: 1.5; }
+.auth-message-actions { display: grid; gap: 10px; margin-top: 22px; }
+.auth-message-actions .btn { min-height: 48px; }
+/* No demo helper to pin to the bottom: the note stays under the card */
+.auth-stack.auth-stack-plain { display: block; }
 .auth-note { margin-top: 18.8px; color: var(--ink-3); font-size: 13px; }
 
 /* The code step */

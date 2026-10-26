@@ -2133,6 +2133,9 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - *Nothing can be created yet.* All five assets already have a USDT market, and adding assets is the stretch Assets page. The create form is built to the rules, and the page says why it can't be used. The mock's POST checks them (400, or 409 for an existing pair); a new pair can't be sent in this phase.
   - *Mock.* PATCH checks every field before changing any, and a tick or step change rescales the halted market in the simulator (`market.setRules`). Fixed: a halted market rebuilt the bot's ladder from its seed book on reload (BNB only looked right because its seed book is empty).
   - Thirty-three checks (`admin-markets.check.mjs`) cover the edits and refusals (Fees shows the new fee), both halts, the halt on Markets and Trade in the session and after a reload, resume bringing the book back, the new tick in the running book, the create form, the API's refusals and phones. The reload and new-tick checks fail against the old simulator.
+- **26 Oct 2026 · OAuth callback (undesigned).** `presenters/auth/oauthCallback.presenter.js` (useOAuthCallbackPresenter) reads `?error=` and `#ticket=` once and clears both from the address bar with `tidyAddress()`, a new helper in `presenters/shared/navigation.js` that leaves the router alone. The page shows the error, naming a few known codes and repeating only a short code otherwise. It says Google sign-in needs the server, and links to logging in by email or creating an account (Go to markets when signed in).
+  - Views: AuthMessage (section 5's shared card) and the brand panel's OAuthAside in `views/components/auth/AuthParts.js`, and `views/pages/auth/OAuthCallbackPage.js`, in AuthLayout; styles in `styles/pages/auth.css`.
+  - Fifteen checks (`oauth-callback.check.mjs`): the error and title, the address cleared and gone after a reload, an unknown code, markup not repeated, the ticket cleared, both links, the signed-in case, and no sideways scroll on phones.
 
 ### Conflicts and differences
 
@@ -2285,7 +2288,7 @@ Core pages not drawn, built simply and marked undesigned
 - [x] 404
 - [x] Admin user detail
 - [x] Admin markets (nothing can be created yet: every asset has its USDT market)
-- [ ] OAuth callback, which waits for the backend
+- [x] OAuth callback: shows Google's error and says sign-in waits for the backend
 
 Stretch pages come later.
 
@@ -2293,7 +2296,7 @@ Open items
 
 - [ ] Dark theme: not drawn. The toggle stays, and the tokens leave room for a dark set
 - [ ] Coin icons: the lettered tiles stand in
-- [ ] Google sign-in and the OAuth callback wait for the backend; the button still lacks the "G" mark
+- [ ] Google sign-in waits for the backend (the OAuth callback page says so); the button still lacks the "G" mark
 - [ ] Colour-blind pair: no setting yet
 - [ ] The API needs listed in section 7
 - [x] Visual checks with Playwright at 1440 and 390 px (approved), plus `npm run compare` against the boards' text layers
@@ -2374,6 +2377,7 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | LoginPage, useLoginPresenter | `views/pages/auth/LoginPage.js`, `presenters/auth/login.presenter.js` |
 | RegisterPage, useRegisterPresenter | `views/pages/auth/RegisterPage.js`, `presenters/auth/register.presenter.js` |
 | RegisterForm | `views/components/auth/RegisterForm.js` |
+| OAuthCallbackPage, useOAuthCallbackPresenter, AuthMessage | `views/pages/auth/OAuthCallbackPage.js`, `presenters/auth/oauthCallback.presenter.js`; AuthMessage in `views/components/auth/AuthParts.js` |
 | LoginForm, TwoFactorPrompt | `views/components/auth/LoginForm.js`, `TwoFactorPrompt.js` |
 | GoogleButton, PasswordStrengthMeter | `views/components/auth/AuthParts.js`, with the brand panel's words, PasswordField and the demo sign-in helper |
 | WalletPage, useWalletPresenter | `views/pages/wallet/WalletPage.js`, `presenters/wallet/wallet.presenter.js` |
@@ -2614,6 +2618,7 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | 4 API | The mock's `GET /admin/users/:id` returns in `recentOrders` the newest ten orders plus any older one still open; a pending decision for the real API | The admin user page lists every open order, and freezing cancels them all |
 | Change | 3 Schemas (auditLogs), 8 | The seed's frozen user, Daniel Okafor, gains the `admin.user_frozen` audit entry with its reason | Every admin change writes an audit log (section 4), and the user page shows why an account is frozen |
 | Addition | 3 Schemas (markets), 4 API | `models/domain/market.rules.js`: tick and step are powers of ten within the assets' decimals, the smallest amount fits the step, fees run from 0 to under 100%, and a new market is quoted in USDT with an asset that has none | Sections 3 and 4 name the fields but not their limits; the admin form and the mock need the same ones |
+| Change | 2 Routes | `/oauth/callback` shows Google's error, clears `?error=` and `#ticket=`, and says Google sign-in waits for the backend; restoring the session and the code step come with the server | Google sign-in needs the server |
 | Open | 2 Routes, 4 API | `/admin/markets` can't create a pair in this phase: every asset has a USDT market and adding assets is the stretch Assets page. The form, the rules and the mock's checks are built | Logged as the owner asked; it opens with the Assets page or the backend |
 
 ### Sources

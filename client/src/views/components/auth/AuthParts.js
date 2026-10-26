@@ -65,6 +65,31 @@ export function TwoFactorAside() {
     h('p', { class: 'auth-pitch-lede' }, 'Two-factor is on for this account, so a password alone can\'t open it. Each code works once and lasts 30 seconds.'));
 }
 
+/** The brand panel on the OAuth callback. */
+export function OAuthAside() {
+  return h('div', { class: 'auth-pitch' },
+    h('p', { class: 'auth-pitch-title' }, 'Back from Google.'),
+    h('p', { class: 'auth-pitch-lede' }, 'With the backend, Google sends you here and this page finishes signing you in, or asks for your two-factor code first.'));
+}
+
+/**
+ * AuthMessage (section 5): a short card with what happened and where to go,
+ * for the OAuth callback and, later, the email and password pages.
+ * m: { title, error?, body: [string], note?, actions: [{ key, label, href, primary }] }
+ */
+export function AuthMessage(m) {
+  return h('section', { class: 'auth-card auth-message', 'aria-labelledby': 'auth-title' },
+    h('h1', { class: 'auth-title', id: 'auth-title' }, m.title),
+    m.error ? h('p', { class: 'auth-error', role: 'alert' }, m.error) : null,
+    m.body.map((text, i) => h('p', { key: i, class: 'auth-message-text' }, text)),
+    m.note ? h('p', { class: 'auth-message-text' }, m.note) : null,
+    h('div', { class: 'auth-message-actions' }, m.actions.map((a) => h('a', {
+      key: a.key,
+      class: cx('btn btn-lg', a.primary ? 'btn-primary' : 'btn-secondary'),
+      href: a.href,
+    }, a.label))));
+}
+
 /** The brand panel on Register. */
 export function RegisterAside() {
   return h('div', { class: 'auth-pitch auth-pitch-register' },
