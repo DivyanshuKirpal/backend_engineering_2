@@ -2037,6 +2037,22 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - Views: `views/components/account/TwoFactorCard.js`, `TwoFactorSetupModal.js`, `ChangePasswordForm.js`, `SessionList.js`, `ActivityTable.js` and `views/pages/account/SecurityPage.js`; styles in `styles/pages/account.css`. PasswordStrengthMeter's styles moved from `pages/auth.css` to `components/fields.css`, since two pages use it now. The account layout's phone column became `minmax(0, 1fr)`, so a wide table scrolls inside its panel instead of widening the page.
   - The board matches apart from these: the dates, which follow the demo clock; the meter's words, since the board shows a typed password; and the 13 px panel labels. Signing in adds a "Logged in" row for now above the drawn rows.
   - Twenty-seven checks covered the page at rest, signing out one device and then the rest, turning two-factor off (a wrong password, then right) and on again (a wrong code, then the demo code), Escape and focus, the password form's four refusals and its success, and the new password signing in. Register still matches its board at 960 px tall.
+- **26 Oct 2026 · Verification.** `presenters/account/verification.presenter.js` (useVerificationPresenter) reads `GET /kyc/me` and shows the identity check's status with three steps: send, review, withdrawals open. The step you are at is marked "now". While there is nothing to review (not started, or rejected), it shows the form:
+  - name, date of birth, country, document type and number, a photo of the document and an optional selfie, and the "sample document" tick, which only the form asks for (section 7);
+  - the date is one field, DD / MM / YYYY, with its separators added as you type, and must be a real date at least 18 years ago;
+  - images must be JPEG or PNG, at most 5 MB, checked before sending;
+  - it posts multipart to `POST /kyc`.
+  - Once it is sent, the step moves to review and the page shows what was sent (the document's last four characters only). Approved opens withdrawals, with a link to Withdraw. Rejected shows the reason and brings the form back with the name, date, country and type filled in.
+  - Views: `KycStatusPanel` beside Withdraw's KycStatusCard in `views/components/account/KycStatusCard.js`; `views/components/account/KycForm.js` (KycForm, KycApplication); the new `views/components/ui/FileDrop.js` (a dashed box over a real file input, which takes a dropped file too); and `views/pages/account/VerificationPage.js`. The countries are the inhabited ISO 3166 codes in `presenters/shared/countries.js`, named through Intl as on the admin pages. `fileSize` joins `number.format.js`.
+  - RadioCards take this board's measures: 48 px, 18 px circles, 16 px bold labels. This page is their only user.
+  - Icons inside these pages are sized in CSS, since the global `.icon` rule holds them at 16 px.
+  - `npm run compare` and `npm run shots` take `--kyc=none` to put the demo trader back at Not started, the moment this board draws.
+  - The board matches apart from the 13 px panel labels. Seventeen checks covered:
+    - the missing fields, the masked date, an impossible date and an under-18 date;
+    - a PDF refused, Remove, a chosen photo and a dropped selfie;
+    - sending (Pending review, with the summary and the session updated);
+    - an approval, and a rejection that brings the form back filled;
+    - no sideways scroll on phones.
 
 ### Conflicts and differences
 
@@ -2120,6 +2136,11 @@ The owner approved these decisions on 25 Oct 2026.
 | Security: the order of devices | `GET /users/me/sessions` | This device, then Safari (used yesterday), then Firefox (used today) | This device first, then the others in the order they signed in, as drawn. The API sorts by last use, so the presenter reorders |
 | Security: turning two-factor on and off | TwoFactorSetupModal (QR from qrcode.react) | Only "Turn off" is drawn | Two dialogs in the confirm dialog's style: off asks for the password and a code; on shows the QR (the vendored encoder) and the key, then takes a code. Marked not drawn |
 | Security: recent activity | `GET /users/me/activity` | Six rows, the newest a login at 25 Oct 14:02 | Pages of ten. Signing in adds a row for now above the drawn ones |
+| Verification: the status | KycStatusCard → Badge | A status panel with three steps (Withdraw draws a small card) | KycStatusCard keeps Withdraw's card; Verification's panel is KycStatusPanel in the same file |
+| Verification: after sending | — | Only Not started is drawn | The steps move on; under review it shows what was sent; approved links to Withdraw; rejected gives the reason and the form again, filled in. Marked not drawn |
+| Verification: date of birth | Kyc.dateOfBirth (a date, 18 or older) | One field reading DD / MM / YYYY | That field, with the separators added as you type. It is sent as YYYY-MM-DD |
+| Verification: country | Kyc.country (ISO code) | A select showing India | Every inhabited country, by name, India first chosen as drawn |
+| Verification: the photos | Multipart images, JPEG or PNG, 5 MB each | Two dashed boxes: "Choose a file or drop it here" | FileDrop: a real file input under the box, which takes a dropped file too. The type and size are checked before sending; a chosen file shows its name, size and Remove (not drawn) |
 
 ### Checklist
 
@@ -2157,7 +2178,7 @@ Pages drawn
 - [x] Orders and the detail drawer
 - [x] Profile
 - [x] Security
-- [ ] Verification
+- [x] Verification
 - [ ] Admin dashboard
 - [ ] Admin users
 - [ ] Admin KYC review
@@ -2253,7 +2274,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | TransactionTable (recent deposits), Table (most per deposit) | `RecentTransactions` and `LimitsTable` in `views/components/wallet/FundsParts.js` |
 | WithdrawPage, useWithdrawPresenter | `views/pages/wallet/WithdrawPage.js`, `presenters/wallet/withdraw.presenter.js` |
 | WithdrawForm, WithdrawalSummary | `views/components/wallet/WithdrawForm.js` |
-| KycStatusCard | `views/components/account/KycStatusCard.js` |
+| KycStatusCard | `views/components/account/KycStatusCard.js` (KycStatusCard on Withdraw, KycStatusPanel with the steps on Verification) |
+| VerificationPage, useVerificationPresenter | `views/pages/account/VerificationPage.js`, `presenters/account/verification.presenter.js` |
+| KycForm | `views/components/account/KycForm.js` (with KycApplication, what was sent) and `views/components/ui/FileDrop.js` |
 | TransactionTable (pending withdrawals), Table (fees and minimums) | `RecentTransactions` and `FeesTable` in `views/components/wallet/FundsParts.js` |
 | TransactionsPage, useTransactionsPresenter, useCursorList | `views/pages/wallet/TransactionsPage.js`, `presenters/wallet/transactions.presenter.js`, `presenters/shared/cursorList.js` |
 | TransactionTable | `views/components/wallet/TransactionTable.js` |
@@ -2468,6 +2491,7 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | Repository root | `scripts/` with `check-data`, `extract-boards`, `screenshots` and `copy-vendor`; `serve` and Playwright as dev dependencies | Tooling for the static phase; Node runs only these |
 | Change | 6 Flow A, step 7 | Open orders live in `models/stores/order.store.js`, which merges `order.update` and ignores copies older than the one it holds | The ladder's "You" tags, Your orders and the Orders page read one list, and a late 202 can't undo an update the socket already delivered |
 | Change | 7 UI design | VerifyEmailBanner is 54 px tall with 15 px text and a small secondary button; checkboxes are the browser's own in ink | As the Profile board and the kit draw them |
+| Change | 5 Components | KycStatusCard is drawn two ways: a small card on Withdraw, and a status panel with three steps on Verification | The two boards draw it differently for different jobs |
 | Change | 2 Routes | `/account/security` builds two-factor, devices and activity now, not as stretch | The Security board draws them and the mock already serves their endpoints |
 | Addition | 4 API | The mock's `GET /orders` and `GET /trades` also take `?side=` | The Orders board filters by side; a pending decision for the real API |
 | Change | 2 Routes, 5 Components | `/orders` also answers `?order=` (the drawer, which Close and Back shut) and `?trade=` (the order that trade filled) | History links to orders and trades, and the drawer belongs in the browser's history |

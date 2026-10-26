@@ -189,34 +189,36 @@
 /* Radio cards (Verification: document type) */
 .radio-cards { border: 0; margin: 0; padding: 0; min-width: 0; }
 .radio-cards legend { margin-bottom: 8px; padding: 0; }
-.radio-cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+/* As Verification draws them: 48 px cards, 18 px circles, 16 px bold labels */
+.radio-cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8.3px; }
 
 .radio-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 36px;
-  padding: 0 12px;
+  gap: 9.3px;
+  min-height: 48px;
+  padding: 0 14px;
   border: 1px solid var(--line);
   background: var(--bg-inset);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.radio-card.checked { border: 2px solid var(--ink); padding: 0 11px; }
+.radio-card.checked { border: 2px solid var(--ink); padding: 0 13px; }
 
 .radio-input {
   appearance: none;
-  width: 16px;
-  height: 16px;
+  flex: none;
+  width: 18px;
+  height: 18px;
   margin: 0;
   border: 1.5px solid var(--ink);
   border-radius: 50%;
   background: var(--bg-inset);
 }
 
-.radio-input:checked { background: radial-gradient(circle, var(--ink) 0 4px, var(--bg-inset) 4.5px); }
+.radio-input:checked { background: radial-gradient(circle, var(--ink) 0 4.6px, var(--bg-inset) 5.1px); }
 .radio-card:focus-within { outline: var(--focus-ring); outline-offset: 2px; }
 .radio-input:focus-visible { outline: none; }
 

@@ -7,6 +7,7 @@
 //   from turning them into Windows paths.
 //   --fresh   reset the demo data first, so the page matches its board's state
 //   --verified  confirm the user's email first, so no verify banner shows
+//   --kyc=none  set the user's identity check first (Verification's board is at Not started)
 
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -29,6 +30,7 @@ const widths = flag('widths', '1440,390').split(',').map(Number);
 const wait = Number(flag('wait', '1200'));
 const fresh = args.includes('--fresh');
 const verified = args.includes('--verified');
+const kyc = (args.find((a) => a.startsWith('--kyc=')) ?? '').slice(6);
 const ACCOUNTS = { demo: ['demo@orichal.app', 'orichal-demo', '123456'], admin: ['admin@orichal.app', 'orichal-demo', null] };
 
 const freePort = () => new Promise((resolve) => {
@@ -74,7 +76,25 @@ async function signIn(page, base) {
     }
   }, [email, password, code]);
   if (verified) await confirmEmail(page, email);
+  if (kyc) await setKyc(page, email, kyc);
 }
+
+// --kyc=<status>: set the signed-in user's identity check first, for boards
+// drawn at another moment (Verification shows Not started; the demo trader is
+// approved). "none" also drops their applications.
+async function setKyc(page, email, status) {
+  await page.evaluate(async ([address, value]) => {
+    const { db, persist } = await import('/src/models/api/mock/db.js');
+    const me = db().users.find((u) => u.email === address);
+    if (me) {
+      me.kycStatus = value;
+      if (value === 'none') db().kyc = db().kyc.filter((k) => k.userId !== me.id);
+    }
+    persist();
+    await new Promise((r) => setTimeout(r, 400));
+  }, [email, status]);
+}
+
 
 // --verified: confirm the signed-in user's email first, so the verify banner
 // doesn't push the page down (the boards other than Profile draw it confirmed).

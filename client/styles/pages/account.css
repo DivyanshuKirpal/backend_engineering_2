@@ -60,7 +60,7 @@
 .devices-panel .panel-head { min-height: 56px; }
 .device-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; column-gap: 20px; min-height: 72px; padding: 0 20px; }
 .device-row + .device-row { border-top: var(--rule-row); }
-.device-icon { color: var(--ink-2); }
+.device-icon { width: 18px; height: 18px; color: var(--ink-2); }
 .device-name { display: flex; align-items: baseline; flex-wrap: wrap; gap: 9.6px; font-size: 16px; font-weight: 700; }
 .device-tag { padding: 1px 6.7px; background: var(--ink); color: var(--on-fill); font-size: 12px; font-weight: 700; }
 .device-meta { margin-top: 2px; color: var(--ink-2); font-size: 14px; }
@@ -91,4 +91,69 @@
   .device-row { padding: 12px 16px; }
   .activity-table { min-width: 640px; }
   .twofa-setup { flex-direction: column; align-items: flex-start; }
+}
+
+/* Verification: the status and its three steps, then the form */
+.account-intro { max-width: 680px; margin: -16px 0 18.8px; color: var(--ink-2); font-size: 17px; line-height: 24.6px; }
+
+.kyc-panel-head { justify-content: flex-start; gap: 7.6px; min-height: 50px; }
+.kyc-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.kyc-step { padding: 13.1px 20px 14.7px; border-top: 3px solid var(--line); }
+.kyc-step + .kyc-step { border-left: 1px solid var(--line-soft); }
+.kyc-step-now,
+.kyc-step-done { border-top-color: var(--ink); }
+.kyc-step-number { color: var(--ink-3); font-size: 12px; }
+.kyc-step-now .kyc-step-number { color: var(--brass); }
+.kyc-step-title { margin-top: 2.6px; font-size: 16px; font-weight: 700; }
+.kyc-step-body { margin-top: 2.5px; color: var(--ink-2); font-size: 14px; }
+.kyc-panel-note { padding: 12px 20px; border-top: 1px solid var(--line-soft); font-size: 15px; }
+
+.kyc-form .panel-body { display: grid; gap: 20px; padding-top: 21.3px; padding-bottom: 20.9px; }
+.kyc-row .field-hint { margin-top: -1.4px; }
+.kyc-form .check { margin-top: -2.4px; }
+.kyc-form .panel-foot .btn { min-height: 46px; padding: 0 18.7px; font-size: 16px; }
+.kyc-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 15.4px; align-items: start; }
+.kyc-number .field { max-width: 460px; }
+.kyc-files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+/* FileDrop */
+.file-drop-zone {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  min-height: 149px;
+  padding: 14.5px 16px 17.5px;
+  border: 1.5px dashed var(--ink-2);
+  background: var(--bg-inset);
+  text-align: center;
+  cursor: pointer;
+}
+
+.file-drop-optional .file-drop-zone { border-color: var(--line); }
+.file-drop-zone.over { border-style: solid; border-color: var(--ink); background: var(--bg-row-hover); }
+.file-drop:has(.file-drop-input:focus-visible) .file-drop-zone { outline: var(--focus-ring); outline-offset: 2px; }
+.file-drop-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.file-drop-icon { width: 22px; height: 22px; color: var(--ink); stroke-width: 1.7; }
+.file-drop-title { margin-top: 6px; font-size: 16px; font-weight: 700; }
+.file-drop-hint { margin-top: 3px; color: var(--ink-2); font-size: 13px; }
+.file-drop-chosen { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 16px; border: 1px solid var(--line); background: var(--bg-inset); }
+.file-drop-tick { color: var(--buy); }
+.file-drop-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.file-drop-size { color: var(--ink-2); font-size: 13px; }
+.file-drop-invalid .file-drop-zone,
+.file-drop.field-invalid .file-drop-zone { border-color: var(--sell); }
+
+.kyc-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 16px; margin: 0; }
+.kyc-facts dd { margin: 6px 0 0; font-size: 16px; }
+.kyc-application .undesigned-note { margin-top: 16px; }
+
+@media (max-width: 767px) {
+  .account-intro { margin-top: -10px; }
+  .kyc-steps { grid-template-columns: 1fr; }
+  .kyc-step + .kyc-step { border-left: 0; }
+  .kyc-row,
+  .kyc-files,
+  .kyc-facts { grid-template-columns: 1fr; row-gap: 16px; }
+  .kyc-form .radio-cards-row { grid-template-columns: 1fr; }
 }

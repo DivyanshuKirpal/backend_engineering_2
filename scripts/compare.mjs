@@ -4,7 +4,7 @@
 // 2 px across, 3 px down, or in size are flagged.
 //
 // Usage: npm run compare -- <route> <board> [--as=demo|admin|guest] [--width=1440]
-//          [--height=920] [--fresh] [--verified] [--all] [--only=from:to] [--align=<selector>:<boardY>]
+//          [--height=920] [--fresh] [--verified] [--kyc=none] [--all] [--only=from:to] [--align=<selector>:<boardY>]
 //   <board>  a name in .boards/ without .txt, e.g. screens-p03-markets
 //   --only   keep board runs whose baseline is in that range
 //   --dx     move the page this many px sideways before matching
@@ -42,6 +42,7 @@ const dx = Number(flag('dx', '0'));
 const showAll = args.includes('--all');
 const fresh = args.includes('--fresh');
 const verified = args.includes('--verified');
+const kyc = flag('kyc', '');
 const ACCOUNTS = { demo: ['demo@orichal.app', 'orichal-demo', '123456'], admin: ['admin@orichal.app', 'orichal-demo', null] };
 const steps = args.filter((a) => /^--(fill|click|wait-for)=/.test(a)).map((a) => {
   const [, kind, rest] = /^--(fill|click|wait-for)=(.*)$/.exec(a);
@@ -81,6 +82,22 @@ async function confirmEmail(page, email) {
   }, email);
 }
 
+// --kyc=<status>: set the signed-in user's identity check first, for boards
+// drawn at another moment (Verification shows Not started; the demo trader is
+// approved). "none" also drops their applications.
+async function setKyc(page, email, status) {
+  await page.evaluate(async ([address, value]) => {
+    const { db, persist } = await import('/src/models/api/mock/db.js');
+    const me = db().users.find((u) => u.email === address);
+    if (me) {
+      me.kycStatus = value;
+      if (value === 'none') db().kyc = db().kyc.filter((k) => k.userId !== me.id);
+    }
+    persist();
+    await new Promise((r) => setTimeout(r, 400));
+  }, [email, status]);
+}
+
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width, height } });
@@ -95,6 +112,7 @@ try {
       if (first.body.data.requires2fa) await handle({ method: 'POST', path: '/auth/login/2fa', body: { loginTicket: first.body.data.loginTicket, code: c } });
     }, ACCOUNTS[as]);
     if (verified) await confirmEmail(page, ACCOUNTS[as][0]);
+    if (kyc) await setKyc(page, ACCOUNTS[as][0], kyc);
   }
   await page.goto(`${base}${route}`);
   await page.waitForLoadState('networkidle');

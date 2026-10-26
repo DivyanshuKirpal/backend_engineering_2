@@ -103,3 +103,10 @@ export const pair = (symbol) => String(symbol ?? '').replace('-', '/');
 
 /** Bytes as MB for the system page: 42991616 -> "41". */
 export const megabytes = (bytes) => String(Math.round(Number(bytes) / 1048576));
+
+/** A file's size: 840 KB, 2.4 MB. */
+export function fileSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1048576) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  return `${(n / 1048576).toFixed(1)} MB`;
+}
