@@ -53,7 +53,7 @@ export function TwoFactorSetupModal(d, actions) {
 
   return Modal({ title: d.title, titleId: 'twofa-dialog-title', onClose: actions.closeTwoFactor, className: 'twofa-dialog' },
     h('form', {
-      class: 'twofa-form',
+      class: 'dialog-form',
       novalidate: true,
       onSubmit: (e) => {
         e.preventDefault();

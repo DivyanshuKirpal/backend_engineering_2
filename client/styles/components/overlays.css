@@ -15,6 +15,9 @@
 
 .dialog:focus { outline: none; }
 
+/* A form inside a dialog: its body and actions lay out as the dialog's own */
+.dialog-form { display: contents; }
+
 /* An ink edge and a 12 px hard shadow on the scrim (board Orders) */
 .dialog-drawer {
   top: 0;

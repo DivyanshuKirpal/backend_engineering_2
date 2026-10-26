@@ -2076,6 +2076,18 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
   - A bug found by the checks: the "Showing 51–54" line changed before the page's rows did. It now follows the rows on screen.
   - The board matches apart from these: the dates (the demo clock); Rohan's address; the KYC marks, which the board writes as characters (✓ ◷ ✕), so its labels start 15 px left of ours; and Frozen's lock, which is wider there.
   - Sixteen checks covered paging to page 2 and to the last page, searching by name and by email, a search with no match, the role and status filters, the link to a person, and the phone pager with no sideways scroll.
+- **26 Oct 2026 · Admin KYC review.** `presenters/admin/kyc.presenter.js` (useAdminKycPresenter) lists identity checks by status from `GET /admin/kyc`. Pending is oldest first with each wait (the oldest in brass); Approved and Rejected are newest decision first. The tabs sit in the topbar, Pending with its count.
+  - The open application sits beside the list, the oldest by default: who sent it and when, how long it has waited, the account's age, name, date of birth with age, country, and the document's last four characters.
+  - Opening it fetches the document image through `GET /admin/kyc/:id/document`, which writes to the audit log; the mock answers with a placeholder, drawn as the board draws it.
+  - Approve, or reject with a reason in RejectReasonModal (a field and three common reasons; Withdrawals will share it). Either one reloads the list and, through a new `queuesChanged()` beside the navbar presenter, the sidebar's counts at once rather than within 15 seconds.
+  - Views: KycQueueTable and KycReviewPanel in `views/components/admin/KycReview.js`, `views/components/admin/RejectReasonModal.js` and `views/pages/admin/AdminKycPage.js`. Forms inside dialogs share `.dialog-form` in `overlays.css`, which was `.twofa-form` on Security.
+  - The board matches apart from the times. When comparing, `--wait-for=.doc-ready` waits for the image. Seventeen checks covered:
+    - the queue and the open application, with its image audited once per opening;
+    - opening another applicant;
+    - rejecting (the reason takes focus, an empty one is refused, a common one fills in), with the queue, its count and the sidebar going down;
+    - approving, with the account approved;
+    - the Approved and Rejected lists with their decisions;
+    - no sideways scroll on phones.
 
 ### Conflicts and differences
 
@@ -2169,6 +2181,9 @@ The owner approved these decisions on 25 Oct 2026.
 | Admin dashboard: the volume table | VolumeBarChart → Tabs (chart or table), Table | Only the chart is drawn | Day and volume, newest first. Not drawn |
 | Admin dashboard: freshness | — | "Updated 14:32:10" | The time of the last load; it reloads every 30 seconds |
 | Admin users: search | `GET /admin/users?search=` (an email prefix) | "Search by name or email" | The mock matches the start of an email or of any word in the name. A pending decision for the real API |
+| Admin KYC: after a decision | KycReviewPanel → Button | Only the pending queue is drawn | Approved and Rejected lists, newest decision first, with when (and why); the panel shows the decision instead of the buttons. Not drawn |
+| Admin KYC: rejecting | RejectReasonModal → Modal, Input, Button | "Reject with a reason" | A dialog with the reason the person sees and three common ones to pick. Not drawn |
+| Admin KYC: the images | `GET /admin/kyc/:id/document` streams the image | A placeholder drawing, "The real image is streamed to admins only" | Opening an application fetches its document image (audited); the mock answers with a placeholder, drawn as on the board. A selfie, when sent, opens on request (also audited; not drawn) |
 | Admin users: identity-check marks | Status markers: tick, clock, cross | Written as characters: "✓ Approved", "◷ Pending" | StatusMarker's drawn marks, as everywhere else; "Not started" plain, without a box |
 
 ### Checklist
@@ -2210,7 +2225,7 @@ Pages drawn
 - [x] Verification
 - [x] Admin dashboard
 - [x] Admin users
-- [ ] Admin KYC review
+- [x] Admin KYC review
 - [ ] Admin withdrawals
 - [ ] Admin system
 
@@ -2260,6 +2275,9 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | StatCard, QueueCard | `views/components/admin/StatCard.js`, `QueueCard.js` |
 | AdminUsersPage, useAdminUsersPresenter | `views/pages/admin/AdminUsersPage.js`, `presenters/admin/users.presenter.js` |
 | UserFilters, UserTable | `views/components/admin/UserTable.js` |
+| AdminKycPage, useAdminKycPresenter | `views/pages/admin/AdminKycPage.js`, `presenters/admin/kyc.presenter.js` |
+| KycQueueTable, KycReviewPanel | `views/components/admin/KycReview.js` |
+| RejectReasonModal | `views/components/admin/RejectReasonModal.js` |
 | VolumeBarChart | `views/components/charts/VolumeBarChart.js` (HTML bars and a table) |
 | Spinner, ErrorState | `views/components/ui/PageStates.js` (whole pages), `views/components/ui/EmptyState.js` (panels) |
 | Button | CSS classes in `styles/components/buttons.css` on real `<button>` and `<a>` elements |

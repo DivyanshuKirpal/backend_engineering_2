@@ -34,6 +34,13 @@ const ADMIN_NAV = [
   { key: 'system', label: 'System', href: '/admin/system', match: (p) => p === '/admin/system' },
 ];
 
+const queueEvents = new EventTarget();
+
+/** After an admin decides a KYC check or a withdrawal, the sidebar's counts reload at once. */
+export function queuesChanged() {
+  queueEvents.dispatchEvent(new Event('change'));
+}
+
 export function initials(name) {
   const words = String(name ?? '').trim().split(/\s+/).filter(Boolean);
   return (words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? '?').slice(0, 2)).toUpperCase();
@@ -67,6 +74,8 @@ export function createNavbarPresenter({ admin = false } = {}) {
   if (admin) {
     loadQueues();
     every(p, 15000, loadQueues);
+    queueEvents.addEventListener('change', loadQueues);
+    p.own(() => queueEvents.removeEventListener('change', loadQueues));
   }
 
   const toggle = (name) => {

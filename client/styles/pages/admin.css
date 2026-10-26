@@ -89,13 +89,73 @@
 
 .list-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; min-height: 60px; padding: 0 16px; border-top: var(--rule); color: var(--ink-2); font-size: 14px; }
 
+/* KYC review: the list and the open application side by side */
+.admin-tabs .tab { min-height: 36px; padding: 0 13.7px; font-size: 14px; font-weight: 600; }
+/* The kit's spacing after a tab's count, as on Orders */
+.admin-tabs .tab-count { margin-right: 3.3px; }
+.kyc-page { display: grid; grid-template-columns: minmax(0, 679.3fr) minmax(0, 460.3fr); gap: 15.7px; align-items: start; }
+.kyc-list .panel-head { min-height: 41.7px; border-bottom-color: var(--line); }
+.kyc-table { table-layout: fixed; }
+.kyc-table th { height: 42px; }
+.kyc-table td,
+.kyc-table tbody th { height: 52px; padding-top: 0; padding-bottom: 0; border-bottom-color: var(--line-soft); white-space: nowrap; }
+.kyc-table tbody tr:last-child td,
+.kyc-table tbody tr:last-child th { border-bottom: 0; }
+.kyc-table td.t-mono { font-size: 13px; }
+.kyc-table .col-applicant { width: 160.1px; }
+.kyc-table .col-country { width: 113px; }
+.kyc-table .col-document { width: 161.8px; }
+.kyc-table .col-sent { width: 120px; }
+.kyc-table tbody tr.current { background: var(--bg-row-hover); }
+.kyc-table tbody tr.current th { box-shadow: inset 3px 0 0 var(--ink); }
+.kyc-open { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.kyc-open:hover,
+.kyc-open[aria-current] { text-decoration: underline; text-underline-offset: 3px; }
+.kyc-reason { overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.kyc-empty { padding: 24px 16px !important; color: var(--ink-2); }
+
+.kyc-review { border-color: var(--ink); }
+.kyc-review-empty { padding: 24px 19.8px; color: var(--ink-2); }
+.kyc-review-head { min-height: 85.4px; padding: 17.4px 19.8px 0; border-bottom: var(--rule); }
+.kyc-review-name { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.kyc-review-head p { margin-top: 4px; color: var(--ink-2); font-size: 14px; }
+.kyc-review-facts { display: grid; grid-template-columns: 217.4px minmax(0, 1fr); row-gap: 12.5px; margin: 0; padding: 17.2px 19.8px 17px; border-bottom: 1px solid var(--line-soft); }
+.kyc-review-facts dt { color: var(--ink-2); font-size: 13px; }
+.kyc-review-facts dd { margin: 0.9px 0 0; font-size: 15px; font-weight: 700; }
+.kyc-review-mono { font-size: 13px; font-weight: 400; letter-spacing: 0.04em; }
+.kyc-review-image { padding: 16px 19.8px 0; }
+.kyc-review-image .panel-label { margin-bottom: 6.6px; }
+.kyc-review-note { margin-top: 9.2px; color: var(--ink-2); font-size: 13px; }
+.kyc-review-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7.4px; padding: 16px 19.8px 20px; }
+.kyc-review-actions .btn { min-height: 46px; }
+.kyc-review-decision { margin: 15px 19.8px 20px; font-weight: 700; }
+.kyc-selfie-btn { margin-top: 10px; }
+
+/* The drawn stand-in for a document image */
+.doc-placeholder { position: relative; margin: 0; overflow: hidden; border: var(--rule); background: var(--bg-inset); }
+.doc-placeholder + .doc-placeholder { margin-top: 10px; }
+.doc-shape { position: relative; height: 229.4px; }
+.doc-photo { position: absolute; left: 29.3px; top: 29.5px; bottom: 0; width: 107.8px; background: var(--bg-muted); }
+.doc-lines { position: absolute; left: 159.3px; right: 24px; top: 29.5px; display: grid; gap: 18.5px; }
+.doc-line { max-width: 100%; height: 17.6px; background: var(--bg-muted); }
+.doc-line:nth-child(1) { width: 160px; }
+.doc-line:nth-child(2) { width: 206.6px; }
+.doc-line:nth-child(3) { width: 137px; }
+.doc-line:nth-child(4) { width: 183px; }
+.doc-placeholder figcaption { min-height: 31.3px; padding: 8px 10.5px 0; background: rgba(22, 22, 22, 0.78); color: var(--on-fill); font-size: 13px; }
+.doc-loading .doc-shape { opacity: 0.5; }
+
 @media (max-width: 1099px) {
+  .kyc-page { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .queue-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 767px) {
   .stat-grid { grid-template-columns: 1fr; }
+  .kyc-review-facts { grid-template-columns: 1fr 1fr; column-gap: 12px; }
+  .doc-photo { left: 16px; width: 30%; }
+  .doc-lines { left: calc(30% + 32px); right: 16px; }
   .users-filters { flex-wrap: wrap; }
   .users-filters .search { flex-basis: 100%; }
   .users-filters .select-inline { flex: 1; width: auto !important; }

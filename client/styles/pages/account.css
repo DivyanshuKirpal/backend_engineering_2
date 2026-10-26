@@ -77,7 +77,6 @@
 .activity-foot { padding: 12px 20px; border-top: 1px solid var(--line-soft); }
 
 /* The two-factor dialogs */
-.twofa-form { display: contents; }
 .twofa-setup { display: flex; align-items: center; gap: 20px; }
 .twofa-key-value { margin-top: 6px; color: var(--ink); font-size: 14px; word-break: break-all; }
 
