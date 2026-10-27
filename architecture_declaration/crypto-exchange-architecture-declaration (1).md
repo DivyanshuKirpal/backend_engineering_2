@@ -2144,6 +2144,7 @@ Sizes are CSS pixels. Letter pages show a 1440 px board at twice its size, with 
     - The nine stretch pages, which show "not built yet": coin detail, convert, alerts, notifications, forgot and reset password, the email-confirmation page, admin assets and admin audit logs.
     - The open items in the checklist: the dark theme, coin icons, Google sign-in and its "G" mark, the colour-blind pair, section 7's API needs, and creating markets (with the Assets page).
     - The backend: `server/` with Express, MongoDB, Redis and the engine. Then `models/api/http.js` points at it and `models/api/mock/` is deleted; React follows, as the Overview plans.
+- **27 Oct 2026 · Frontend guide.** `docs/frontend-guide.md` explains this phase's code for a reader new to web development: the stack, the layers, two traces, every file, the CSS, the tooling and a glossary. README links to it; no code changed.
 
 ### Conflicts and differences
 

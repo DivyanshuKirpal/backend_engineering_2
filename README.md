@@ -4,6 +4,8 @@ A simulated spot crypto exchange for a course project: trade BTC, ETH, SOL and B
 
 The plan is in [`architecture_declaration/crypto-exchange-architecture-declaration (1).md`](architecture_declaration/crypto-exchange-architecture-declaration%20(1).md) and the screens in [`ui_design/`](ui_design). This is the **static frontend phase**: the client only, in plain HTML, CSS and JavaScript, running on demo data in the browser. Section 8 of the architecture doc logs what this phase builds and where it differs from the plan.
 
+New to the code? [`docs/frontend-guide.md`](docs/frontend-guide.md) is a beginner's guide to the frontend: the stack, the layers, every file and a glossary.
+
 ## Run it
 
 Needs Node 20 or later.
