@@ -51,6 +51,7 @@ Orichal is a simulated crypto exchange for a course project. The client is finis
 Fill this list in as the scripts appear.
 
 - `npm run dev`: the server with `--watch` on http://localhost:5173 (from M1)
+- `npm start`: the same server without `--watch` (from M1)
 - `npm run seed`: resets MongoDB and the JSON store from `client/src/models/data` (from M3)
 - `npm run checks`, `npm run check:data`: behaviour and data checks
 - `npm run db:check-ledger`, `npm run db:explain`: ledger aggregation and query plans (M3, M7)

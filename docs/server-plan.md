@@ -505,6 +505,7 @@ Copy these rows into the review log under "### Server, CE-2 phase" (M0), and add
 | Change | 1 Folders, 4 API | KYC images are saved under `server/data/uploads` instead of Cloudinary | Cloud storage comes later |
 | Change | 4 API | No rate limits yet | They need Redis |
 | Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
+| Change | 4 API (Health) | One `GET /api/v1/health` (`status`, `uptimeSeconds`, `time`; MongoDB's state from M3) instead of `/health/live`, `/health/ready` and `/metrics` outside `/api/v1` (added in M1) | No Docker, Nginx or Prometheus probes the server in this phase; one public route under the API's base path serves Postman and the demo |
 
 ## 9. Viva ownership
 
@@ -540,9 +541,9 @@ M0 · The plan in the repo
 
 M1 · Express skeleton
 
-- [ ] `env.js`, `errors.js`, `respond.js`, `notFound`, `errorHandler`
-- [ ] `app.js`, `server.js`, `GET /health`, static client and fallback
-- [ ] `npm run dev` and `start`; `.env.example`; `server/README.md`
+- [x] `env.js`, `errors.js`, `respond.js`, `notFound`, `errorHandler`
+- [x] `app.js`, `server.js`, `GET /health`, static client and fallback
+- [x] `npm run dev` and `start`; `.env.example`; `server/README.md`
 
 M2 · The API on the server
 
@@ -614,3 +615,18 @@ M10 · Documents and the tag
   - `docs/backend-guide.md` started: the M0 section (where the rules live, why each path is ignored, the departures in three groups, how to check M0, viva questions). Its 7 links resolve.
 
   Departures from the plan: none beyond those three additions to the md.
+- **23 Nov 2026 · M1, the Express skeleton.** What: Express 5 serves the client in place of `serve`, with `GET /api/v1/health`, the envelope and the error handler; the client still answers its API calls with the in-browser mock. Files and how:
+  - `package.json`: express 5.3.0, helmet 8.3.0, morgan 1.12.1, cookie-parser 1.4.7 and zod 4.6.7; `dev` is `node --watch server/src/server.js`, `start` the same without watching; `engines` asks for Node 22 or later (the owner's laptop runs 24.22.2, which works too). `serve` stays until M2, because the harness, `screenshots.mjs` and `compare.mjs` still start it.
+  - `config/env.js`: `process.loadEnvFile()` on `server/.env` (a missing file is allowed, and a variable set in the real environment wins over the file; both tested), then one Zod schema for the 14 variables of section 5. Every variable has a default except the JWT secrets, which stay optional until M6 (at least 32 characters, and different from each other, when set). An empty value counts as unset; `STORE_FILE` resolves from the repository root; money (`DEMO_CREDIT_USDT`) stays a string. A bad value prints each variable's name and rule, never its value, and exits 1. `server/.env.example` lists all 14. Checked in four runs: defaults, the example file, six bad values, equal secrets.
+  - `lib/errors.js` (`ApiError` and five helpers, as the mock's had them); `view/http/respond.js` (`ok`, `created`, `accepted`, `noContent`, plus `fail`, which only the error handler calls, so the envelope lives in one file); `middleware/notFound.js` (passes `NOT_FOUND` on rather than writing it); `middleware/errorHandler.js`: `ApiError` with its own status; a JSON syntax error 400 `VALIDATION_ERROR`; a body over 100 kb 413 `PAYLOAD_TOO_LARGE`; any other error carrying a 4xx `status` 400 `VALIDATION_ERROR` (the router's broken `%`-escape has `status` 400 but no `expose`); anything else 500 `INTERNAL`, logged with the request line, with no stack in the response and no message in production. Checked on a throwaway app: 12 paths, including a throw in async and in sync code.
+  - `view/routes/index.js` (`GET /health`: `status`, `uptimeSeconds`, `time`); `app.js` in this plan's order; `server.js` (`http.createServer(app)`, a clear message when the port is taken). Helmet keeps its defaults except `upgrade-insecure-requests`, which is on only in production, since Safari would ask for https on `http://localhost`. `express.static` sends `Cache-Control: no-cache` and has `redirect: false`, so a folder path such as `/styles` falls through to `index.html` as with `serve`.
+  - `server/README.md` (how to run); `README.md` (Node 22, what `npm run dev` does now, `server/`, the phase line); `CLAUDE.md` commands (`npm start`); the M1 section of `docs/backend-guide.md`.
+
+  Checks:
+  1. In Chromium through Express: Home, Markets (4 rows), the demo sign-in with its code, a limit buy ("Order placed") and a reload on the deep link all work; 647 responses with 0 console errors, CSP violations, failed requests or 4xx/5xx. The whole behaviour suite also ran against Express, from a scratch copy of `scripts/checks` whose harness started `server/src/server.js`: 466 checks in 22 files pass, with no page errors.
+  2. `GET /api/v1/health`: 200 and the envelope.
+  3. `GET /api/v1/nope`: 404 `NOT_FOUND` as JSON; a POST with `{bad`: 400 `VALIDATION_ERROR`; a 150 kb body: 413.
+  4. `/trade/BTC-USDT`: 200 `text/html`; an unchanged file answers 304 to its `ETag`.
+  5. `npm run checks` (still on `serve`): 466 checks in 22 files pass. `npm run check:data`: 3,947 checks on 26 files pass.
+
+  Departures: `GET /api/v1/health` instead of section 4's `/health/live`, `/health/ready` and `/metrics`; a row in section 8 and in the md's review log. The rest stays inside the plan: the 4xx mapping in the error handler, the JWT secrets optional until M6, `fail` in `respond.js`, and Helmet's one directive.

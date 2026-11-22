@@ -2653,6 +2653,7 @@ Section 8 starts the frontend's static phase, and the table "Frontend, static ph
 | Change | 4 API | No rate limits yet | They need Redis |
 | Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
 | Addition | 9 Server build log | New section: two lines pointing to `docs/server-plan.md`, which holds the phase's scope, decisions, milestones, checklist and log | The server phase keeps its plan and log in its own file instead of growing this one |
+| Change | 4 API (Health) | One `GET /api/v1/health` (`status`, `uptimeSeconds`, `time`; MongoDB's state from M3) instead of `/health/live`, `/health/ready` and `/metrics` outside `/api/v1` | No Docker, Nginx or Prometheus probes the server in this phase; one public route under the API's base path serves Postman and the demo |
 
 ### Sources
 
