@@ -2,7 +2,7 @@
 
 Oct 25, 2026 · Divyanshu Kirpal
 
-Revision 3 adds the UI design in [section 7](#7-ui-design) and brings the earlier sections in line with it. [Section 8](#8-frontend-build-log-static-phase) logs the frontend's static phase, which builds the client first in plain HTML, CSS and JavaScript with static data. Every change, and every problem the first audit and the second pass found, is listed in the [Review log](#review-log) at the end of this file.
+Revision 3 adds the UI design in [section 7](#7-ui-design) and brings the earlier sections in line with it. [Section 8](#8-frontend-build-log-static-phase) logs the frontend's static phase, which builds the client first in plain HTML, CSS and JavaScript with static data. [Section 9](#9-server-build-log-ce-2-phase) points to the plan and log of the server phase for CE-2, which adds Express, Socket.IO and MongoDB. Every change, and every problem the first audit and the second pass found, is listed in the [Review log](#review-log) at the end of this file.
 
 ## Overview
 
@@ -2414,6 +2414,11 @@ Each component in section 5 against its file in this phase, filled in as the fil
 | money, order.rules, withdrawal.rules, portfolio.rules, password.rules, orderBook.model, candles.model | `models/domain/*.js` |
 | number.format, date.format, status.format | `presenters/formatters/*.js` |
 
+## 9. Server build log (CE-2 phase)
+
+This phase builds Orichal's first real server for the CE-2 evaluation (25 Nov to 3 Dec 2026): Express 5 and Socket.IO, with MongoDB and Mongoose for users, sessions, wallets, ledger entries, orders and trades.
+Its scope, decisions, milestones, checklist and dated log are kept in [`docs/server-plan.md`](../docs/server-plan.md), and the review log's [Server, CE-2 phase](#server-ce-2-phase) table lists where it departs from sections 1 to 7.
+
 ## System Design syllabus coverage
 
 Most units of 24CSE0318 map to a concrete part of the build. The operating-system internals in lectures 23-27 do not, apart from race conditions and the LRU link to page replacement, and the table says so instead of stretching.
@@ -2469,7 +2474,7 @@ The second pass exported the doc and checked it with a script: every file in the
 
 Revision 3 adds the UI design in section 7 and changes the earlier sections to match it. The UI design table lists those changes and what is still open. The same kind of script checked the client side again: every view file against the component tree and the client MVP table, every model and presenter file against that table, and the counts.
 
-Section 8 starts the frontend's static phase. The last table lists what that phase changes in the plan, one row per real change.
+Section 8 starts the frontend's static phase, and the table "Frontend, static phase" lists what that phase changes in the plan, one row per real change. Section 9 starts the server phase for CE-2, and the last table, "Server, CE-2 phase", does the same for it.
 
 ### First audit (revision 1)
 
@@ -2629,6 +2634,25 @@ Section 8 starts the frontend's static phase. The last table lists what that pha
 | Addition | 3 Schemas (markets), 4 API | `models/domain/market.rules.js`: tick and step are powers of ten within the assets' decimals, the smallest amount fits the step, fees run from 0 to under 100%, and a new market is quoted in USDT with an asset that has none | Sections 3 and 4 name the fields but not their limits; the admin form and the mock need the same ones |
 | Change | 2 Routes | `/oauth/callback` shows Google's error, clears `?error=` and `#ticket=`, and says Google sign-in waits for the backend; restoring the session and the code step come with the server | Google sign-in needs the server |
 | Open | 2 Routes, 4 API | `/admin/markets` can't create a pair in this phase: every asset has a USDT market and adding assets is the stretch Assets page. The form, the rules and the mock's checks are built | Logged as the owner asked; it opens with the Assets page or the backend |
+
+### Server, CE-2 phase
+
+| Type | Section | What changed | Why |
+| --- | --- | --- | --- |
+| Change | 1 Folders, Overview | The server is ES modules, not CommonJS, with one `package.json` at the root | It reuses the client's domain rules and the mock's modules, which are ES modules; one install for everything |
+| Change | Overview, 1 Folders | Express serves the client and the API on port 5173 from one origin; no Vite and no proxy | The client is still the static phase's plain modules; one origin keeps `rt` first-party with no CORS |
+| Change | 1 Folders, 6 MVP | The engine and the market simulator run inside the API process on an in-process bus: no Redis Streams or Pub/Sub, no leader lock, no engine process | CE-2 scope; section 1's inline engine mode |
+| Change | 3 Schemas | Users, sessions, wallets, ledger entries, orders and trades are in MongoDB; the other collections stay in `server/data/store.json` | CE-2 scope; the rest move for the final evaluation |
+| Change | 3 Schemas, 6 Flows | The engine works on an in-memory copy, and changes reach MongoDB in bulk writes before the request that made them is answered (200 ms for background changes); no multi-document transactions yet | The core is synchronous code over arrays; transactions come with the service rewrite |
+| Change | 3 Schemas (trades) | One trade document per side of a fill, linked by `tradeId`, instead of one per match | Most fills meet the bot's anonymous ladder, which has no order document |
+| Change | 3 Schemas | Field names follow the API's records (the ledger's `time`, the order's `avgPrice` and `appliedAt`); fields the API doesn't use yet (the order's `locked`, `source`, `expireAt`) wait | The DTOs stay unchanged |
+| Change | 3 Schemas (users) | 2FA keeps the demo's fixed code, stored as a bcrypt hash in `twoFactor.codeHash` | TOTP comes later |
+| Change | 1 Folders | bcryptjs instead of bcrypt | Pure JavaScript, no native build on Windows |
+| Change | 1 Folders | morgan request logs instead of pino; no metrics | morgan is the course's logger; metrics come with Prometheus |
+| Change | 1 Folders, 4 API | KYC images are saved under `server/data/uploads` instead of Cloudinary | Cloud storage comes later |
+| Change | 4 API | No rate limits yet | They need Redis |
+| Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
+| Addition | 9 Server build log | New section: two lines pointing to `docs/server-plan.md`, which holds the phase's scope, decisions, milestones, checklist and log | The server phase keeps its plan and log in its own file instead of growing this one |
 
 ### Sources
 

@@ -11,6 +11,16 @@ playwright/.cache/
 # Board images extracted from the design PDFs (npm run boards)
 .boards/
 
+# Server secrets: the real values live only in server/.env;
+# server/.env.example (committed) lists every variable with safe values
+server/.env
+
+# Server data written at run time: the JSON store and uploaded KYC images
+server/data/
+
+# The local record of the AI-assisted build conversation
+claude_conversation.txt
+
 # Logs and OS files
 npm-debug.log*
 *.log
