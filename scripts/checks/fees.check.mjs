@@ -1,7 +1,7 @@
 // Drives Fees: the trading fees per market and the funding fees per asset.
 import { start } from './harness.mjs';
 
-const { page, base, check, fail, finish, signIn } = await start();
+const { page, base, check, fail, finish, signIn, failNext } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 
 try {
@@ -19,11 +19,11 @@ try {
   check('says who pays which fee', /maker rate/.test(await text('.info-notes')) && /taken from what you receive/i.test(await text('.info-notes')));
   check('marked undesigned', /Not drawn yet/.test(await text('.undesigned-note')));
 
-  // A failed load says so and offers a retry (in-app, since a reload would clear the switch)
+  // A failed load says so and offers a retry (in-app, so no page load uses up the switch)
   await page.goto(`${base}/markets`);
   await page.waitForSelector('.app-footer');
   await page.waitForLoadState('networkidle');
-  await page.evaluate(async () => (await import('/src/models/api/mock/server.js')).failNextRequest());
+  await failNext();
   await page.click('.app-footer a:has-text("Fees")');
   await page.waitForSelector('.error-state');
   check('a failed load says so', /fees didn't load/.test(await text('.error-state')));

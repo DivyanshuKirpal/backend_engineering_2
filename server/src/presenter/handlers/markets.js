@@ -1,9 +1,9 @@
 // Asset and market routes (section 4, market.routes.js), served from the
 // market simulator's live state.
 
-import { db } from '../db.js';
-import { badRequest, notFound } from '../errors.js';
-import * as market from '../market.js';
+import { db } from '../../model/store.js';
+import { badRequest, notFound } from '../../lib/errors.js';
+import * as market from '../../model/exchange/market.js';
 
 export function marketDto(config) {
   return {

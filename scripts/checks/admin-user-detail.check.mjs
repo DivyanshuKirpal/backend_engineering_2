@@ -3,7 +3,7 @@
 // changes, which never demote the last admin.
 import { start } from './harness.mjs';
 
-const { page, base, check, fail, finish, signIn } = await start();
+const { page, base, check, fail, finish, signIn, snapshot } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 const until = (fn, arg) => page.waitForFunction(fn, arg, { timeout: 6000 });
 const DEMO = '66f19a3c5e7b2d4f8a1c0e01';
@@ -47,12 +47,11 @@ try {
   check('frozen, with the reason', /Frozen \d+ \w+, \d\d:\d\d by you: Flooding the book with orders\./.test(await text('.user-action-note')), await text('.user-action-note'));
   check('open orders cancelled', (await page.locator('.orders-open').count()) === 0 && /Freezing cancelled any they had/.test(await text('.user-detail .orders-empty')));
   check('their locks released', /6,823\.50\s+6,823\.50\s+0\s+6,823\.50/.test(await balanceRow('USDT')), await balanceRow('USDT'));
-  const after = await page.evaluate(async (id) => {
-    const { db } = await import('/src/models/api/mock/db.js');
-    const orders = db().orders.filter((o) => o.userId === id && o.cancelReason === 'account_frozen').length;
-    const entry = db().audit.filter((a) => a.action === 'admin.user_frozen' && a.targetId === id).at(-1);
-    return { orders, entry: entry?.metadata };
-  }, DEMO);
+  const db = await snapshot('orders', 'audit');
+  const after = {
+    orders: db.orders.filter((o) => o.userId === DEMO && o.cancelReason === 'account_frozen').length,
+    entry: db.audit.filter((a) => a.action === 'admin.user_frozen' && a.targetId === DEMO).at(-1)?.metadata,
+  };
   check('cancelled as account_frozen, and audited', after.orders === 4 && after.entry?.ordersCancelled === 4 && after.entry?.reason === 'Flooding the book with orders', JSON.stringify(after));
 
   // Unfreeze

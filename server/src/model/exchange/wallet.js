@@ -1,11 +1,11 @@
-// The mock server's wallet.service (section 1): the only code that changes a
+// The wallet, as section 1's wallet.service: the only code that changes a
 // balance. Every change writes one ledger entry with the balances after it and
 // pushes balance.update to the owner's room. Bot accounts keep no ledger here.
 
-import * as money from '../../domain/money.js';
-import { db, newId, persist } from './db.js';
+import * as money from '../../../../client/src/models/domain/money.js';
+import { db, newId, persist } from '../store.js';
 import { publish } from './bus.js';
-import { MockError } from './errors.js';
+import { ApiError } from '../../lib/errors.js';
 
 const decimals = (asset) => db().assets.find((a) => a.code === asset)?.decimals ?? 8;
 const isBot = (userId) => db().users.find((u) => u.id === userId)?.isBot ?? true;
@@ -33,7 +33,7 @@ function write(userId, asset, type, dAvailable, dLocked, ref = {}) {
   const available = money.add(w.available, dAvailable);
   const locked = money.add(w.locked, dLocked);
   if (money.isNegative(available) || money.isNegative(locked)) {
-    throw new MockError(422, 'INSUFFICIENT_BALANCE', `Not enough ${asset} available.`, { asset, available: w.available });
+    throw new ApiError(422, 'INSUFFICIENT_BALANCE', `Not enough ${asset} available.`, { asset, available: w.available });
   }
   w.available = money.fixed(available, d);
   w.locked = money.fixed(locked, d);

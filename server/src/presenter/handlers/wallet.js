@@ -1,18 +1,18 @@
 // Wallet routes (section 4, wallet.routes.js). The ledger takes a comma-
 // separated ?type= list and returns a total, and transactions take ?status=:
-// both are API needs from section 7, added to the mock and still pending for
-// the real API.
+// both are API needs from section 7, added in the static phase and still
+// pending decisions for section 4.
 
-import * as money from '../../../domain/money.js';
-import * as withdrawalRules from '../../../domain/withdrawal.rules.js';
-import { db, newId, persist } from '../db.js';
-import { MockError, badRequest, conflict, notFound } from '../errors.js';
+import * as money from '../../../../client/src/models/domain/money.js';
+import * as withdrawalRules from '../../../../client/src/models/domain/withdrawal.rules.js';
+import { db, newId, persist } from '../../model/store.js';
+import { ApiError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { ledgerDto, transactionDto } from '../mappers.js';
-import * as session from '../session.js';
-import * as wallet from '../wallet.js';
-import { notify } from '../engine.js';
-import { grouped } from '../text.js';
-import { cursorPage, newestFirst, requireFields } from '../util.js';
+import * as session from '../../model/exchange/session.js';
+import * as wallet from '../../model/exchange/wallet.js';
+import { notify } from '../../model/exchange/engine.js';
+import { grouped } from '../../model/exchange/text.js';
+import { cursorPage, newestFirst, requireFields } from '../../lib/util.js';
 
 const asset = (code) => {
   const a = db().assets.find((x) => x.code === String(code ?? '').toUpperCase() && x.status === 'active');
@@ -71,7 +71,7 @@ export default [
 
   ['POST', '/wallet/deposits', (ctx) => {
     const user = session.requireUser(ctx);
-    if (user.status !== 'active') throw new MockError(403, 'FORBIDDEN', 'This account is frozen, so it can\'t deposit.');
+    if (user.status !== 'active') throw new ApiError(403, 'FORBIDDEN', 'This account is frozen, so it can\'t deposit.');
     requireFields(ctx.body, ['asset', 'amount']);
     const a = asset(ctx.body.asset);
     if (!a.depositEnabled) throw conflict(`${a.code} deposits are switched off.`);
@@ -97,24 +97,24 @@ export default [
   }],
 
   ['POST', '/wallet/deposits/card', () => {
-    throw new MockError(503, 'INTERNAL', 'Card deposits use Stripe test mode, which needs the backend.');
+    throw new ApiError(503, 'INTERNAL', 'Card deposits use Stripe test mode, which needs the backend.');
   }],
 
   ['POST', '/wallet/withdrawals', (ctx) => {
     const user = session.requireUser(ctx);
-    if (user.status !== 'active') throw new MockError(403, 'FORBIDDEN', 'This account is frozen, so it can\'t withdraw.');
-    if (user.kycStatus !== 'approved') throw new MockError(403, 'KYC_REQUIRED', 'Verify your identity before withdrawing.');
+    if (user.status !== 'active') throw new ApiError(403, 'FORBIDDEN', 'This account is frozen, so it can\'t withdraw.');
+    if (user.kycStatus !== 'approved') throw new ApiError(403, 'KYC_REQUIRED', 'Verify your identity before withdrawing.');
     requireFields(ctx.body, ['asset', 'amount', 'address']);
     const a = asset(ctx.body.asset);
     if (user.twoFactorEnabled) {
       const expected = db().credentials[user.email]?.twoFactorCode;
-      if (String(ctx.body.code ?? '') !== expected) throw new MockError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
+      if (String(ctx.body.code ?? '') !== expected) throw new ApiError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
     }
     const free = wallet.balance(user.id, a.code).available;
     const check = withdrawalRules.validate(a, { address: ctx.body.address, amount: String(ctx.body.amount), code: ctx.body.code ?? '000000' }, free, { ...user, twoFactorEnabled: false });
     if (!check.ok) {
       const [field, err] = Object.entries(check.errors)[0];
-      if (err.code === 'balance') throw new MockError(422, 'INSUFFICIENT_BALANCE', `Not enough ${a.code} available.`, check.errors);
+      if (err.code === 'balance') throw new ApiError(422, 'INSUFFICIENT_BALANCE', `Not enough ${a.code} available.`, check.errors);
       throw badRequest(`Check the ${field}.`, check.errors);
     }
     const key = ctx.headers['idempotency-key'] ? `${user.id}|${ctx.headers['idempotency-key']}` : null;
@@ -130,7 +130,7 @@ export default [
     });
     if (key) db().idempotency[key] = t.id;
     wallet.lock(user.id, a.code, amount, 'withdrawal_lock', { refType: 'transaction', refId: t.id, time: t.createdAt });
-    session.audit(user, 'wallet.withdrawal_requested', { targetType: 'transaction', targetId: t.id });
+    session.audit(ctx, user, 'wallet.withdrawal_requested', { targetType: 'transaction', targetId: t.id });
     persist();
     return { status: 201, data: { transaction: transactionDto(t) } };
   }],

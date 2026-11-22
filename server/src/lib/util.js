@@ -1,5 +1,5 @@
-// Helpers the mock route handlers share: the two list styles of section 4
-// (cursor feeds and page-number tables) and small body checks.
+// Helpers the route handlers share: the two list styles of section 4 (cursor
+// feeds and page-number tables), small body checks, and token lifetimes.
 
 import { badRequest } from './errors.js';
 
@@ -30,3 +30,11 @@ export function requireFields(body, fields) {
 }
 
 export const lower = (s) => String(s ?? '').trim().toLowerCase();
+
+const UNIT_MS = { s: 1000, m: 60 * 1000, h: 60 * 60 * 1000, d: 24 * 60 * 60 * 1000 };
+
+/** A lifetime from server/.env in milliseconds: '15m' -> 900000, '7d' -> 604800000. */
+export function durationMs(text) {
+  const [, count, unit] = /^(\d+)([smhd])$/.exec(text);
+  return Number(count) * UNIT_MS[unit];
+}

@@ -1,6 +1,6 @@
-// Copies the self-hosted fonts and the vendored QR encoder out of node_modules
-// into client/assets. The copies are committed, so the client runs without
-// node_modules; run this again only to update them.
+// Copies the self-hosted fonts, the QR encoder and the Socket.IO client out of
+// node_modules into client/assets. The copies are committed, so the client runs
+// without node_modules or a build step; run this again only to update them.
 //
 // Usage: npm run vendor
 
@@ -29,3 +29,10 @@ for (const [pkg, family, weights] of fonts) {
 mkdirSync(join(assets, 'vendor'), { recursive: true });
 copyFileSync(join(modules, 'qrcode-generator', 'dist', 'qrcode.mjs'), join(assets, 'vendor', 'qrcode-generator.mjs'));
 console.log('vendor/qrcode-generator.mjs');
+
+// The Socket.IO client's ES module build (MIT), which models/realtime/socket.js
+// imports, and its source map, so DevTools can show the readable code.
+for (const file of ['socket.io.esm.min.js', 'socket.io.esm.min.js.map']) {
+  copyFileSync(join(modules, 'socket.io-client', 'dist', file), join(assets, 'vendor', file));
+  console.log(`vendor/${file}`);
+}

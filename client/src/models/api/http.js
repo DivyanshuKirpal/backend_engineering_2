@@ -3,11 +3,10 @@
 // { success: false, error } into an ApiError, and after a 401 refreshes once
 // and retries, as section 6 flow E describes.
 //
-// Static phase: the transport is the mock server in ./mock. When the Express
-// API exists, set TRANSPORT to fetchTransport and delete ./mock; nothing that
-// calls these clients has to change.
-
-import { handle as mockTransport } from './mock/server.js';
+// The transport is fetch() to the Express server's /api/v1 on the page's own
+// origin, so the httpOnly rt cookie travels with the auth requests by itself.
+// (In the static phase it was the mock server inside the page; nothing that
+// calls these clients changed when it moved.)
 
 const API_BASE = '/api/v1';
 const NO_REFRESH = new Set(['/auth/login', '/auth/login/2fa', '/auth/register', '/auth/refresh', '/auth/logout']);
@@ -37,10 +36,20 @@ export async function fetchTransport({ method, path, query, body, headers }) {
   return { status: res.status, body: json };
 }
 
-const TRANSPORT = mockTransport;
+const TRANSPORT = fetchTransport;
 
 let accessToken = null;
 let refreshing = null;
+const refreshListeners = new Set();
+
+/**
+ * Calls fn(token) after a refresh inside request() replaces the access token,
+ * so the socket can reconnect with it (section 4). Returns a function that stops it.
+ */
+export function onAccessTokenRefreshed(fn) {
+  refreshListeners.add(fn);
+  return () => refreshListeners.delete(fn);
+}
 
 export function setAccessToken(token) {
   accessToken = token;
@@ -54,6 +63,7 @@ async function refreshToken() {
   refreshing ??= TRANSPORT({ method: 'POST', path: '/auth/refresh', headers: {} })
     .then((res) => {
       accessToken = res.body?.success ? res.body.data.accessToken : null;
+      if (accessToken) for (const fn of refreshListeners) fn(accessToken);
       return accessToken;
     })
     .finally(() => {

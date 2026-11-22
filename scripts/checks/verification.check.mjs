@@ -2,22 +2,14 @@
 import { join } from 'node:path';
 import { start } from './harness.mjs';
 
-const { page, base, shots, check, fail, finish, signIn } = await start();
+const { page, base, shots, check, fail, finish, signIn, api } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 const jpeg = { name: 'passport-sample.jpg', mimeType: 'image/jpeg', buffer: Buffer.alloc(2048, 1) };
 
-/** Sets the demo trader's check in the mock, as an admin's decision would. */
+/** Sets the demo trader's check on the server, as an admin's decision would (a test route). */
 async function decide(status, reason = null) {
-  await page.evaluate(async ([s, r]) => {
-    const { db, persist } = await import('/src/models/api/mock/db.js');
-    const me = db().users.find((u) => u.email === 'demo@orichal.app');
-    const app = db().kyc.filter((k) => k.userId === me.id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
-    app.status = s;
-    app.rejectReason = r;
-    app.reviewedAt = new Date().toISOString();
-    me.kycStatus = s;
-    persist();
-  }, [status, reason]);
+  const r = await api('POST', '/demo/kyc-status', { email: 'demo@orichal.app', status, reason });
+  if (r.status !== 200) throw new Error(`kyc-status answered ${r.status}`);
 }
 
 try {

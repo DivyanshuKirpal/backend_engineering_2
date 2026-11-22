@@ -1,7 +1,7 @@
 // Drives the Wallet page: numbers, hide small balances, links, live updates.
 import { start } from './harness.mjs';
 
-const { page, base, check, fail, finish, signIn } = await start();
+const { page, base, check, fail, finish, signIn, snapshot } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 const wait = (ms) => page.waitForTimeout(ms);
 
@@ -27,22 +27,21 @@ try {
   await page.waitForSelector('.balances-table tbody tr');
   await wait(500);
   check('choice kept after reload', (await page.locator('.balances-table tbody tr').count()) === 4 && await page.isChecked('#hide-small'));
-  const saved = await page.evaluate(async () => {
-    const { db } = await import('/src/models/api/mock/db.js');
-    return db().users.find((u) => u.email === 'demo@orichal.app').preferences.hideSmallBalances;
-  });
+  const saved = (await snapshot('users')).users.find((u) => u.email === 'demo@orichal.app').preferences.hideSmallBalances;
   check('saved on the account', saved === true);
   await page.click('#hide-small');
   await wait(600);
 
-  // Live: an order locks USDT, held rises and free falls
-  const heldBefore = await text('.wallet-split > div:nth-child(2) .wallet-split-amount');
+  // Live: an order locks USDT, held rises and free falls. The USDT row's held
+  // column, not the card's "in orders", which values locked BTC at a price
+  // that can move while the check waits.
+  const heldBefore = await text('.balances-table tbody tr:first-child .col-held');
   await page.evaluate(async () => {
     const api = await import('/src/models/api/order.api.js');
     await api.place({ market: 'BTC-USDT', side: 'buy', type: 'limit', price: '50000.00', quantity: '0.01000' });
   });
   await wait(1500);
-  const heldAfter = await text('.wallet-split > div:nth-child(2) .wallet-split-amount');
+  const heldAfter = await text('.balances-table tbody tr:first-child .col-held');
   check('held rose by 500.00', Number(heldAfter.replace(/,/g, '')) - Number(heldBefore.replace(/,/g, '')) === 500, `${heldBefore} -> ${heldAfter}`);
   check('USDT free 1,116.00', (await text('.balances-table tbody tr:first-child .col-free')) === '1,116.00', await text('.balances-table tbody tr:first-child .col-free'));
 } catch (err) {

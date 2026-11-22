@@ -2,7 +2,7 @@
 // server.js hands it to an HTTP server. Each request walks down this list
 // until something answers it, so the order is the design:
 //   1. helmet          security headers on every response
-//   2. morgan          one log line per request
+//   2. morgan          one log line per API request
 //   3. express.json    a JSON body (up to 100 kb) becomes req.body
 //   4. cookie-parser   the Cookie header becomes req.cookies
 //   5. /api/v1         the API
@@ -40,7 +40,8 @@ app.use(helmet({
     },
   },
 }));
-app.use(morgan('dev'));
+// Only API requests: the client's files would add a few hundred lines per page load.
+app.use(morgan('dev', { skip: (req) => !req.originalUrl.startsWith('/api') }));
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 

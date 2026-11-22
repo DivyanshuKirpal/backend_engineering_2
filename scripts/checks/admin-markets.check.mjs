@@ -4,21 +4,19 @@
 // create form's rules with nothing to create yet.
 import { start } from './harness.mjs';
 
-const { page, base, shots, check, fail, finish, signIn } = await start();
+const { page, base, shots, check, fail, finish, signIn, api: callApi, snapshot } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 const row = (pair) => text(`.market-admin-table tbody tr:has-text("${pair}")`);
 const fieldError = (key) => page.locator(`#market-${key}-error`).innerText().catch(() => '');
 // The demo trader's open ETH buy (66F3·A3B8)
-const ethOrder = () => page.evaluate(async () => {
-  const { db } = await import('/src/models/api/mock/db.js');
-  const o = db().orders.find((x) => x.id === '66f3c1a9d0e35b8c4f72a3b8');
+const ethOrder = async () => {
+  const o = (await snapshot('orders')).orders.find((x) => x.id === '66f3c1a9d0e35b8c4f72a3b8');
   return o ? `${o.status} ${o.cancelReason ?? ''}`.trim() : 'none';
-});
+};
 // Price levels people's open ETH orders make: what stays on a halted book
-const peopleLevels = () => page.evaluate(async () => {
-  const { db } = await import('/src/models/api/mock/db.js');
-  return new Set(db().orders.filter((o) => o.market === 'ETH-USDT' && ['open', 'partially_filled'].includes(o.status)).map((o) => `${o.side} ${o.price}`)).size;
-});
+const peopleLevels = async () => new Set((await snapshot('orders')).orders
+  .filter((o) => o.market === 'ETH-USDT' && ['open', 'partially_filled'].includes(o.status))
+  .map((o) => `${o.side} ${o.price}`)).size;
 const toAdmin = async () => {
   await page.goto(`${base}/admin/markets`);
   await page.waitForSelector('.market-admin-table tbody tr');
@@ -122,7 +120,6 @@ try {
   await page.click('button[aria-label="Resume ETH/USDT"]');
   await confirmWith('Resume');
   await page.waitForSelector('.toast:has-text("ETH/USDT resumed")');
-  // In the app, not by reloading, so the running simulator is the one that changed
   await page.click('.admin-back');
   await page.waitForSelector('.market-row');
   await page.click('.market-row:has-text("ETH/USDT") a.market-link');
@@ -130,12 +127,8 @@ try {
   await page.waitForTimeout(800);
   const prices = await page.locator('.ladder-row-ask .ladder-price').allInnerTexts();
   check('the book trades on the new tick', prices.length >= 5 && prices.every((p) => /^\d,\d{3}\.\d$/.test(p.trim())), JSON.stringify(prices.slice(0, 3)));
-  const near = await page.evaluate(async () => {
-    const { best } = await import('/src/models/api/mock/market.js');
-    const { ask } = best('ETH-USDT');
-    return Math.abs(Number(ask) / 3000 - 1) < 0.05;
-  });
-  check('around the old price', near);
+  const ask = (await callApi('GET', '/markets/ETH-USDT/orderbook?depth=1')).body.data.asks[0]?.[0];
+  check('around the old price', Math.abs(Number(ask) / 3000 - 1) < 0.05, ask);
 
   // The create form, with nothing to create
   await toAdmin();

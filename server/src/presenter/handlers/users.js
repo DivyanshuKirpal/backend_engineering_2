@@ -1,12 +1,12 @@
 // Account routes (section 4, user.routes.js).
 
-import { strength, MIN_LENGTH } from '../../../domain/password.rules.js';
-import { db, persist } from '../db.js';
-import { MockError, badRequest, conflict, notFound } from '../errors.js';
+import { strength, MIN_LENGTH } from '../../../../client/src/models/domain/password.rules.js';
+import { db, persist } from '../../model/store.js';
+import { ApiError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { sessionDto, userDto } from '../mappers.js';
-import * as session from '../session.js';
-import { notify } from '../engine.js';
-import { cursorPage, newestFirst } from '../util.js';
+import * as session from '../../model/exchange/session.js';
+import { notify } from '../../model/exchange/engine.js';
+import { cursorPage, newestFirst } from '../../lib/util.js';
 
 const DEMO_SECRET = 'JBSWY3DPEHPK3PXP';
 const DEMO_CODE = '123456';
@@ -16,7 +16,7 @@ const SECURITY_ACTIONS = new Set([
 ]);
 
 function checkCode(code) {
-  if (String(code ?? '') !== DEMO_CODE) throw new MockError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
+  if (String(code ?? '') !== DEMO_CODE) throw new ApiError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
 }
 
 export default [
@@ -61,7 +61,7 @@ export default [
         revoked += 1;
       }
     }
-    session.audit(user, 'user.password_changed', { metadata: { otherSessionsSignedOut: revoked } });
+    session.audit(ctx, user, 'user.password_changed', { metadata: { otherSessionsSignedOut: revoked } });
     notify(user.id, 'security', 'Password changed', 'Your other devices were signed out.', '/account/security');
     persist();
     return { data: { changed: true } };
@@ -80,7 +80,7 @@ export default [
     user.twoFactorEnabled = true;
     user.twoFactorEnabledAt = new Date().toISOString();
     db().credentials[user.email].twoFactorCode = DEMO_CODE;
-    session.audit(user, 'user.2fa_enabled');
+    session.audit(ctx, user, 'user.2fa_enabled');
     notify(user.id, 'security', 'Two-factor turned on', 'Logging in and withdrawing now ask for a code from your authenticator app.', '/account/security');
     persist();
     return { data: { twoFactorEnabled: true } };
@@ -95,7 +95,7 @@ export default [
     user.twoFactorEnabled = false;
     user.twoFactorEnabledAt = null;
     db().credentials[user.email].twoFactorCode = null;
-    session.audit(user, 'user.2fa_disabled');
+    session.audit(ctx, user, 'user.2fa_disabled');
     notify(user.id, 'security', 'Two-factor turned off', 'Logging in now needs only your password.', '/account/security');
     persist();
     return { data: { twoFactorEnabled: false } };
@@ -113,7 +113,7 @@ export default [
     if (!s) throw notFound('That device isn\'t signed in.');
     if (s.id === ctx.session.id) throw conflict('Use Log out to end this device\'s session.');
     s.revokedAt = new Date().toISOString();
-    session.audit(user, 'user.session_revoked', { metadata: { device: s.device } });
+    session.audit(ctx, user, 'user.session_revoked', { metadata: { device: s.device } });
     persist();
     return { status: 204, data: null };
   }],
@@ -127,7 +127,7 @@ export default [
         revoked += 1;
       }
     }
-    session.audit(user, 'user.sessions_revoked', { metadata: { revoked } });
+    session.audit(ctx, user, 'user.sessions_revoked', { metadata: { revoked } });
     persist();
     return { data: { revoked } };
   }],

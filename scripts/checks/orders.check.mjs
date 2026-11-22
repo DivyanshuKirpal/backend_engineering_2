@@ -2,7 +2,7 @@
 import { join } from 'node:path';
 import { start } from './harness.mjs';
 
-const { page, base, shots, check, fail, finish, signIn } = await start();
+const { page, base, shots, check, fail, finish, signIn, snapshot } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 const rows = (tab) => page.locator(`.orders-${tab} tbody tr:not(:has(.table-empty))`);
 const drawer = '.order-drawer';
@@ -13,10 +13,7 @@ const path = () => new URL(page.url()).pathname + new URL(page.url()).search;
 
 try {
   await signIn('demo');
-  const ids = await page.evaluate(async () => {
-    const { db } = await import('/src/models/api/mock/db.js');
-    return db().orders.filter((o) => o.userId === '66f19a3c5e7b2d4f8a1c0e01').map((o) => o.id);
-  });
+  const ids = (await snapshot('orders')).orders.filter((o) => o.userId === '66f19a3c5e7b2d4f8a1c0e01').map((o) => o.id);
   check('demo order ids', ids.includes(A512) && ids.includes(A2A3C), JSON.stringify(ids));
 
   await page.goto(`${base}/orders`);

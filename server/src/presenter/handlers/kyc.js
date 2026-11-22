@@ -1,11 +1,12 @@
-// KYC routes (section 4, kyc.routes.js). Images are only checked for type and
-// size; the mock keeps their file names, never their contents.
+// KYC routes (section 4, kyc.routes.js). Images arrive as multipart uploads
+// (Multer, in the adapter) and are only checked for type and size; until M8
+// saves them, the server keeps their file names, never their contents.
 
-import { db, newId, persist } from '../db.js';
-import { badRequest, conflict } from '../errors.js';
+import { db, newId, persist } from '../../model/store.js';
+import { badRequest, conflict } from '../../lib/errors.js';
 import { kycDto } from '../mappers.js';
-import * as session from '../session.js';
-import { requireFields } from '../util.js';
+import * as session from '../../model/exchange/session.js';
+import { requireFields } from '../../lib/util.js';
 
 const DOCUMENT_TYPES = ['passport', 'national_id', 'driving_licence'];
 const MAX_IMAGE = 5 * 1024 * 1024;
@@ -66,7 +67,7 @@ export default [
     };
     db().kyc.push(app);
     user.kycStatus = 'pending';
-    session.audit(user, 'kyc.submitted', { targetType: 'kyc', targetId: app.id });
+    session.audit(ctx, user, 'kyc.submitted', { targetType: 'kyc', targetId: app.id });
     persist();
     return { status: 201, data: { application: kycDto(app) } };
   }],

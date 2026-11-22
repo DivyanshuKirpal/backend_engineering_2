@@ -2651,9 +2651,10 @@ Section 8 starts the frontend's static phase, and the table "Frontend, static ph
 | Change | 1 Folders | morgan request logs instead of pino; no metrics | morgan is the course's logger; metrics come with Prometheus |
 | Change | 1 Folders, 4 API | KYC images are saved under `server/data/uploads` instead of Cloudinary | Cloud storage comes later |
 | Change | 4 API | No rate limits yet | They need Redis |
-| Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
+| Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status, email-verified and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
 | Addition | 9 Server build log | New section: two lines pointing to `docs/server-plan.md`, which holds the phase's scope, decisions, milestones, checklist and log | The server phase keeps its plan and log in its own file instead of growing this one |
 | Change | 4 API (Health) | One `GET /api/v1/health` (`status`, `uptimeSeconds`, `time`; MongoDB's state from M3) instead of `/health/live`, `/health/ready` and `/metrics` outside `/api/v1` | No Docker, Nginx or Prometheus probes the server in this phase; one public route under the API's base path serves Postman and the demo |
+| Change | 3 Schemas (sessions), 4 API | A sign-in revives the user's first session instead of starting one per device: the demo treats every browser as the seeded device the Security board shows. A user with no session gets one named from the User-Agent, with the request's IP | Carried over from the static phase, so the Security page and its check show the seeded devices with this one first |
 
 ### Sources
 

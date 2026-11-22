@@ -14,12 +14,11 @@
 //            steps run in order once the page has loaded, to reach the
 //            state a board draws (the sign-in code step, an open drawer)
 
-import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { signInPage, startServer } from './checks/harness.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -43,7 +42,6 @@ const showAll = args.includes('--all');
 const fresh = args.includes('--fresh');
 const verified = args.includes('--verified');
 const kyc = flag('kyc', '');
-const ACCOUNTS = { demo: ['demo@orichal.app', 'orichal-demo', '123456'], admin: ['admin@orichal.app', 'orichal-demo', null] };
 const steps = args.filter((a) => /^--(fill|click|wait-for)=/.test(a)).map((a) => {
   const [, kind, rest] = /^--(fill|click|wait-for)=(.*)$/.exec(a);
   if (kind !== 'fill') return { kind, selector: rest };
@@ -56,64 +54,20 @@ const board = readFileSync(join(root, '.boards', `${boardName}.txt`), 'utf8').tr
   return m && { x: Number(m[1]), y: Number(m[2]), size: Number(m[3]), text: m[4].trim() };
 }).filter((r) => r && r.text && (!only || (r.y >= only[0] && r.y <= only[1])));
 
-const port = await new Promise((resolve) => {
-  const srv = createServer();
-  srv.listen(0, () => srv.close(() => resolve(srv.address()?.port ?? 5397)));
-}).catch(() => 5397);
-const server = spawn(process.execPath, [join(root, 'node_modules', 'serve', 'build', 'main.js'), 'client', '--listen', String(port), '--no-clipboard'], { cwd: root, stdio: 'ignore' });
-const base = `http://localhost:${port}`;
-for (let i = 0; i < 50; i += 1) {
-  try {
-    if ((await fetch(`${base}/`)).ok) break;
-  } catch {
-    await new Promise((r) => setTimeout(r, 100));
-  }
-}
-
-// --verified: confirm the signed-in user's email first, so the verify banner
-// doesn't push the page down (the boards other than Profile draw it confirmed).
-async function confirmEmail(page, email) {
-  await page.evaluate(async (address) => {
-    const { db, persist } = await import('/src/models/api/mock/db.js');
-    const me = db().users.find((u) => u.email === address);
-    if (me) me.emailVerified = true;
-    persist();
-    await new Promise((r) => setTimeout(r, 400));
-  }, email);
-}
-
-// --kyc=<status>: set the signed-in user's identity check first, for boards
-// drawn at another moment (Verification shows Not started; the demo trader is
-// approved). "none" also drops their applications.
-async function setKyc(page, email, status) {
-  await page.evaluate(async ([address, value]) => {
-    const { db, persist } = await import('/src/models/api/mock/db.js');
-    const me = db().users.find((u) => u.email === address);
-    if (me) {
-      me.kycStatus = value;
-      if (value === 'none') db().kyc = db().kyc.filter((k) => k.userId !== me.id);
-    }
-    persist();
-    await new Promise((r) => setTimeout(r, 400));
-  }, [email, status]);
-}
+// The same server the checks start, on a spare port with a store of its own
+const server = await startServer();
+const { base } = server;
 
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width, height } });
   page.on('pageerror', (e) => console.log('[page error]', e.message));
-  await page.goto(`${base}/`);
-  await page.waitForSelector('.app-header, .auth-layout');
-  if (fresh) await page.evaluate(async () => (await import('/src/models/api/mock/server.js')).resetDemo());
-  if (as !== 'guest') {
-    await page.evaluate(async ([e, p, c]) => {
-      const { handle } = await import('/src/models/api/mock/server.js');
-      const first = await handle({ method: 'POST', path: '/auth/login', body: { email: e, password: p } });
-      if (first.body.data.requires2fa) await handle({ method: 'POST', path: '/auth/login/2fa', body: { loginTicket: first.body.data.loginTicket, code: c } });
-    }, ACCOUNTS[as]);
-    if (verified) await confirmEmail(page, ACCOUNTS[as][0]);
-    if (kyc) await setKyc(page, ACCOUNTS[as][0], kyc);
-  }
+  // --verified confirms the user's email first, so the verify banner doesn't
+  // push the page down (the boards other than Profile draw it confirmed).
+  // --kyc=<status> sets their identity check first, for boards drawn at
+  // another moment (Verification shows Not started); "none" also drops their
+  // applications.
+  await signInPage(page, base, as, { fresh, kyc: kyc || null, verified });
   await page.goto(`${base}${route}`);
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(wait);
@@ -193,5 +147,5 @@ try {
   console.log(`${board.length} board runs; ${flagged} flagged`);
 } finally {
   await browser.close();
-  server.kill();
+  server.stop();
 }

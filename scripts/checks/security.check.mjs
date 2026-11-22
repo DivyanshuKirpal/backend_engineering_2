@@ -2,7 +2,7 @@
 import { join } from 'node:path';
 import { start } from './harness.mjs';
 
-const { page, base, shots, check, fail, finish, signIn } = await start();
+const { page, base, shots, check, fail, finish, signIn, api } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 const deviceRows = () => page.locator('.device-row').count();
 
@@ -87,12 +87,8 @@ try {
   check('fields cleared', (await page.inputValue('#pw-current')) === '' && (await page.inputValue('#pw-new')) === '');
   await page.waitForFunction(() => /Password changed/.test(document.querySelector('.activity-table tbody')?.textContent ?? ''));
   check('activity notes the change', true);
-  const works = await page.evaluate(async () => {
-    const { handle } = await import('/src/models/api/mock/server.js');
-    const r = await handle({ method: 'POST', path: '/auth/login', body: { email: 'demo@orichal.app', password: 'Correct-horse-42' } });
-    return r.status;
-  });
-  check('new password signs in', works === 200, String(works));
+  const works = await api('POST', '/auth/login', { email: 'demo@orichal.app', password: 'Correct-horse-42' });
+  check('new password signs in', works.status === 200 && works.body.data.requires2fa === true, String(works.status));
 
   // Phone width
   await page.setViewportSize({ width: 390, height: 844 });

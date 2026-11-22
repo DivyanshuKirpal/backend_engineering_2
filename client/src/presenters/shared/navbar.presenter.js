@@ -3,7 +3,7 @@
 
 import * as authApi from '../../models/api/auth.api.js';
 import * as adminApi from '../../models/api/admin.api.js';
-import { failNextRequest, resetDemo } from '../../models/api/mock/server.js';
+import * as demoApi from '../../models/api/demo.api.js';
 import { session } from '../../models/stores/session.store.js';
 import { connection } from '../../models/stores/connection.store.js';
 import { notifications, markAllRead, markRead } from '../../models/stores/notification.store.js';
@@ -139,19 +139,27 @@ export function createNavbarPresenter({ admin = false } = {}) {
     async resetDemo() {
       open = null;
       p.changed();
-      await resetDemo();
-      location.assign('/');
+      try {
+        await demoApi.reset();
+        location.assign('/');
+      } catch (err) {
+        errorToast('Couldn\'t reset the demo data', err);
+      }
     },
     dropConnection() {
       open = null;
       socket.simulateDrop(5000);
       p.changed();
     },
-    failNextRequest() {
-      failNextRequest();
-      toast({ title: 'The next request will fail', body: 'Use the page as normal to see its error state.' });
+    async failNextRequest() {
       open = null;
       p.changed();
+      try {
+        await demoApi.failNextRequest();
+        toast({ title: 'The next request will fail', body: 'Use the page as normal to see its error state.' });
+      } catch (err) {
+        errorToast('Couldn\'t set that up', err);
+      }
     },
   };
 

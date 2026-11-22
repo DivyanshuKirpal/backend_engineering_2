@@ -5,16 +5,20 @@
 // `reconnect`, after which presenters reload their data instead of trusting
 // the event stream (section 4: delivery is at most once).
 //
-// Static phase: it connects to the mock gateway. With the server it wraps a
-// Socket.IO client (WebSocket only); its interface stays the same.
+// It wraps a Socket.IO client (the vendored ES module build) on the page's own
+// origin, WebSocket only. Rooms don't survive a reconnection, so it joins its
+// rooms again on every connect. The handshake carries the access token, which
+// puts the socket in the user's private room; after a refresh replaces the
+// token, it reconnects with the new one.
 
-import { connect as mockConnect } from '../api/mock/server.js';
+import { io } from '/assets/vendor/socket.io.esm.min.js';
+import { onAccessTokenRefreshed } from '../api/http.js';
 
 class Socket extends EventTarget {
-  #connection = null;
+  #socket = null;
   #rooms = new Map(); // room -> subscriber count
   #token = null;
-  #attempt = 0;
+  #lost = false; // dropped without being asked to: dispatch `reconnect` once it is back
   status = 'connecting';
 
   #setStatus(status) {
@@ -23,35 +27,50 @@ class Socket extends EventTarget {
     this.dispatchEvent(new CustomEvent('status', { detail: status }));
   }
 
-  async #open() {
-    const attempt = ++this.#attempt;
-    const connection = await mockConnect({
-      token: this.#token,
-      onEvent: (event, payload) => {
-        if (this.status === 'connected') this.dispatchEvent(new CustomEvent(event, { detail: payload }));
-      },
+  #open() {
+    const socket = io({
+      transports: ['websocket'],
+      // Read again on every connect and reconnect, so a new token is used at once.
+      auth: (send) => send({ token: this.#token }),
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 4000,
     });
-    if (attempt !== this.#attempt) {
-      connection.close();
-      return;
-    }
-    this.#connection = connection;
-    for (const room of this.#rooms.keys()) connection.join(room);
-    this.#setStatus('connected');
+    socket.on('connect', () => {
+      for (const room of this.#rooms.keys()) socket.emit('subscribe', { channel: room });
+      this.#setStatus('connected');
+      if (this.#lost) {
+        this.#lost = false;
+        this.dispatchEvent(new CustomEvent('reconnect'));
+      }
+    });
+    socket.on('disconnect', (reason) => {
+      // 'io client disconnect' is this code's own doing: a new token or a simulated drop.
+      if (reason === 'io client disconnect') return;
+      this.#lost = true;
+      this.#setStatus('reconnecting');
+    });
+    socket.onAny((event, payload) => {
+      if (this.status === 'connected') this.dispatchEvent(new CustomEvent(event, { detail: payload }));
+    });
+    this.#socket = socket;
   }
 
-  /** Connects, or reconnects with a new access token after login or refresh. */
-  async connect(token = this.#token) {
+  /** Connects, or reconnects with a new access token after login, refresh or logout. */
+  connect(token = this.#token) {
     this.#token = token;
-    this.#connection?.close();
-    this.#connection = null;
-    await this.#open();
+    if (!this.#socket) {
+      this.#open();
+      return;
+    }
+    // The token travels in the handshake, so a new token needs a new connection.
+    this.#socket.disconnect();
+    this.#socket.connect();
   }
 
   /** Joins a public room: tickers, market:{symbol} or candles:{symbol}:{interval}. */
   subscribe(room) {
     this.#rooms.set(room, (this.#rooms.get(room) ?? 0) + 1);
-    if (this.#rooms.get(room) === 1) this.#connection?.join(room);
+    if (this.#rooms.get(room) === 1 && this.#socket?.connected) this.#socket.emit('subscribe', { channel: room });
     return () => this.unsubscribe(room);
   }
 
@@ -62,7 +81,7 @@ class Socket extends EventTarget {
       return;
     }
     this.#rooms.delete(room);
-    this.#connection?.leave(room);
+    if (this.#socket?.connected) this.#socket.emit('unsubscribe', { channel: room });
   }
 
   /** Listens for one event; returns a function that stops listening. */
@@ -74,15 +93,16 @@ class Socket extends EventTarget {
 
   /** Demo control: drops the connection for `ms`, then reconnects. */
   simulateDrop(ms = 4000) {
-    if (this.status !== 'connected') return;
-    this.#connection?.close();
-    this.#connection = null;
+    if (this.status !== 'connected' || !this.#socket) return;
+    this.#lost = true;
+    this.#socket.disconnect();
     this.#setStatus('reconnecting');
-    setTimeout(async () => {
-      await this.#open();
-      this.dispatchEvent(new CustomEvent('reconnect'));
-    }, ms);
+    setTimeout(() => this.#socket.connect(), ms);
   }
 }
 
 export const socket = new Socket();
+
+// A request that hit a 401 refreshed the access token (http.js); the socket
+// follows, so the server puts it back in the user's room (section 4).
+onAccessTokenRefreshed((token) => socket.connect(token));

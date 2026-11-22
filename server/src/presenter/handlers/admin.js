@@ -3,18 +3,18 @@
 // the extra fields section 7 asks for (usersNew7d, volumePrev24h,
 // openOrdersBot, userDisplayName, userCreatedAt, redis and engine.markets).
 
-import * as money from '../../../domain/money.js';
-import { CONFIG_FIELDS, validateConfig, validateNewMarket } from '../../../domain/market.rules.js';
-import { db, persist } from '../db.js';
-import { badRequest, conflict, notFound } from '../errors.js';
+import * as money from '../../../../client/src/models/domain/money.js';
+import { CONFIG_FIELDS, validateConfig, validateNewMarket } from '../../../../client/src/models/domain/market.rules.js';
+import { db, persist } from '../../model/store.js';
+import { badRequest, conflict, notFound } from '../../lib/errors.js';
 import { adminUserDto, auditDto, kycDto, transactionDto } from '../mappers.js';
-import * as session from '../session.js';
-import * as wallet from '../wallet.js';
-import * as market from '../market.js';
-import { notify, systemCancel, toOrderDto } from '../engine.js';
+import * as session from '../../model/exchange/session.js';
+import * as wallet from '../../model/exchange/wallet.js';
+import * as market from '../../model/exchange/market.js';
+import { notify, systemCancel, toOrderDto } from '../../model/exchange/engine.js';
 import { marketDto } from './markets.js';
-import { grouped } from '../text.js';
-import { cursorPage, newestFirst, numberedPage, oldestFirst } from '../util.js';
+import { grouped } from '../../model/exchange/text.js';
+import { cursorPage, newestFirst, numberedPage, oldestFirst } from '../../lib/util.js';
 
 const OPEN = new Set(['pending', 'open', 'partially_filled']);
 const BOT_LEVELS_PER_SIDE = 5;
@@ -28,7 +28,7 @@ const userOr404 = (id) => {
 };
 const withKyc = (t) => ({ ...transactionDto(t, { admin: true }), userKycStatus: db().users.find((u) => u.id === t.userId)?.kycStatus ?? 'none' });
 
-/** The 14 full days before today, in the browser's calendar. */
+/** The 14 full days before today, in the server's calendar (the same laptop's as the browser in this phase). */
 function lastFourteenDays() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -105,7 +105,7 @@ export default [
     u.status = next;
     let cancelled = 0;
     if (next === 'frozen') cancelled = systemCancel({ userId: u.id, reason: 'account_frozen' });
-    session.audit(admin, next === 'frozen' ? 'admin.user_frozen' : 'admin.user_unfrozen', { targetType: 'user', targetId: u.id, metadata: { reason: ctx.body?.reason ?? null, ordersCancelled: cancelled } });
+    session.audit(ctx, admin, next === 'frozen' ? 'admin.user_frozen' : 'admin.user_unfrozen', { targetType: 'user', targetId: u.id, metadata: { reason: ctx.body?.reason ?? null, ordersCancelled: cancelled } });
     persist();
     return { data: { user: adminUserDto(u) } };
   }],
@@ -120,7 +120,7 @@ export default [
     }
     const before = u.role;
     u.role = role;
-    session.audit(admin, 'admin.role_changed', { targetType: 'user', targetId: u.id, metadata: { before, after: role } });
+    session.audit(ctx, admin, 'admin.role_changed', { targetType: 'user', targetId: u.id, metadata: { before, after: role } });
     persist();
     return { data: { user: adminUserDto(u) } };
   }],
@@ -137,7 +137,7 @@ export default [
     const k = db().kyc.find((x) => x.id === ctx.params.id);
     if (!k) throw notFound('That application doesn\'t exist.');
     const image = ctx.query.image === 'selfie' ? 'selfie' : 'document';
-    session.audit(admin, 'admin.kyc_document_viewed', { targetType: 'kyc', targetId: k.id, metadata: { image } });
+    session.audit(ctx, admin, 'admin.kyc_document_viewed', { targetType: 'kyc', targetId: k.id, metadata: { image } });
     return { data: { placeholder: true, image } };
   }],
 
@@ -156,7 +156,7 @@ export default [
     k.reviewedAt = new Date().toISOString();
     k.reviewedBy = admin.id;
     if (u) u.kycStatus = k.status;
-    session.audit(admin, decision === 'approve' ? 'admin.kyc_approved' : 'admin.kyc_rejected', { targetType: 'kyc', targetId: k.id, metadata: { reason: k.rejectReason } });
+    session.audit(ctx, admin, decision === 'approve' ? 'admin.kyc_approved' : 'admin.kyc_rejected', { targetType: 'kyc', targetId: k.id, metadata: { reason: k.rejectReason } });
     if (u) {
       if (decision === 'approve') notify(u.id, 'kyc', 'Identity verified', 'An admin approved your identity check. Withdrawals are open.', '/account/verification');
       else notify(u.id, 'kyc', 'Identity check rejected', `${reason} You can send it again.`, '/account/verification');
@@ -198,7 +198,7 @@ export default [
       notify(t.userId, 'withdrawal', 'Withdrawal rejected', `${shown} is back in your wallet. ${reason}`, '/wallet/history');
     }
     t.reviewedAt = now;
-    session.audit(admin, decision === 'approve' ? 'admin.withdrawal_approved' : 'admin.withdrawal_rejected', { targetType: 'transaction', targetId: t.id, metadata: { reason: reason || null } });
+    session.audit(ctx, admin, decision === 'approve' ? 'admin.withdrawal_approved' : 'admin.withdrawal_rejected', { targetType: 'transaction', targetId: t.id, metadata: { reason: reason || null } });
     persist();
     return { data: { transaction: withKyc(t) } };
   }],
@@ -250,10 +250,10 @@ export default [
         cancelled = systemCancel({ symbol: config.symbol, reason: 'market_halted' });
       }
       market.setStatus(config.symbol, body.status, body.status === 'active' ? 'resume' : body.status === 'halted' ? 'halt' : 'delist');
-      session.audit(admin, `admin.market_${body.status === 'active' ? 'resumed' : body.status}`, { targetType: 'market', targetId: config.symbol, metadata: { cancelOpenOrders: Boolean(body.cancelOpenOrders), ordersCancelled: cancelled } });
+      session.audit(ctx, admin, `admin.market_${body.status === 'active' ? 'resumed' : body.status}`, { targetType: 'market', targetId: config.symbol, metadata: { cancelOpenOrders: Boolean(body.cancelOpenOrders), ordersCancelled: cancelled } });
     }
     if (CONFIG_FIELDS.some((f) => before[f] !== config[f])) {
-      session.audit(admin, 'admin.market_updated', { targetType: 'market', targetId: config.symbol, metadata: { before, after: { ...config } } });
+      session.audit(ctx, admin, 'admin.market_updated', { targetType: 'market', targetId: config.symbol, metadata: { before, after: { ...config } } });
     }
     persist();
     return { data: { market: marketDto(config) } };

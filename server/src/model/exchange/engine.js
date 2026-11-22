@@ -1,15 +1,15 @@
-// The mock matching engine and settlement (section 6, flows A and B). An order
+// The matching engine and settlement (section 6, flows A and B). An order
 // the API accepts locks its funds and waits as `pending`; a moment later the
 // engine applies it: a halted market rejects it, otherwise it walks the book
 // (market.take), settles every fill on both sides through the wallet, unlocks
 // any price improvement, and rests the remainder or cancels a market order's
 // rest. Each step pushes order.update to the owner, as the real engine does.
 
-import * as money from '../../domain/money.js';
-import * as rules from '../../domain/order.rules.js';
-import { db, newId, persist } from './db.js';
+import * as money from '../../../../client/src/models/domain/money.js';
+import * as rules from '../../../../client/src/models/domain/order.rules.js';
+import { db, newId, persist } from '../store.js';
 import { publish } from './bus.js';
-import { MockError, notFound, conflict, forbidden } from './errors.js';
+import { ApiError, notFound, conflict, forbidden } from '../../lib/errors.js';
 import * as market from './market.js';
 import * as wallet from './wallet.js';
 import { grouped } from './text.js';
@@ -57,7 +57,7 @@ export function place(userId, body, idempotencyKey) {
   if (u.status !== 'active') throw forbidden('This account is frozen, so it can\'t place orders.');
   const cfg = marketConfig(body.market);
   if (!cfg || cfg.status === 'delisted') throw notFound('That market doesn\'t exist.');
-  if (cfg.status === 'halted') throw new MockError(409, 'MARKET_HALTED', `${cfg.symbol.replace('-', '/')} is halted. New orders are paused.`);
+  if (cfg.status === 'halted') throw new ApiError(409, 'MARKET_HALTED', `${cfg.symbol.replace('-', '/')} is halted. New orders are paused.`);
 
   const key = idempotencyKey ? `${userId}|${idempotencyKey}` : null;
   if (key && db().idempotency[key]) {
@@ -77,9 +77,9 @@ export function place(userId, body, idempotencyKey) {
   const check = rules.validate(cfg, order, free);
   if (!check.ok) {
     const first = Object.values(check.errors)[0];
-    if (first.code === 'balance') throw new MockError(422, 'INSUFFICIENT_BALANCE', `Not enough ${first.asset} available.`, check.errors);
-    if (first.code === 'halted') throw new MockError(409, 'MARKET_HALTED', 'This market is halted.');
-    throw new MockError(422, 'MARKET_RULES', 'The order breaks the market\'s rules.', check.errors);
+    if (first.code === 'balance') throw new ApiError(422, 'INSUFFICIENT_BALANCE', `Not enough ${first.asset} available.`, check.errors);
+    if (first.code === 'halted') throw new ApiError(409, 'MARKET_HALTED', 'This market is halted.');
+    throw new ApiError(422, 'MARKET_RULES', 'The order breaks the market\'s rules.', check.errors);
   }
 
   const now = new Date().toISOString();

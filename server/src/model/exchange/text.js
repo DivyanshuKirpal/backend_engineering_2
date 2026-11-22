@@ -1,4 +1,4 @@
-// Plain text the mock server writes into notifications and messages, as the
+// Plain text the server writes into notifications and messages, as the
 // real notification.service would. The client's formatting lives in the
 // presenters; this is the server's own copy of the one rule it needs.
 

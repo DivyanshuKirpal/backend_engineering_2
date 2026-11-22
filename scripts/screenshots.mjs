@@ -1,6 +1,7 @@
 // Screenshots for comparing pages with the design boards (Playwright).
-// Starts the dev server on a spare port, signs in through the mock API when
-// asked, and saves full-page PNGs to .screenshots/ (git-ignored).
+// Starts the server on a spare port with a store of its own (as the checks
+// do), signs in through the API when asked, and saves full-page PNGs to
+// .screenshots/ (git-ignored).
 //
 // Usage: npm run shots -- [--as=demo|admin|guest] [--widths=1440,390] [--wait=1200] [--fresh] /markets wallet ...
 //   Routes may leave out the leading slash ("home" is /), which also keeps Git Bash
@@ -9,12 +10,11 @@
 //   --verified  confirm the user's email first, so no verify banner shows
 //   --kyc=none  set the user's identity check first (Verification's board is at Not started)
 
-import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { signInPage, startServer } from './checks/harness.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(root, '.screenshots');
@@ -31,87 +31,16 @@ const wait = Number(flag('wait', '1200'));
 const fresh = args.includes('--fresh');
 const verified = args.includes('--verified');
 const kyc = (args.find((a) => a.startsWith('--kyc=')) ?? '').slice(6);
-const ACCOUNTS = { demo: ['demo@orichal.app', 'orichal-demo', '123456'], admin: ['admin@orichal.app', 'orichal-demo', null] };
 
-const freePort = () => new Promise((resolve) => {
-  const srv = createServer();
-  srv.listen(0, () => {
-    const { port } = srv.address();
-    srv.close(() => resolve(port));
-  });
-});
-
-async function startServer(port) {
-  // Its request log is never read, so it goes nowhere: an unread pipe fills up and stalls the server
-  const child = spawn(process.execPath, [join(root, 'node_modules', 'serve', 'build', 'main.js'), 'client', '--listen', String(port), '--no-clipboard'], { cwd: root, stdio: 'ignore' });
-  for (let i = 0; i < 50; i += 1) {
-    try {
-      const res = await fetch(`http://localhost:${port}/`);
-      if (res.ok) return child;
-    } catch {
-      // not up yet
-    }
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  child.kill();
-  throw new Error('The dev server did not start');
-}
-
-async function signIn(page, base) {
-  await page.goto(`${base}/`);
-  await page.waitForSelector('.app-header, .auth-layout');
-  if (fresh) {
-    await page.evaluate(async () => {
-      const server = await import('/src/models/api/mock/server.js');
-      await server.resetDemo();
-    });
-  }
-  if (as === 'guest') return;
-  const [email, password, code] = ACCOUNTS[as];
-  await page.evaluate(async ([e, p, c]) => {
-    const { handle } = await import('/src/models/api/mock/server.js');
-    const first = await handle({ method: 'POST', path: '/auth/login', body: { email: e, password: p } });
-    if (first.body.data.requires2fa) {
-      await handle({ method: 'POST', path: '/auth/login/2fa', body: { loginTicket: first.body.data.loginTicket, code: c } });
-    }
-  }, [email, password, code]);
-  if (verified) await confirmEmail(page, email);
-  if (kyc) await setKyc(page, email, kyc);
-}
-
-// --kyc=<status>: set the signed-in user's identity check first, for boards
+// --kyc=<status> sets the signed-in user's identity check first, for boards
 // drawn at another moment (Verification shows Not started; the demo trader is
-// approved). "none" also drops their applications.
-async function setKyc(page, email, status) {
-  await page.evaluate(async ([address, value]) => {
-    const { db, persist } = await import('/src/models/api/mock/db.js');
-    const me = db().users.find((u) => u.email === address);
-    if (me) {
-      me.kycStatus = value;
-      if (value === 'none') db().kyc = db().kyc.filter((k) => k.userId !== me.id);
-    }
-    persist();
-    await new Promise((r) => setTimeout(r, 400));
-  }, [email, status]);
-}
+// approved); "none" also drops their applications. --verified confirms their
+// email, so the verify banner doesn't push the page down (the boards other
+// than Profile draw it confirmed).
+const signIn = (page, base) => signInPage(page, base, as, { fresh, kyc: kyc || null, verified });
 
-
-// --verified: confirm the signed-in user's email first, so the verify banner
-// doesn't push the page down (the boards other than Profile draw it confirmed).
-async function confirmEmail(page, email) {
-  await page.evaluate(async (address) => {
-    const { db, persist } = await import('/src/models/api/mock/db.js');
-    const me = db().users.find((u) => u.email === address);
-    if (me) me.emailVerified = true;
-    persist();
-    await new Promise((r) => setTimeout(r, 400));
-  }, email);
-}
-
-
-const port = await freePort();
-const server = await startServer(port);
-const base = `http://localhost:${port}`;
+const server = await startServer();
+const { base } = server;
 mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch();
 
@@ -134,5 +63,5 @@ try {
   }
 } finally {
   await browser.close();
-  server.kill();
+  server.stop();
 }

@@ -1,15 +1,15 @@
 // Drives Admin · Withdrawals: approving after a confirmation, rejecting with a reason.
 import { start } from './harness.mjs';
 
-const { page, base, check, fail, finish, signIn } = await start();
+const { page, base, check, fail, finish, signIn, snapshot } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 const rows = () => page.locator('.withdrawals-table tbody tr:not(:has(.wd-empty))').count();
 const until = (fn, arg) => page.waitForFunction(fn, arg, { timeout: 6000 });
-const ledgerFor = (name, status) => page.evaluate(async ([who, state]) => {
-  const { db } = await import('/src/models/api/mock/db.js');
-  const t = db().transactions.find((x) => x.type === 'withdrawal' && x.userDisplayName === who && x.status === state);
-  return db().ledger.filter((e) => e.refType === 'transaction' && e.refId === t.id).map((e) => e.type).sort();
-}, [name, status]);
+const ledgerFor = async (who, state) => {
+  const db = await snapshot('transactions', 'ledger');
+  const t = db.transactions.find((x) => x.type === 'withdrawal' && x.userDisplayName === who && x.status === state);
+  return db.ledger.filter((e) => e.refType === 'transaction' && e.refId === t.id).map((e) => e.type).sort();
+};
 
 try {
   await signIn('admin');

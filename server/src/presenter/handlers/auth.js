@@ -1,17 +1,18 @@
-// Auth routes (section 4, auth.routes.js) for the mock sign-in. Accounts and
-// passwords come from demo-accounts.json and registrations made in the demo;
-// nothing here is real authentication.
+// Auth routes (section 4, auth.routes.js) for the demo sign-in. Accounts and
+// passwords come from demo-accounts.json and registrations made in the demo,
+// kept as plain text in the JSON store until M5 hashes them with bcrypt in
+// MongoDB. The session and its rt cookie are real (model/exchange/session.js).
 
-import { strength, MIN_LENGTH } from '../../../domain/password.rules.js';
-import { db, newId, persist } from '../db.js';
-import { MockError, badRequest, conflict, unauthenticated } from '../errors.js';
+import { strength, MIN_LENGTH } from '../../../../client/src/models/domain/password.rules.js';
+import { db, newId, persist } from '../../model/store.js';
+import { ApiError, badRequest, conflict, unauthenticated } from '../../lib/errors.js';
 import { userDto } from '../mappers.js';
-import * as session from '../session.js';
-import * as wallet from '../wallet.js';
-import { notify } from '../engine.js';
-import { lower, requireFields } from '../util.js';
+import * as session from '../../model/exchange/session.js';
+import * as wallet from '../../model/exchange/wallet.js';
+import { notify } from '../../model/exchange/engine.js';
+import { lower, requireFields } from '../../lib/util.js';
 
-function failedLogin(email, user) {
+function failedLogin(ctx, email, user) {
   const record = db().lockouts[email] ?? { count: 0, lockUntil: null };
   record.count += 1;
   if (record.count >= session.LOCK_AFTER) {
@@ -21,10 +22,10 @@ function failedLogin(email, user) {
   db().lockouts[email] = record;
   if (user) {
     user.failedLoginCount = (user.failedLoginCount ?? 0) + 1;
-    session.audit(user, 'auth.login_failed');
+    session.audit(ctx, user, 'auth.login_failed');
   }
   persist();
-  if (record.lockUntil) throw new MockError(423, 'ACCOUNT_LOCKED', 'Too many wrong passwords. Sign-in is paused for 15 minutes.', { lockUntil: record.lockUntil });
+  if (record.lockUntil) throw new ApiError(423, 'ACCOUNT_LOCKED', 'Too many wrong passwords. Sign-in is paused for 15 minutes.', { lockUntil: record.lockUntil });
   throw unauthenticated('That email and password don\'t match an account.');
 }
 
@@ -55,8 +56,8 @@ export default [
     db().watchlists[user.id] = [];
     for (const a of db().assets) db().addresses.push({ userId: user.id, asset: a.code, address: `sim-${a.code.toLowerCase()}-${randomHex()}` });
     wallet.credit(user.id, 'USDT', '10000', 'demo_credit', { refType: 'system', note: 'Sign-up credit', time: now });
-    session.audit(user, 'user.registered');
-    const { accessToken } = session.startSession(user);
+    session.audit(ctx, user, 'user.registered');
+    const { accessToken } = session.startSession(ctx, user);
     notify(user.id, 'deposit', 'Welcome to Orichal', 'Your 10,000 demo USDT is in your wallet.', '/wallet');
     persist();
     return { status: 201, data: { user: userDto(user), accessToken } };
@@ -67,16 +68,16 @@ export default [
     const email = lower(ctx.body.email);
     const lock = db().lockouts[email];
     if (lock?.lockUntil && Date.parse(lock.lockUntil) > Date.now()) {
-      throw new MockError(423, 'ACCOUNT_LOCKED', 'Too many wrong passwords. Sign-in is paused for 15 minutes.', { lockUntil: lock.lockUntil });
+      throw new ApiError(423, 'ACCOUNT_LOCKED', 'Too many wrong passwords. Sign-in is paused for 15 minutes.', { lockUntil: lock.lockUntil });
     }
     const user = db().users.find((u) => u.email === email && !u.isBot);
     const cred = db().credentials[email];
-    if (!user || !cred || cred.password !== String(ctx.body.password)) return failedLogin(email, user);
+    if (!user || !cred || cred.password !== String(ctx.body.password)) return failedLogin(ctx, email, user);
     delete db().lockouts[email];
     if (user.twoFactorEnabled) {
       return { data: { requires2fa: true, loginTicket: session.newTicket(user.id) } };
     }
-    const { accessToken } = session.startSession(user);
+    const { accessToken } = session.startSession(ctx, user);
     return { data: { user: userDto(user), accessToken } };
   }],
 
@@ -88,25 +89,25 @@ export default [
     const expected = db().credentials[user.email]?.twoFactorCode;
     if (String(ctx.body.code) !== expected) {
       t.attemptsLeft -= 1;
-      session.audit(user, 'auth.2fa_failed');
+      session.audit(ctx, user, 'auth.2fa_failed');
       if (t.attemptsLeft <= 0) {
         session.dropTicket(ctx.body.loginTicket);
         throw unauthenticated('Too many wrong codes. Start again from your password.');
       }
-      throw new MockError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: t.attemptsLeft });
+      throw new ApiError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: t.attemptsLeft });
     }
     session.dropTicket(ctx.body.loginTicket);
-    const { accessToken } = session.startSession(user);
+    const { accessToken } = session.startSession(ctx, user);
     return { data: { user: userDto(user), accessToken } };
   }],
 
-  ['POST', '/auth/refresh', () => {
-    const { accessToken } = session.refresh();
+  ['POST', '/auth/refresh', (ctx) => {
+    const { accessToken } = session.refresh(ctx);
     return { data: { accessToken } };
   }],
 
-  ['POST', '/auth/logout', () => {
-    session.endSession();
+  ['POST', '/auth/logout', (ctx) => {
+    session.endSession(ctx);
     return { status: 204, data: null };
   }],
 
@@ -116,7 +117,7 @@ export default [
     // Stands in for the user clicking the emailed link a moment later.
     setTimeout(() => {
       user.emailVerified = true;
-      session.audit(user, 'user.email_verified');
+      session.audit(ctx, user, 'user.email_verified');
       persist();
       notify(user.id, 'security', 'Email confirmed', `${user.email} is confirmed.`, '/account/profile');
     }, 3500);

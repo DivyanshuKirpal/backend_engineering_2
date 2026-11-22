@@ -1,11 +1,11 @@
 // Drives Admin · KYC review: opening, rejecting with a reason, approving.
 import { start } from './harness.mjs';
 
-const { page, base, check, fail, finish, signIn } = await start();
+const { page, base, check, fail, finish, signIn, snapshot } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
 const rows = () => page.locator('.kyc-table tbody tr:not(:has(.kyc-empty))').count();
 const until = (fn, arg) => page.waitForFunction(fn, arg, { timeout: 6000 });
-const audits = (action) => page.evaluate(async (a) => (await import('/src/models/api/mock/db.js')).db().audit.filter((x) => x.action === a).length, action);
+const audits = async (action) => (await snapshot('audit')).audit.filter((x) => x.action === action).length;
 
 try {
   await signIn('admin');
@@ -46,7 +46,7 @@ try {
   await page.waitForSelector('.toast:has-text("Approved")');
   await until(() => document.querySelectorAll('.kyc-table tbody tr').length === 5);
   check('approved leaves the queue', !/Aarav Mehta/.test(await text('.kyc-table tbody')));
-  const aarav = await page.evaluate(async () => (await import('/src/models/api/mock/db.js')).db().users.find((u) => u.displayName === 'Aarav Mehta')?.kycStatus);
+  const aarav = (await snapshot('users')).users.find((u) => u.displayName === 'Aarav Mehta')?.kycStatus;
   check('the account is approved', aarav === 'approved', aarav);
 
   // The decided lists

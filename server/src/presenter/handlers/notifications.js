@@ -1,11 +1,11 @@
 // Notification routes (section 4, notification.routes.js, stretch): the
 // header's bell reads them.
 
-import { db, persist } from '../db.js';
-import { notFound } from '../errors.js';
+import { db, persist } from '../../model/store.js';
+import { notFound } from '../../lib/errors.js';
 import { notificationDto } from '../mappers.js';
-import * as session from '../session.js';
-import { cursorPage, newestFirst } from '../util.js';
+import * as session from '../../model/exchange/session.js';
+import { cursorPage, newestFirst } from '../../lib/util.js';
 
 export default [
   ['GET', '/notifications', (ctx) => {

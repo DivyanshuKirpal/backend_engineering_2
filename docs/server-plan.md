@@ -504,7 +504,8 @@ Copy these rows into the review log under "### Server, CE-2 phase" (M0), and add
 | Change | 1 Folders | morgan request logs instead of pino; no metrics | morgan is the course's logger; metrics come with Prometheus |
 | Change | 1 Folders, 4 API | KYC images are saved under `server/data/uploads` instead of Cloudinary | Cloud storage comes later |
 | Change | 4 API | No rate limits yet | They need Redis |
-| Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
+| Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status, email-verified and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
+| Change | 3 Schemas (sessions), 4 API | A sign-in revives the user's first session instead of starting one per device: the demo treats every browser as the seeded device the Security board shows. A user with no session gets one named from the User-Agent, with the request's IP (added in M2) | Carried over from the static phase, so the Security page and its check show the seeded devices with this one first |
 | Change | 4 API (Health) | One `GET /api/v1/health` (`status`, `uptimeSeconds`, `time`; MongoDB's state from M3) instead of `/health/live`, `/health/ready` and `/metrics` outside `/api/v1` (added in M1) | No Docker, Nginx or Prometheus probes the server in this phase; one public route under the API's base path serves Postman and the demo |
 
 ## 9. Viva ownership
@@ -547,11 +548,11 @@ M1 · Express skeleton
 
 M2 · The API on the server
 
-- [ ] Core moved to `server/src`; the store on `fs`; the real `rt` cookie
-- [ ] The adapter mounts all 61 routes; demo routes; Multer on `POST /kyc`
-- [ ] Socket.IO gateway and relay; `socket.js` on the vendored client
-- [ ] `http.js` on `fetchTransport`; demo controls on the API; no mock imports left in `client/`
-- [ ] Harness, nine check files, `mock.check`, screenshots and compare on the server
+- [x] Core moved to `server/src`; the store on `fs`; the real `rt` cookie
+- [x] The adapter mounts all 61 routes; demo routes; Multer on `POST /kyc`
+- [x] Socket.IO gateway and relay; `socket.js` on the vendored client
+- [x] `http.js` on `fetchTransport`; demo controls on the API; no mock imports left in `client/`
+- [x] Harness, nine check files, `mock.check`, screenshots and compare on the server
 
 M3 · MongoDB, models and the seed
 
@@ -630,3 +631,22 @@ M10 · Documents and the tag
   5. `npm run checks` (still on `serve`): 466 checks in 22 files pass. `npm run check:data`: 3,947 checks on 26 files pass.
 
   Departures: `GET /api/v1/health` instead of section 4's `/health/live`, `/health/ready` and `/metrics`; a row in section 8 and in the md's review log. The rest stays inside the plan: the 4xx mapping in the error handler, the JWT secrets optional until M6, `fail` in `respond.js`, and Helmet's one directive.
+- **23 Nov 2026 · M2, the API on the server.** What: the mock backend moved from `client/src/models/api/mock` to `server/src` with `git mv`; the client talks to it over HTTP and Socket.IO; the checks run against the server. Files and how:
+  - Part A, the move, as section 6's table has it. `model/store.js` seeds with `fs` (the same time shift) and saves 200 ms after the last change, through a temporary file and a rename, and at once on SIGINT and SIGTERM. `model/exchange/` (engine, market, wallet, bus, text): import paths, the client's domain rules imported from `client/src/models/domain/`, `MockError` → `ApiError`. Two server fixes: `bus.js` feeds taps instead of per-channel listeners (the gateway is the one tap), and `market.js` keeps one timer per loop (the mock pushed a new handle on every tick, which on a server would grow for as long as it runs).
+  - `session.js`: the real `rt` cookie, a random 32-byte token (httpOnly, SameSite=Strict, path `/api/v1/auth`, Secure in production, 7 days from `REFRESH_TOKEN_TTL`, renewed on refresh). The store keeps only its SHA-256 hash, mapped to the session (`refreshTokens`, in the JSON store until M6, so a restart keeps everyone signed in). Access tokens stay random strings in memory until M6. Logout forgets only that session's tokens; the mock cleared them all, which on a server would sign everyone out. The device comes from `User-Agent` and the IP from `req.ip`. To get them there, the session calls take the request context: `audit(ctx, …)`, `startSession(ctx, user)`, `refresh(ctx)`, `endSession(ctx)`, about 25 call sites in the handlers, beyond "import paths only". `lifecycle.js` holds the mock server's start-up and reset.
+  - Part B: `view/routes/index.js` mounts the 61 rows (checked: 61, no duplicate method and path), builds the mock's context from `req` and `res`, and answers through `respond.js`. `exchangeReady` waits out a reset and adds the mock's delay when `DEMO_LATENCY` is on. Multer (2.5.0, memory storage) runs on `POST /kyc` and passes each file as `{ name, type, size }`. Demo routes with `DEMO_CONTROLS`; with `TEST_ROUTES`, `kyc-status`, `email-verified` and `GET /demo/db` (`?only=`; it leaves out the plain demo passwords and the cookie hashes). `fail-next` is a short-lived httpOnly cookie, so it fails the next request of the browser that asked: with two browsers in the demo, a shared switch could be used up by the admin's background refresh.
+  - Part C: `view/sockets/gateway.js` runs Socket.IO 4.8.4 on the same HTTP server, WebSocket only; the handshake's `auth.token` joins `user:<id>`; `subscribe` and `unsubscribe` with `{ channel }`, as section 4 names them, accept only the mock's public rooms; the relay is one bus tap to `io.to(channel).emit()`. Helmet's policy let the same-origin WebSocket through in Chromium, so `connect-src` is unchanged. `copy-vendor.mjs` vendors `socket.io.esm.min.js` and its map. `socket.js` keeps its interface, joins its rooms again on every connect, dispatches `reconnect` after a drop (not after a deliberate reconnect with a new token), and reconnects when `http.js` refreshes the token, through a new `onAccessTokenRefreshed` hook, as section 4 says.
+  - Part D: `http.js` on `fetchTransport`; `demo.api.js`; the navbar's demo controls on it, with error toasts; the mock folder deleted. The harness starts `server.js` per check file with a temporary `STORE_FILE`, `NODE_ENV=test`, `DEMO_CONTROLS`, `TEST_ROUTES` and `DEMO_LATENCY`, and gives `signIn` (reset and login with `fetch` in the page), `snapshot()`, `api()`, `failNext()` and `start({ browser: false })`. The browser's network log of 4xx answers and fail-next's 503 no longer counts as page errors (a 500 still does). The nine check files read `/demo/db` or call the API. `mock.check.mjs` is renamed `api.check.mjs` and calls the API from Node with a cookie jar that keeps each cookie's path: 46 checks (36 before), the new ones on the `rt` cookie, refresh, logout and a 403. `screenshots.mjs` and `compare.mjs` import the harness's `startServer` and `signInPage`. `serve`, its `compression` override and `client/serve.json` are gone; the frontend guide's 56 links to moved files open them on the `frontend-static` branch.
+  - Two flaky checks made exact, both inherited from the static phase. The wallet's "held rose by 500.00" now reads the USDT row's held column instead of the card, which values locked BTC at a price that can move while the check waits. The API check's crossing buy now sits 50 USDT over the ask instead of 5, which the simulator's drift or its bot could outrun in the second before the engine applied it; it failed the first full run that way.
+  - Docs: the M2 section of `docs/backend-guide.md` (and its M1 lines on morgan), both READMEs, and a note at the top of the frontend guide.
+
+  Checks:
+  1. Two Chromium contexts: the trader and the admin each see their own account; the trader's limit buy appeared in the admin's order book about half a second later, without a reload.
+  2. Every one of the trader's 24 API calls went to `/api/v1`; exactly one WebSocket is open per page, to `/socket.io/?EIO=4&transport=websocket`; no JavaScript errors or CSP violations. The `rt` cookie is httpOnly, SameSite Strict, path `/api/v1/auth`, and a reload keeps the session.
+  3. A server stopped and started on the same `STORE_FILE`: the order came back open and on the book, and the same `rt` cookie still refreshed. The stop was a hard kill, so the 200 ms save had already written it.
+  4. `npm run checks`: 476 checks in 22 files pass (466 before; `api` 46 instead of `mock` 36). `npm run check:data`: 3,947 checks on 26 files pass.
+  5. A search of `client/` for `api/mock` finds nothing.
+
+  Also run: an API script over HTTP (32 checks: cookies, refresh, logout, 61 routes, Multer, fail-next per browser, reset), a Socket.IO script (12: rooms, refusals, private events, unsubscribe, no long-polling), `npm run shots` and `npm run compare`.
+
+  Departures: morgan logs only `/api` requests (the owner's call, a small change to M1's `morgan('dev')`); the `email-verified` test route, for the `--verified` flag of `screenshots` and `compare`; fail-next kept per browser in a cookie; the session calls with `ctx`; `mock.check.mjs` renamed `api.check.mjs`, since the mock is gone. A new row in section 8 and in the md's review log: a sign-in revives the user's first session, as in the static phase, so the Security page shows its board's devices.

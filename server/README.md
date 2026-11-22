@@ -1,6 +1,6 @@
 # server/
 
-The Orichal server: Express 5 serving the client (`client/`) and the REST API (`/api/v1`) from one origin, http://localhost:5173. It is built milestone by milestone as [`docs/server-plan.md`](../docs/server-plan.md) sets out, and [`docs/backend-guide.md`](../docs/backend-guide.md) explains the code. Socket.IO arrives in M2 and MongoDB in M3.
+The Orichal server: Express 5 serving the client (`client/`), the REST API (`/api/v1`) and the live events (Socket.IO at `/socket.io`) from one origin, http://localhost:5173. It is built milestone by milestone as [`docs/server-plan.md`](../docs/server-plan.md) sets out, and [`docs/backend-guide.md`](../docs/backend-guide.md) explains the code. MongoDB arrives in M3.
 
 ## Run it
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173. `npm run dev` runs `node --watch`, which restarts the server when a file it uses changes; `npm start` runs it once, without watching.
+Then open http://localhost:5173. `npm run dev` runs `node --watch`, which restarts the server when a file it uses changes; `npm start` runs it once, without watching. Ctrl+C stops it and saves the data first.
 
 The settings are optional for now. Every variable has a default for local development, so the server starts without a `server/.env`. To change one, copy the example and edit the copy:
 
@@ -25,27 +25,53 @@ Check that the API answers (in PowerShell, plain `curl` is a different command, 
 
 ```powershell
 curl.exe http://localhost:5173/api/v1/health
-Invoke-RestMethod http://localhost:5173/api/v1/health
+Invoke-RestMethod http://localhost:5173/api/v1/markets
 ```
 
-## What is here so far
+## The data
+
+The demo data lives in memory while the server runs and is saved to `server/data/store.json` (`STORE_FILE`, git-ignored) 200 ms after each change and when the server stops. The first start seeds it from `client/src/models/data`, moving every timestamp so the newest lands just before now. To start again from the seed data, delete the file or use **Reset demo data** in the header's Simulator menu, which resets it for everyone on the server.
+
+## Demo routes
+
+With `DEMO_CONTROLS=true` (the default), `/api/v1/demo` serves the Simulator menu: `POST /demo/reset` and `POST /demo/fail-next` (the next API request from the same browser answers 503). With `TEST_ROUTES=true` as well, the routes only the checks use appear: `POST /demo/kyc-status`, `POST /demo/email-verified` and `GET /demo/db`, a read-only snapshot of the data.
+
+## What is here
 
 ```text
 server/
-├── .env.example             every variable, with a safe example value
+├── .env.example                 every variable, with a safe example value
+├── data/                        git-ignored: store.json
 └── src/
-    ├── server.js            Node's HTTP server on PORT, running the Express app
-    ├── app.js               the middleware, in order: helmet, morgan, JSON and cookie parsing,
-    │                        /api/v1, the API's 404, the client's files, the index.html fallback,
-    │                        the error handler
-    ├── config/env.js        reads server/.env and checks every variable with Zod
-    ├── lib/errors.js        ApiError and the helpers for section 4's error codes
+    ├── server.js                starts the exchange, then the HTTP server and Socket.IO on PORT
+    ├── app.js                   the middleware, in order: helmet, morgan (API lines only), JSON and
+    │                            cookie parsing, /api/v1, the API's 404, the client's files, the
+    │                            index.html fallback, the error handler
+    ├── config/env.js            reads server/.env and checks every variable with Zod
+    ├── lib/
+    │   ├── errors.js            ApiError and the helpers for section 4's error codes
+    │   └── util.js              list paging, small body checks, token lifetimes
     ├── middleware/
-    │   ├── notFound.js      an /api path with no route: 404 NOT_FOUND
-    │   └── errorHandler.js  the only writer of error responses
-    └── view/
-        ├── http/respond.js  the envelope: ok, created, accepted, noContent, fail
-        └── routes/index.js  the /api/v1 router: GET /health
+    │   ├── notFound.js          an /api path with no route: 404 NOT_FOUND
+    │   ├── failNext.js          the Simulator menu's "make the next request fail"
+    │   └── errorHandler.js      the only writer of error responses
+    ├── model/                   MODEL: the data and the exchange
+    │   ├── store.js             the working set, seeded from client/src/models/data, saved to STORE_FILE
+    │   └── exchange/
+    │       ├── engine.js        matching and settlement: pending, open, filled, cancelled
+    │       ├── market.js        the market simulator: books, the bot's ladder and taker, tickers, candles
+    │       ├── wallet.js        the only code that changes a balance; a ledger entry for every change
+    │       ├── session.js       sessions, the rt cookie, access tokens, audit entries
+    │       ├── bus.js           the in-process event bus the gateway taps
+    │       ├── lifecycle.js     start-up and the demo reset
+    │       └── text.js          the server's own number grouping for notification text
+    ├── presenter/               PRESENTER: check input, call the model, shape the answer
+    │   ├── handlers/            one table of [method, path, handler] per section 4 group, plus demo.js
+    │   └── mappers.js           records to the DTOs of section 4
+    └── view/                    VIEW: which URL, which middleware
+        ├── http/respond.js      the envelope: ok, created, accepted, noContent, fail
+        ├── routes/index.js      the /api/v1 router and the adapter that mounts the handler tables
+        └── sockets/gateway.js   Socket.IO: the handshake, public and private rooms, the bus relay
 ```
 
-Until M2 the client still answers its API calls with the mock backend inside the browser (`client/src/models/api/mock/`); Express serves the mock's files with the rest of the client. M2 moves the mock's handlers here, points `client/src/models/api/http.js` at `/api/v1`, and deletes the mock.
+The client reaches all of it through `client/src/models/api/http.js` (`fetch` to `/api/v1`) and `client/src/models/realtime/socket.js` (the vendored Socket.IO client). The mock backend that used to run inside the browser is gone; its code is what moved into `src/model` and `src/presenter`.

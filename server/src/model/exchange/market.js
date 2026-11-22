@@ -12,8 +12,8 @@
 // Events go out on the bus as section 4 names them: ticker, orderbook (changed
 // levels with a seq), trade, candle and market.status, plus engine.status.
 
-import * as money from '../../domain/money.js';
-import { db, fetchSeed, newId } from './db.js';
+import * as money from '../../../../client/src/models/domain/money.js';
+import { db, readSeed, newId } from '../store.js';
 import { publish } from './bus.js';
 
 export const INTERVALS = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
@@ -49,12 +49,12 @@ const between = (lo, hi) => lo + Math.random() * (hi - lo);
  */
 export async function init() {
   if (markets.size) return;
-  const marketList = (await fetchSeed('markets.json')).markets;
-  const seedOrders = (await fetchSeed('orders.json')).items;
+  const marketList = (await readSeed('markets.json')).markets;
+  const seedOrders = (await readSeed('orders.json')).items;
   const files = await Promise.all(marketList.map(async (mk) => ({
-    book: await fetchSeed(`orderbook.${mk.symbol}.json`),
-    trades: (await fetchSeed(`trades.${mk.symbol}.json`)).trades,
-    candles: CANDLE_SEEDS.has(mk.symbol) ? (await fetchSeed(`candles.${mk.symbol}.15m.json`)).candles : null,
+    book: await readSeed(`orderbook.${mk.symbol}.json`),
+    trades: (await readSeed(`trades.${mk.symbol}.json`)).trades,
+    candles: CANDLE_SEEDS.has(mk.symbol) ? (await readSeed(`candles.${mk.symbol}.15m.json`)).candles : null,
   })));
 
   // The boards' "now" lands on the real now; the tapes keep their gaps.
@@ -651,12 +651,19 @@ function botTrade(s) {
   print(s.symbol, fills, side, time);
 }
 
+// Each loop keeps only its next timer. A server runs for days, so pushing a
+// new handle per tick, as the browser's short-lived page could, would grow
+// without end.
+let loops = [];
+
 function loop(fn, lo, hi) {
+  const slot = { timer: null };
   const tick = () => {
     fn();
-    timers.push(setTimeout(tick, between(lo, hi)));
+    slot.timer = setTimeout(tick, between(lo, hi));
   };
-  timers.push(setTimeout(tick, between(lo, hi)));
+  slot.timer = setTimeout(tick, between(lo, hi));
+  loops.push(slot);
 }
 
 export function start() {
@@ -678,16 +685,15 @@ let lastHeartbeat = Date.now();
 /** Seconds since the engine's last heartbeat (written every 5 s). */
 export const heartbeatAge = () => Math.round((Date.now() - lastHeartbeat) / 1000);
 
-/** USDT traded on every market since this page loaded the seed tickers. */
+/** USDT traded on every market since the server loaded the seed tickers. */
 export function volumeSinceStart() {
   return money.sum([...markets.values()].map((s) => money.sub(s.ticker.quoteVolume, s.seedQuoteVolume)));
 }
 
 export function stop() {
-  for (const t of timers) {
-    clearTimeout(t);
-    clearInterval(t);
-  }
+  for (const slot of loops) clearTimeout(slot.timer);
+  for (const t of timers) clearInterval(t);
+  loops = [];
   timers = [];
   started = false;
 }
