@@ -13,6 +13,7 @@
 
 import { Router } from 'express';
 import multer from 'multer';
+import { mongoState } from '../../config/db.js';
 import { env } from '../../config/env.js';
 import { failNext } from '../../middleware/failNext.js';
 import { whenReady } from '../../model/exchange/lifecycle.js';
@@ -96,11 +97,12 @@ function mount(router, table) {
 
 export const apiRouter = Router();
 
-// GET /api/v1/health answers at once, even during a reset: the process is up.
-// From M3 it also says whether MongoDB is reachable.
+// GET /api/v1/health answers at once, even during a reset: the process is up,
+// and whether its MongoDB connection is.
 apiRouter.get('/health', (req, res) => {
   ok(res, {
     status: 'ok',
+    mongo: mongoState(),
     uptimeSeconds: Math.round(process.uptime()),
     time: new Date().toISOString(),
   });

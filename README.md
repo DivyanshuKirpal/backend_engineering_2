@@ -2,7 +2,7 @@
 
 A simulated spot crypto exchange for a course project: trade BTC, ETH, SOL and BNB against USDT with demo funds, on a matching engine you can see into. No real money and no blockchain.
 
-The plan is in [`architecture_declaration/crypto-exchange-architecture-declaration (1).md`](architecture_declaration/crypto-exchange-architecture-declaration%20(1).md) and the screens in [`ui_design/`](ui_design). The **static frontend phase** built the client in plain HTML, CSS and JavaScript, running on demo data in the browser; section 8 of the architecture doc logs it. The **server phase** for CE-2 is building the real server, milestone by milestone as [`docs/server-plan.md`](docs/server-plan.md) sets out: since M2 the client talks to Express over HTTP and Socket.IO, and MongoDB comes next.
+The plan is in [`architecture_declaration/crypto-exchange-architecture-declaration (1).md`](architecture_declaration/crypto-exchange-architecture-declaration%20(1).md) and the screens in [`ui_design/`](ui_design). The **static frontend phase** built the client in plain HTML, CSS and JavaScript, running on demo data in the browser; section 8 of the architecture doc logs it. The **server phase** for CE-2 is building the real server, milestone by milestone as [`docs/server-plan.md`](docs/server-plan.md) sets out: since M2 the client talks to Express over HTTP and Socket.IO, and since M3 there is a MongoDB database on Atlas (`server/README.md` says how to set it up).
 
 New to the code? [`docs/frontend-guide.md`](docs/frontend-guide.md) is a beginner's guide to the frontend, and [`docs/backend-guide.md`](docs/backend-guide.md) explains the server.
 
@@ -35,6 +35,8 @@ The **Simulator · demo funds** badge in the header opens the demo controls: res
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Starts the Express server (`server/`) on port 5173 and restarts it when a file changes. It serves `client/`, where any path without a file falls back to `index.html` so links straight to a page work, and the API under `/api/v1`. `npm start` runs it without restarting |
+| `npm run seed` | Fills the MongoDB database in `MONGO_URI` and the JSON store with a fresh copy of the demo data; `npm run seed -- --yes` when that wipes an Atlas database |
+| `npm run db:check-ledger` | Adds up every ledger entry in MongoDB and compares the sums with the wallets |
 | `npm run check:data` | Checks the demo data in `client/src/models/data`: every balance equals the sum of its ledger entries, ids are unique, locks match open orders and pending withdrawals, amounts fit their decimals |
 | `npm run boards` | Cuts each design board out of the PDFs as a JPEG plus its text layer, into `.boards/` (git-ignored) |
 | `npm run shots -- --as=demo /wallet` | Screenshots pages at 1440 and 390 px into `.screenshots/` (git-ignored), with Playwright; `--fresh` resets the demo data first, `--verified` confirms the email so the verify banner doesn't show, `--kyc=none` puts the identity check back to Not started |

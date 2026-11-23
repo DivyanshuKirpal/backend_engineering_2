@@ -6,9 +6,13 @@
 
 import { createServer } from 'node:http';
 import { app } from './app.js';
+import { connectDb, explainConnection } from './config/db.js';
 import { env } from './config/env.js';
 import * as lifecycle from './model/exchange/lifecycle.js';
 import { attachGateway } from './view/sockets/gateway.js';
+
+// The app still runs on the JSON store, so a missing database isn't fatal yet.
+connectDb().catch((err) => console.error(explainConnection(err)));
 
 await lifecycle.start();
 

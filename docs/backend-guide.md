@@ -7,6 +7,7 @@ This guide explains the server built in the CE-2 phase, for a teammate getting r
 1. [M0. The plan in the repo](#m0-the-plan-in-the-repo)
 2. [M1. The Express skeleton](#m1-the-express-skeleton)
 3. [M2. The API on the server](#m2-the-api-on-the-server)
+4. [M3. MongoDB, the models and the seed](#m3-mongodb-the-models-and-the-seed)
 
 ## M0. The plan in the repo
 
@@ -346,3 +347,95 @@ npm run dev
 - **Why httpOnly, SameSite=Strict and a path?** Scripts in the page can't read it, other sites can't make the browser send it, and it travels only to the routes that need it.
 - **What happens when the WebSocket drops?** The client shows Reconnecting, Socket.IO reconnects, the socket rejoins its rooms, and the presenters reload, because the events published in between are gone.
 - **Why write a temporary file and rename it?** A rename replaces the old file in one step, so a crash halfway through a save never leaves a broken store.
+
+## M3. MongoDB, the models and the seed
+
+M3 gives Orichal a MongoDB database on **Atlas** (MongoDB's cloud service), six **Mongoose** models, a seed script that fills them and a script that proves the money adds up. The app itself still runs on the JSON store; M4 moves it over.
+
+MongoDB stores **documents** (JSON-like objects) in **collections**. Mongoose is the library between it and our code. A **schema** describes the shape of a document: its fields, types, rules, indexes. A **model** is a schema connected to a collection: the thing you call `find`, `create` and `aggregate` on.
+
+### The connection
+
+[`config/db.js`](../server/src/config/db.js) opens one connection at start-up with `mongoose.connect(MONGO_URI)`. Mongoose keeps a pool of sockets behind it, shares it between every query and reconnects by itself. The file logs *connected*, *disconnected* and errors, and turns a failure into a sentence saying what to check. It never prints the connection string, which holds the password. `GET /api/v1/health` reports `"mongo": "up"` or `"down"`.
+
+### The six models
+
+| Collection | One document per | Referenced or embedded, and why | Indexes, and the query each serves |
+| --- | --- | --- | --- |
+| `users` | person | Embeds preferences, two-factor settings and the watchlist (at most 50): small, bounded, always read with the user | `{ email }` unique: sign-in, and no two accounts with one email |
+| `sessions` | signed-in device | References its user: sessions come and go on their own | `{ userId }`: the Security page's list. `{ expiresAt }` **TTL**: MongoDB deletes a session by itself once that time has passed |
+| `wallets` | user and asset | References its user | `{ userId, asset }` unique: one wallet per asset |
+| `ledgerEntries` | balance change | References its user: grows without limit, so it can't be embedded | `{ userId, asset, time: -1 }`: one asset's history, newest first. `{ refType, refId }`: the entries an order or a trade wrote |
+| `orders` | order | References its user | `{ userId, status, createdAt: -1 }`: my open orders and my history. `{ market, status, createdAt }`: a market's open orders. `{ userId, clientOrderId }` unique: a retried request can't make a second order |
+| `trades` | side of a fill | References its order and user | `{ userId, time: -1 }`: my trades. `{ orderId }`: an order's fills. `{ tradeId, orderId }` unique |
+
+A **compound index** covers several fields in order. `{ userId, status, createdAt: -1 }` is sorted by user, then status, then newest first, so "my open orders, newest first" reads one short stretch of it and needs no sorting.
+
+**Embedding or referencing?** Embed what is small, has a limit and is always read with its parent. Reference what grows without limit or is queried on its own. A user's ledger can have thousands of entries; inside the user document it would be loaded with every sign-in and would one day pass MongoDB's 16 MB limit per document.
+
+### Types, and the Decimal128 trap
+
+- **Money is `Decimal128`**, an exact decimal type. A JavaScript number is a binary float: `0.1 + 0.2` gives `0.30000000000000004`. The fields have a *getter*, so code reading a document sees a string such as `"1616.000800"`.
+- Decimal128 prints small amounts with an exponent: `0.00000000` becomes `0E-8`. [`lib/decimal.js`](../server/src/lib/decimal.js) writes those out again, so a string goes in and comes out unchanged.
+- **Ids are ObjectIds** and **times are Dates** in MongoDB, hex strings and ISO strings in the API. References must be ObjectIds: populate compares types, and a string never equals an ObjectId.
+
+[`model/documents.js`](../server/src/model/documents.js) converts between the two shapes, the *records* the engine and the API use and the *documents* MongoDB stores, with one table row per field. Its paths are dotted (`'twoFactor.enabled'`), so an update can set one nested field without wiping its neighbours.
+
+### Validation
+
+Mongoose checks a document before it is written: `required`, `enum` (a side is `buy` or `sell`), `match` (an email looks like one), lengths, and our own validators (a balance can't be negative, a quantity must be above zero, `filledQuantity` can't pass `quantity`). What an order needs depends on it: a limit order needs a price, a market buy needs the amount to spend. A bad document gives a `ValidationError` naming every wrong path:
+
+```text
+new Order({ quantity: '-0.01', side: 'hold', … }).validate()
+  quantity: quantity must be above zero
+  side: `hold` is not a valid enum value for path `side`.
+```
+
+### Virtuals and statics
+
+- A **virtual** is a property worked out on reading, not stored: `Wallet.total` (available + locked), `Order.remainingQuantity`, `Order.isOpen`, `User.isLocked`. Storing a total would risk it disagreeing with its parts.
+- `Order.fills` is a **virtual populate**: Mongoose fills it with the trades whose `orderId` is this order's `_id`, through a second query. The order stores no list.
+- A **static** is a method on the model: `User.findByEmail(email)`, `Order.findOpen(userId, market)`, and `LedgerEntry.balanceFor(userId, asset)`, which is an aggregation.
+- `passwordHash` and `twoFactor.codeHash` are `select: false`: a query leaves them out unless it asks with `.select('+passwordHash')`.
+
+### The seed
+
+`npm run seed` ([`server/scripts/seed.js`](../server/scripts/seed.js), with the work in [`model/seed.js`](../server/src/model/seed.js)) reads the seed JSON, shifts its times to now, empties the six collections (`deleteMany`) and fills them through the models (`insertMany`), so validation runs on every document. The demo passwords and the 2FA code go in only as bcrypt hashes (M5 explains them). It refuses to wipe a database that isn't on this machine and holds data, unless it gets `--yes`.
+
+Ledger entries written at the same instant (a fill's debit, credit and fee) get ids that ascend in writing order, and new ids are real ObjectIds, which ascend too. So sorting by `(time, _id)` always gives the ledger as it was written.
+
+### The ledger check
+
+`npm run db:check-ledger` ([`check-ledger.js`](../server/scripts/check-ledger.js)) proves that every wallet equals the sum of its ledger entries. MongoDB does the adding, in an **aggregation**: a pipeline whose stages each pass their result on.
+
+```js
+LedgerEntry.aggregate([
+  { $match: { userId: { $in: peopleIds } } },            // keep people's entries
+  { $group: {                                            // one result per user and asset
+      _id: { userId: '$userId', asset: '$asset' },
+      available: { $sum: '$deltaAvailable' },            // exact: Decimal128 stays Decimal128
+      locked: { $sum: '$deltaLocked' },
+  } },
+]);
+```
+
+It compares each sum with the wallet and exits with code 1 on any difference.
+
+### How to check M3
+
+```powershell
+npm run seed                 # add: -- --yes   to reseed Atlas
+npm run db:check-ledger      # All 59 wallets of 54 people equal the sums of their 105 ledger entries.
+curl.exe http://localhost:5173/api/v1/health    # while npm run dev runs: "mongo":"up"
+```
+
+In Atlas: **Browse Collections** → `orichal`. Open `users`, find `{ "email": "demo@orichal.app" }`: `passwordHash` starts with `$2b$12$`, and there is no password field. The **Indexes** tab of each collection lists the indexes above.
+
+### Be ready to answer
+
+- **What is the difference between a schema and a model?** The schema is the description; the model is that description bound to a collection, with the query methods.
+- **Why Decimal128?** Floats can't hold most decimal fractions exactly, and money must be exact.
+- **Which index serves which query?** The table above; read a compound index left to right.
+- **What is a virtual?** A property worked out when read, such as `Wallet.total`. Nothing is stored, so nothing can disagree.
+- **Embedding or referencing?** Preferences are embedded; the ledger is referenced, because it grows without limit and is queried on its own.
+- **What does the aggregation do?** `$match` keeps the entries, `$group` adds them up per user and asset, and the script compares the sums with the wallets.

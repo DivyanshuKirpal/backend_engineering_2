@@ -1,6 +1,6 @@
 # server/
 
-The Orichal server: Express 5 serving the client (`client/`), the REST API (`/api/v1`) and the live events (Socket.IO at `/socket.io`) from one origin, http://localhost:5173. It is built milestone by milestone as [`docs/server-plan.md`](../docs/server-plan.md) sets out, and [`docs/backend-guide.md`](../docs/backend-guide.md) explains the code. MongoDB arrives in M3.
+The Orichal server: Express 5 serving the client (`client/`), the REST API (`/api/v1`) and the live events (Socket.IO at `/socket.io`) from one origin, http://localhost:5173. It is built milestone by milestone as [`docs/server-plan.md`](../docs/server-plan.md) sets out, and [`docs/backend-guide.md`](../docs/backend-guide.md) explains the code.
 
 ## Run it
 
@@ -28,6 +28,18 @@ curl.exe http://localhost:5173/api/v1/health
 Invoke-RestMethod http://localhost:5173/api/v1/markets
 ```
 
+## MongoDB
+
+`MONGO_URI` in `server/.env` names the database: the team uses MongoDB Atlas. Put the SRV string there with the database name `/orichal`, and add each laptop's IP under Network Access in Atlas.
+
+```powershell
+npm run seed                 # fills the six collections and the JSON store
+npm run seed -- --yes        # the same, when the Atlas database already holds data (it is wiped)
+npm run db:check-ledger      # proves every wallet equals the sum of its ledger entries
+```
+
+Stop the server before seeding: it keeps its own copy of the data in memory. Two servers must not share one database for the same reason; a teammate uses another database name at the end of `MONGO_URI` (`/orichal-name`).
+
 ## The data
 
 The demo data lives in memory while the server runs and is saved to `server/data/store.json` (`STORE_FILE`, git-ignored) 200 ms after each change and when the server stops. The first start seeds it from `client/src/models/data`, moving every timestamp so the newest lands just before now. To start again from the seed data, delete the file or use **Reset demo data** in the header's Simulator menu, which resets it for everyone on the server.
@@ -42,21 +54,28 @@ With `DEMO_CONTROLS=true` (the default), `/api/v1/demo` serves the Simulator men
 server/
 ├── .env.example                 every variable, with a safe example value
 ├── data/                        git-ignored: store.json
+├── scripts/                     seed.js (npm run seed), check-ledger.js (npm run db:check-ledger)
 └── src/
     ├── server.js                starts the exchange, then the HTTP server and Socket.IO on PORT
     ├── app.js                   the middleware, in order: helmet, morgan (API lines only), JSON and
     │                            cookie parsing, /api/v1, the API's 404, the client's files, the
     │                            index.html fallback, the error handler
-    ├── config/env.js            reads server/.env and checks every variable with Zod
+    ├── config/
+    │   ├── env.js               reads server/.env and checks every variable with Zod
+    │   └── db.js                the Mongoose connection, its log lines and its state for /health
     ├── lib/
     │   ├── errors.js            ApiError and the helpers for section 4's error codes
+    │   ├── decimal.js           decimal strings to Decimal128 and back
     │   └── util.js              list paging, small body checks, token lifetimes
     ├── middleware/
     │   ├── notFound.js          an /api path with no route: 404 NOT_FOUND
     │   ├── failNext.js          the Simulator menu's "make the next request fail"
     │   └── errorHandler.js      the only writer of error responses
     ├── model/                   MODEL: the data and the exchange
-    │   ├── store.js             the working set, seeded from client/src/models/data, saved to STORE_FILE
+    │   ├── store.js             the working set, saved to STORE_FILE
+    │   ├── seed.js              how the demo data is made, and how it fills MongoDB
+    │   ├── documents.js         records to MongoDB documents and back, field by field
+    │   ├── schemas/             the Mongoose models: User, Session, Wallet, LedgerEntry, Order, Trade
     │   └── exchange/
     │       ├── engine.js        matching and settlement: pending, open, filled, cancelled
     │       ├── market.js        the market simulator: books, the bot's ladder and taker, tickers, candles

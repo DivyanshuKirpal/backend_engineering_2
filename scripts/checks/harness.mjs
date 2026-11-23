@@ -45,6 +45,8 @@ export async function startServer() {
       NODE_ENV: 'test',
       PORT: String(port),
       STORE_FILE: join(storeDir, 'store.json'),
+      // Never the database in server/.env: the checks reset the data. Nothing listens here.
+      MONGO_URI: 'mongodb://127.0.0.1:1/orichal-checks',
       DEMO_CONTROLS: 'true',
       TEST_ROUTES: 'true',
       DEMO_LATENCY: 'true', // some checks look for loading states

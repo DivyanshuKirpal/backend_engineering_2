@@ -506,6 +506,7 @@ Copy these rows into the review log under "### Server, CE-2 phase" (M0), and add
 | Change | 4 API | No rate limits yet | They need Redis |
 | Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status, email-verified and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
 | Change | 3 Schemas (sessions), 4 API | A sign-in revives the user's first session instead of starting one per device: the demo treats every browser as the seeded device the Security board shows. A user with no session gets one named from the User-Agent, with the request's IP (added in M2) | Carried over from the static phase, so the Security page and its check show the seeded devices with this one first |
+| Change | 3 Schemas | `createdAt` and `updatedAt` are fields the code sets instead of Mongoose timestamps; `users` also stores `hasPassword` and `googleLinked`, and `sessions` the device name; only the indexes this phase's queries use exist (added in M3) | The API's times are the engine's own, to the millisecond; the records already carry those fields |
 | Change | 4 API (Health) | One `GET /api/v1/health` (`status`, `uptimeSeconds`, `time`; MongoDB's state from M3) instead of `/health/live`, `/health/ready` and `/metrics` outside `/api/v1` (added in M1) | No Docker, Nginx or Prometheus probes the server in this phase; one public route under the API's base path serves Postman and the demo |
 
 ## 9. Viva ownership
@@ -556,10 +557,10 @@ M2 · The API on the server
 
 M3 · MongoDB, models and the seed
 
-- [ ] Atlas and the local fallback; `config/db.js`; Mongo on `/health`
-- [ ] Six models: validation, indexes, virtuals, statics
-- [ ] Mappers between documents and records
-- [ ] `seed.js`, `check-ledger.js`
+- [x] Atlas and the local fallback; `config/db.js`; Mongo on `/health` (the owner's call on 24 Nov: Atlas only, no local MongoDB)
+- [x] Six models: validation, indexes, virtuals, statics
+- [x] Mappers between documents and records (`model/documents.js`)
+- [x] `seed.js`, `check-ledger.js`
 
 M4 · The store on MongoDB
 
@@ -650,3 +651,20 @@ M10 · Documents and the tag
   Also run: an API script over HTTP (32 checks: cookies, refresh, logout, 61 routes, Multer, fail-next per browser, reset), a Socket.IO script (12: rooms, refusals, private events, unsubscribe, no long-polling), `npm run shots` and `npm run compare`.
 
   Departures: morgan logs only `/api` requests (the owner's call, a small change to M1's `morgan('dev')`); the `email-verified` test route, for the `--verified` flag of `screenshots` and `compare`; fail-next kept per browser in a cookie; the session calls with `ctx`; `mock.check.mjs` renamed `api.check.mjs`, since the mock is gone. A new row in section 8 and in the md's review log: a sign-in revives the user's first session, as in the static phase, so the Security page shows its board's devices.
+- **24 Nov 2026 · M3, MongoDB, models and the seed.** What: a MongoDB database on Atlas with six Mongoose models, a seed script that fills them through validation, and a ledger check by aggregation. The app still runs on the JSON store. Files and how:
+  - `package.json`: mongoose 9.13.0, bcryptjs 3.0.3; `npm run seed`, `npm run db:check-ledger`.
+  - `config/db.js`: `mongoose.connect` with a 5 s limit on finding a server; logs connected, disconnected and errors; explains a failure without printing the connection string. `GET /health` gains `mongo: up | down`. In M3 a missing database isn't fatal.
+  - `model/schemas/` (User, Session, Wallet, LedgerEntry, Order, Trade, and `fields.js` for money fields and references): types, enums, validators, indexes, virtuals and statics as section 6 lists them. Checked by a script: 26 cases without a database.
+  - `lib/decimal.js`: decimal strings to Decimal128 and back. Decimal128 prints small amounts with an exponent (`0.00000000` as `0E-8`), which `money.js` doesn't read, so they are written out again: 20,014 amounts there and back, none changed.
+  - `model/documents.js`: `toDocument`, `toRecord` and the dotted paths for `$set`, from one table per collection. All 253 seeded records go to documents and back with no field changed, and all validate.
+  - `model/seed.js` (the seed moved out of `store.js`) and `server/scripts/seed.js`; the demo passwords and the 2FA code go in as bcrypt hashes. Ledger entries of one instant get ids in writing order, and `newId()` makes real ObjectIds, so `(time, _id)` sorts the ledger as it was written; the mock's ids were not in order.
+  - `server/scripts/check-ledger.js`. The harness always sets `MONGO_URI`, so the checks can never reach the database in `server/.env`.
+
+  Checks:
+  1. `npm run seed` on Atlas: 56 users, 4 sessions, 59 wallets, 105 ledger entries, 25 orders, 4 trades. Without `--yes` it refuses to wipe them and exits 1. (Atlas only, by the owner's decision: no local MongoDB.)
+  2. From a script instead of Compass: the 13 indexes exist in Atlas beside `_id`; the demo user has `$2b$12$` hashes, no plain password, and a second account with the same email gets E11000.
+  3. `npm run db:check-ledger`: all 59 wallets of 54 people equal the sums of their 105 entries.
+  4. An order with a negative quantity and the side `hold`: a `ValidationError` naming `quantity` and `side`.
+  5. `npm run checks`: 476 in 22 files. `npm run check:data`: 3,947 on 26 files.
+
+  Departures: `toDocument` and `toRecord` are in `model/documents.js`, not `presenter/mappers.js`, because the store uses them and the model must not import the presenter. A new row in section 8 and the md's review log: times set by the code instead of Mongoose timestamps, three extra stored fields, only the indexes in use.
