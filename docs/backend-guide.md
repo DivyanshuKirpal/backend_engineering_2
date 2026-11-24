@@ -13,6 +13,7 @@ This guide explains the server built in the CE-2 phase, for a teammate getting r
 7. [M6. Tokens and protected routes](#m6-tokens-and-protected-routes)
 8. [M7. Orders and trades from MongoDB](#m7-orders-and-trades-from-mongodb)
 9. [M8. Validation, uploads and errors](#m8-validation-uploads-and-errors)
+10. [M9. Testing the API with Postman](#m9-testing-the-api-with-postman)
 
 ## M0. The plan in the repo
 
@@ -860,3 +861,71 @@ This is the one success answer without the envelope: the bytes themselves, as `i
 - **Why is a duplicate key a 409 and a bad id a 404?** The first conflicts with existing data; the second names nothing.
 - **Why a stream?** Constant memory whatever the file's size, and it keeps the client's pace.
 - **What is sanitising?** Bringing input into the form we expect: trimmed, lower-cased, unknown keys dropped.
+
+## M9. Testing the API with Postman
+
+The API has two kinds of test. `npm run checks` drives the pages in a browser and calls the API from code. The **Postman collection** ([`docs/postman/`](postman/crypto-exchange.postman_collection.json)) tests the API alone, the way another program would use it. Postman runs it by hand; **Newman**, Postman's command-line runner, runs the same file with `npm run test:api`.
+
+### The pieces
+
+| Piece | What it is |
+| --- | --- |
+| **Collection** | 93 requests in eight folders, run top to bottom: Health, Auth, Markets, Orders, Wallet, KYC, Admin, Errors |
+| **Environment** | Named values (`baseUrl`, `userToken`, `orderId`, …) written as `{{name}}` in a request. The committed file holds only the demo accounts and empty names: tokens exist only during a run |
+| **Test script** | JavaScript that runs *after* the answer and asserts something about it |
+| **Pre-request script** | JavaScript that runs *before* the request: makes a fresh email, waits for the engine, sends the first four wrong passwords |
+
+### What a test asserts
+
+The collection has one script of its own that runs after **every** request. It checks the envelope: `success` agrees with the status, and an answer holds exactly `data` or `error`. Each request then adds its status and the fields that matter:
+
+```js
+pm.test('201', () => pm.response.to.have.status(201));
+pm.test('a new user with a JWT', () => {
+  pm.expect(data.user.role).to.equal('user');
+  pm.expect(data.accessToken.split('.')).to.have.lengthOf(3);
+});
+```
+
+`pm.test` names the test, and `pm.expect` is the Chai library's. A test that throws has failed.
+
+### How a token travels from one request to the next
+
+```text
+Admin (POST /auth/login) ── script: pm.environment.set('adminToken', data.accessToken)
+                                        │
+                                   environment
+                                        │
+Stats (GET /admin/stats) ── Authorization: Bearer {{adminToken}}
+```
+
+The folder sets the authorization once, and its requests inherit it. Ids travel the same way: *Place a limit order* saves `orderId`, *One order* asks for `/orders/{{orderId}}`.
+
+The refresh token isn't saved by any script: it is a cookie, and Postman keeps cookies in its **cookie jar**. The jar is shared, like one browser. A login ends the same browser's earlier session (M5), so the admin logging in would end the user's. The trader's and the admin's logins therefore have **Disable cookie jar** on in their settings: each acts as a browser of its own.
+
+### A server of its own
+
+[`scripts/test-api.mjs`](../scripts/test-api.mjs) (`npm run test:api`) starts a server on a free port with a throwaway MongoDB in memory, exactly as the checks do, and replaces `baseUrl` with its address. So it never touches Atlas, a dev server may keep running, and each run begins from the seed data. The demo and test routes are switched off there: the collection may use only the real API. Afterwards `check-ledger` adds up that database's ledger, and the script confirms that no request went anywhere else.
+
+### The errors folder, and the two that come from Mongoose
+
+It has one of each status in section 4: 400, 401, 403, 404, 409, 413, 422, 423. Two of them start inside the database layer:
+
+| Request | What happens |
+| --- | --- |
+| `GET /orders/not-an-id` | Mongoose can't turn the text into an ObjectId and throws a **`CastError`** before any query. `errorHandler` answers **404**: nothing has that id |
+| `POST /auth/register` with a used email | MongoDB's unique index refuses the insert with **E11000**. The `post('save')` error middleware in `schemas/User.js` turns it into a **409** that names the field, so the sign-up form can show it there. Any other duplicate key gets its 409 from `errorHandler` |
+
+### How to check M9
+
+1. `npm run test:api`: 0 failures.
+2. In Postman: **Import** both files of `docs/postman`, choose the environment **Orichal local**, and set **Settings → General → Working directory** to the `docs/postman` folder (for the sample images). Start the server on freshly seeded data, then **Run collection**. This one does write to your database: it registers users, trades, and halts SOL/USDT for a moment.
+
+### Be ready to answer
+
+- **What does a Postman test assert?** The status, the envelope's shape, and the fields that matter, with `pm.test` and `pm.expect`.
+- **How does the token get from the login to the next request?** The login's script saves it in the environment; the next request reads `{{token}}`.
+- **What is Newman?** Postman's runner for the command line. It exits with an error code when a test fails, so a build server can stop there.
+- **Why its own database?** A test needs a known start, and must not change anybody's data.
+- **Why are pre-request scripts waiting?** Placing an order answers 202, accepted: the engine applies it a moment later.
+- **What is an Idempotency-Key for?** A client that lost the answer can ask again; the collection checks that the same key gives the same order.

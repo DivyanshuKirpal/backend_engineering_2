@@ -44,6 +44,7 @@ The **Simulator · demo funds** badge in the header opens the demo controls: res
 | `npm run shots -- --as=demo /wallet` | Screenshots pages at 1440 and 390 px into `.screenshots/` (git-ignored), with Playwright; `--fresh` resets the demo data first, `--verified` confirms the email so the verify banner doesn't show, `--kyc=none` puts the identity check back to Not started |
 | `npm run compare -- /markets screens-p03-markets` | Compares a page's text positions and sizes with a board's text layer (from `npm run boards`) and flags anything more than a few px off; takes `--as`, `--fresh`, `--verified`, `--kyc`, `--width`, `--height` and `--dx`, and `--fill`, `--click` and `--wait-for` steps to reach a state such as the code step |
 | `npm run checks` | Runs the Playwright behaviour checks in `scripts/checks/`, one file per page plus `api` for the API alone, each against its own server and in-memory MongoDB with a fresh copy of the demo data; `npm run checks -- trade` runs one. Each file prints its failures and its count; `--shots` also saves the few screenshots some checks take |
+| `npm run test:api` | Runs the Postman collection in `docs/postman` with Newman, against a server and an in-memory MongoDB of its own (never the one in `MONGO_URI`), then checks that database's ledger |
 | `npm run vendor` | Copies the fonts, the QR encoder and the Socket.IO client out of `node_modules` into `client/assets` (the copies are committed) |
 
 ## How it fits together

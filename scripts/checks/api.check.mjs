@@ -330,6 +330,8 @@ try {
   const notFound = [];
   for (const id of ['abc', '000000000000000000000000', foreign, '%24ne', 'a'.repeat(300)]) notFound.push((await demo.call('GET', `/orders/${id}`)).status);
   check('a malformed, unknown or somebody else\'s order id: 404', notFound.every((x) => x === 404), notFound.join());
+  r = await demo.call('GET', '/orders/abc');
+  check('the malformed one through Mongoose\'s CastError', r.body.error.code === 'NOT_FOUND' && r.body.error.message === 'Not found.', JSON.stringify(r.body));
   r = await demo.call('GET', '/orders', null, { cursor: 'not-a-cursor' });
   check('a broken cursor: 400', r.status === 400 && r.body.error.details.cursor === 'format', JSON.stringify(r.body));
 

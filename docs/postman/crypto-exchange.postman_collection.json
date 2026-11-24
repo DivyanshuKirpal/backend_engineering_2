@@ -1,0 +1,4549 @@
+{
+  "info": {
+    "name": "Orichal API",
+    "description": "The API of Orichal, a simulated crypto exchange (CE-2), from the server in `server/`.\n\nChoose the environment **Orichal local** and run the folders top to bottom on a freshly seeded database. Scripts save the tokens and ids in the environment, and the next requests read them from there. Every answer is checked for the envelope by the collection's own script; each request adds its status and the fields that matter.\n\n`npm run test:api` runs the same collection with Newman, on a server and a MongoDB of its own.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Runs after every request: the envelope of section 4",
+          "const type = pm.response.headers.get('Content-Type') || '';",
+          "if (pm.response.code === 204) {",
+          "  pm.test('204 has no body', () => pm.expect(pm.response.text()).to.equal(''));",
+          "} else if (!type.startsWith('image/')) {",
+          "  pm.test('the envelope', () => {",
+          "    const body = pm.response.json();",
+          "    pm.expect(body.success).to.equal(pm.response.code < 400);",
+          "    if (body.success) {",
+          "      pm.expect(body).to.have.all.keys('success', 'data');",
+          "    } else {",
+          "      pm.expect(body).to.have.all.keys('success', 'error');",
+          "      pm.expect(body.error.code).to.match(/^[A-Z0-9_]+$/);",
+          "      pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+          "    }",
+          "  });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "description": "Is the server up, and is MongoDB?",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('the server and MongoDB are up', () => {",
+                  "  pm.expect(answer.status).to.equal('ok');",
+                  "  pm.expect(answer.mongo).to.equal('up');",
+                  "  pm.expect(answer.flush).to.equal('ok');",
+                  "  pm.expect(answer.uptimeSeconds).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "description": "Register, refresh, log out and in again; the 2FA step; the lockout.\n\nThe refresh token is an httpOnly cookie (`rt`), which Postman keeps in its cookie jar by itself. A login ends the earlier session of the same browser, found through that cookie. Postman has one jar, so the trader's and the admin's logins have \"Disable cookie jar\" on: each is a browser of its own.",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A new address for every run",
+                  "pm.environment.set('userEmail', 'postman-' + Date.now() + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('a new user with a JWT', () => {",
+                  "  pm.expect(answer.user.email).to.equal(pm.environment.get('userEmail'));",
+                  "  pm.expect(answer.user.id).to.match(/^[0-9a-f]{24}$/);",
+                  "  pm.expect(answer.user.role).to.equal('user');",
+                  "  pm.expect(answer.user.kycStatus).to.equal('none');",
+                  "  pm.expect(answer.accessToken.split('.')).to.have.lengthOf(3);",
+                  "});",
+                  "pm.test('no password and no hash in the answer', () => {",
+                  "  pm.expect(pm.response.text()).to.not.match(/passwordHash|\\$2[aby]\\$/);",
+                  "  pm.expect(pm.response.text()).to.not.include(pm.environment.get('userPassword'));",
+                  "});",
+                  "pm.test('the rt cookie: httpOnly, SameSite=Strict, only for /api/v1/auth', () => {",
+                  "  const cookie = pm.response.headers.filter((h) => h.key.toLowerCase() === 'set-cookie').map((h) => h.value).find((v) => v.startsWith('rt='));",
+                  "  pm.expect(cookie).to.match(/HttpOnly/i);",
+                  "  pm.expect(cookie).to.match(/SameSite=Strict/i);",
+                  "  pm.expect(cookie).to.match(/Path=\\/api\\/v1\\/auth/i);",
+                  "});",
+                  "",
+                  "pm.environment.set('userToken', answer.accessToken);",
+                  "",
+                  "pm.environment.set('userId', answer.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"displayName\": \"Postman Runner\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Who am I",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('it is me', () => pm.expect(answer.user.id).to.equal(pm.environment.get('userId')));",
+                  "pm.test('a private answer is never cached', () => pm.expect(pm.response.headers.get('Cache-Control')).to.equal('no-store'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('a new access token and a new cookie', () => {",
+                  "  pm.expect(answer.accessToken.split('.')).to.have.lengthOf(3);",
+                  "  pm.expect(pm.response.headers.get('Set-Cookie')).to.match(/^rt=/);",
+                  "});",
+                  "",
+                  "pm.environment.set('userToken', answer.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "No token and no body: the rt cookie says who asks, and it is replaced by the next one."
+          },
+          "response": []
+        },
+        {
+          "name": "My devices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('one session, this one', () => {",
+                  "  pm.expect(answer.sessions).to.have.lengthOf(1);",
+                  "  pm.expect(answer.sessions[0].current).to.equal(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "sessions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh after logging out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHENTICATED', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('UNAUTHENTICATED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "The old access token after logging out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHENTICATED', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('UNAUTHENTICATED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "The token hasn't expired, but its session has ended."
+          },
+          "response": []
+        },
+        {
+          "name": "Log in again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('signed in at once: no two-factor', () => {",
+                  "  pm.expect(answer.requires2fa).to.equal(undefined);",
+                  "  pm.expect(answer.user.email).to.equal(pm.environment.get('userEmail'));",
+                  "});",
+                  "",
+                  "pm.environment.set('userToken', answer.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A wrong password",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHENTICATED', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('UNAUTHENTICATED');",
+                  "});",
+                  "",
+                  "pm.test('says nothing about which was wrong', () => pm.expect(pm.response.json().error.message).to.equal('That email and password don\\'t match an account.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"not-the-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "An unknown email",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHENTICATED', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('UNAUTHENTICATED');",
+                  "});",
+                  "",
+                  "pm.test('the same answer as a wrong password', () => pm.expect(pm.response.json().error.message).to.equal('That email and password don\\'t match an account.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody@example.com\",\n  \"password\": \"not-the-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Trader: the password",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('asks for the second factor, and gives no token yet', () => {",
+                  "  pm.expect(answer.requires2fa).to.equal(true);",
+                  "  pm.expect(answer.loginTicket).to.be.a('string').and.not.empty;",
+                  "  pm.expect(answer.accessToken).to.equal(undefined);",
+                  "});",
+                  "",
+                  "pm.environment.set('loginTicket', answer.loginTicket);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{traderEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Trader: a wrong code",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 INVALID_2FA_CODE', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('INVALID_2FA_CODE');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ attemptsLeft: 4 }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/2fa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login",
+                "2fa"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loginTicket\": \"{{loginTicket}}\",\n  \"code\": \"000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Trader: the right code",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "const bytes = require('buffer').Buffer;",
+                  "pm.test('the JWT says who, which role and which session', () => {",
+                  "  const claims = JSON.parse(bytes.from(answer.accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());",
+                  "  pm.expect(claims.sub).to.equal(answer.user.id);",
+                  "  pm.expect(claims.role).to.equal('user');",
+                  "  pm.expect(claims.sid).to.match(/^[0-9a-f]{24}$/);",
+                  "  pm.expect(claims.exp).to.be.above(claims.iat);",
+                  "});",
+                  "",
+                  "pm.environment.set('traderToken', answer.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/2fa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login",
+                "2fa"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loginTicket\": \"{{loginTicket}}\",\n  \"code\": \"{{traderCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Trader: the ticket works once",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHENTICATED', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('UNAUTHENTICATED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/2fa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login",
+                "2fa"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loginTicket\": \"{{loginTicket}}\",\n  \"code\": \"{{traderCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('an admin', () => pm.expect(answer.user.role).to.equal('admin'));",
+                  "",
+                  "pm.environment.set('adminToken', answer.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lockout: an account for it",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('lockedEmail', 'postman-locked-' + Date.now() + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lockedEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"displayName\": \"Locked Out\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lockout: the fifth wrong password",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Four wrong passwords first, one after another; the request itself is the fifth",
+                  "const tryWrong = (n) => {",
+                  "  if (n > 4) return;",
+                  "  pm.sendRequest({",
+                  "    url: pm.environment.get('baseUrl') + '/api/v1/auth/login',",
+                  "    method: 'POST',",
+                  "    header: { 'Content-Type': 'application/json' },",
+                  "    body: { mode: 'raw', raw: JSON.stringify({ email: pm.environment.get('lockedEmail'), password: 'wrong-' + n }) },",
+                  "  }, (err, res) => {",
+                  "    pm.test('wrong password ' + n + ': 401', () => pm.expect(res.code).to.equal(401));",
+                  "    tryWrong(n + 1);",
+                  "  });",
+                  "};",
+                  "tryWrong(1);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('423 ACCOUNT_LOCKED', () => {",
+                  "  pm.response.to.have.status(423);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('ACCOUNT_LOCKED');",
+                  "});",
+                  "",
+                  "pm.test('until when', () => pm.expect(Date.parse(pm.response.json().error.details.lockUntil)).to.be.above(Date.now()));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lockedEmail}}\",\n  \"password\": \"wrong-5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lockout: the right password, too late",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('423 ACCOUNT_LOCKED', () => {",
+                  "  pm.response.to.have.status(423);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('ACCOUNT_LOCKED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lockedEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Markets",
+      "description": "Public: no token needed. Prices and amounts are always strings.",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Markets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('BTC-USDT with a ticker of strings', () => {",
+                  "  const btc = answer.markets.find((m) => m.symbol === 'BTC-USDT');",
+                  "  pm.expect(btc).to.be.an('object');",
+                  "  pm.expect(btc.ticker.last).to.match(/^\\d+(\\.\\d+)?$/);",
+                  "  pm.expect(btc.tickSize).to.equal('0.01');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/markets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "markets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "One market",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('the one asked for', () => {",
+                  "  pm.expect(answer.market.symbol).to.equal('ETH-USDT');",
+                  "  pm.expect(answer.market.takerFeeRate).to.match(/^\\d+(\\.\\d+)?$/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/markets/ETH-USDT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "markets",
+                "ETH-USDT"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Order book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "// Money is never a Number: hundredths, as BigInt",
+                  "const cents = (price) => BigInt(price.replace('.', ''));",
+                  "const price = (c) => c.toString().slice(0, -2) + '.' + c.toString().slice(-2);",
+                  "pm.test('at most five levels a side, best first', () => {",
+                  "  pm.expect(answer.seq).to.be.a('number');",
+                  "  for (const side of [answer.bids, answer.asks]) pm.expect(side.length).to.be.within(1, 5);",
+                  "  answer.bids.forEach(([p], i) => i && pm.expect(cents(p) < cents(answer.bids[i - 1][0])).to.equal(true));",
+                  "  answer.asks.forEach(([p], i) => i && pm.expect(cents(p) > cents(answer.asks[i - 1][0])).to.equal(true));",
+                  "  pm.expect(cents(answer.bids[0][0]) < cents(answer.asks[0][0])).to.equal(true);",
+                  "});",
+                  "// For the Orders folder: one price that rests far below the market, one that crosses it",
+                  "pm.environment.set('restPrice', price(cents(answer.bids[0][0]) / 2n));",
+                  "pm.environment.set('crossPrice', price(cents(answer.asks[0][0]) + 5000n));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/markets/BTC-USDT/orderbook?depth=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "markets",
+                "BTC-USDT",
+                "orderbook"
+              ],
+              "query": [
+                {
+                  "key": "depth",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Latest trades",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('up to 50 trades', () => {",
+                  "  pm.expect(answer.trades.length).to.be.within(1, 50);",
+                  "  pm.expect(answer.trades[0].price).to.match(/^\\d+(\\.\\d+)?$/);",
+                  "  pm.expect(answer.trades[0].quantity).to.match(/^\\d+(\\.\\d+)?$/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/markets/BTC-USDT/trades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "markets",
+                "BTC-USDT",
+                "trades"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Candles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('24 of them, oldest first', () => pm.expect(answer.candles).to.have.lengthOf(24));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/markets/BTC-USDT/candles?interval=1h&limit=24",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "markets",
+                "BTC-USDT",
+                "candles"
+              ],
+              "query": [
+                {
+                  "key": "interval",
+                  "value": "1h"
+                },
+                {
+                  "key": "limit",
+                  "value": "24"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('USDT has 6 decimals', () => pm.expect(answer.assets.find((a) => a.code === 'USDT').decimals).to.equal(6));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/assets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assets"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "description": "As the new user, with the 10,000 demo USDT of the sign-up. The engine applies an order about half a second after accepting it, so some requests wait first.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{userToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Place a limit order",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202', () => pm.response.to.have.status(202));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('accepted, not yet in the book', () => {",
+                  "  pm.expect(answer.order.id).to.match(/^[0-9a-f]{24}$/);",
+                  "  pm.expect(answer.order.status).to.equal('pending');",
+                  "  pm.expect(answer.order.price).to.equal(pm.environment.get('restPrice'));",
+                  "  pm.expect(answer.order.quantity).to.equal('0.00100');",
+                  "  pm.expect(answer.order).to.not.have.property('userId');",
+                  "});",
+                  "",
+                  "pm.environment.set('orderId', answer.order.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"BTC-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": \"{{restPrice}}\",\n  \"quantity\": \"0.001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "The same Idempotency-Key again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202', () => pm.response.to.have.status(202));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('the same order', () => pm.expect(answer.order.id).to.equal(pm.environment.get('orderId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "A client that lost the first answer may ask again without placing a second order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"BTC-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": \"{{restPrice}}\",\n  \"quantity\": \"0.001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A second order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202', () => pm.response.to.have.status(202));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('another order', () => pm.expect(answer.order.id).to.not.equal(pm.environment.get('orderId')));",
+                  "",
+                  "pm.environment.set('secondOrderId', answer.order.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"BTC-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": \"{{restPrice}}\",\n  \"quantity\": \"0.002\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Open orders, one to a page",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The engine applies both orders",
+                  "setTimeout(() => {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('the newest, and a cursor for the rest', () => {",
+                  "  pm.expect(answer.items).to.have.lengthOf(1);",
+                  "  pm.expect(answer.items[0].id).to.equal(pm.environment.get('secondOrderId'));",
+                  "  pm.expect(answer.items[0].status).to.equal('open');",
+                  "  pm.expect(answer.nextCursor).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.environment.set('cursor', answer.nextCursor);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders?state=open&limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "open"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "The next page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('the older one, and no more', () => {",
+                  "  pm.expect(answer.items.map((o) => o.id)).to.eql([pm.environment.get('orderId')]);",
+                  "  pm.expect(answer.nextCursor).to.equal(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders?state=open&limit=1&cursor={{cursor}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "open"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{cursor}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "One order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('open, with the ledger entry that locked its USDT', () => {",
+                  "  pm.expect(answer.order.status).to.equal('open');",
+                  "  pm.expect(answer.fills).to.eql([]);",
+                  "  pm.expect(answer.ledger.map((e) => e.type)).to.eql(['order_lock']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A buy that crosses the book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202', () => pm.response.to.have.status(202));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "",
+                  "pm.environment.set('filledOrderId', answer.order.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Its limit is 50 USDT over the best ask, so it fills at once, at the ask.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"BTC-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": \"{{crossPrice}}\",\n  \"quantity\": \"0.001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "The filled order",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The engine fills it",
+                  "setTimeout(() => {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('filled, with its fills', () => {",
+                  "  pm.expect(answer.order.status).to.equal('filled');",
+                  "  pm.expect(answer.fills.length).to.be.above(0);",
+                  "  pm.expect(answer.fills[0].orderId).to.equal(pm.environment.get('filledOrderId'));",
+                  "  pm.expect(answer.fills[0].role).to.equal('taker');",
+                  "});",
+                  "pm.test('and its ledger entries, in the order written', () => {",
+                  "  pm.expect(answer.ledger.map((e) => e.type).slice(0, 4)).to.eql(['order_lock', 'trade_debit', 'trade_credit', 'trade_fee']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/{{filledOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{filledOrderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A market order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202', () => pm.response.to.have.status(202));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('no price, a total', () => {",
+                  "  pm.expect(answer.order.price).to.equal(null);",
+                  "  pm.expect(answer.order.quoteQuantity).to.equal('50.000000');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "A market buy says how much to spend.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"ETH-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"market\",\n  \"quoteQuantity\": \"50\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "My trades",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The engine fills the market order",
+                  "setTimeout(() => {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('both, newest first', () => {",
+                  "  pm.expect(answer.items.some((t) => t.orderId === pm.environment.get('filledOrderId'))).to.equal(true);",
+                  "  pm.expect(answer.items.some((t) => t.market === 'ETH-USDT')).to.equal(true);",
+                  "  answer.items.forEach((t, i) => i && pm.expect(t.time <= answer.items[i - 1].time).to.equal(true));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/trades?limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "trades"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel one",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202', () => pm.response.to.have.status(202));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('asked for', () => pm.expect(answer).to.eql({ orderId: pm.environment.get('orderId'), cancelRequested: true }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel all",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202', () => pm.response.to.have.status(202));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('at least the second one', () => pm.expect(answer.cancelRequested).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders?market=BTC-USDT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "market",
+                  "value": "BTC-USDT"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "History",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The engine cancels them",
+                  "setTimeout(() => {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('two cancelled, one filled', () => {",
+                  "  const statusOf = (name) => (answer.items.find((o) => o.id === pm.environment.get(name)) || {}).status;",
+                  "  pm.expect(statusOf('orderId')).to.equal('cancelled');",
+                  "  pm.expect(statusOf('secondOrderId')).to.equal('cancelled');",
+                  "  pm.expect(statusOf('filledOrderId')).to.equal('filled');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders?state=history&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "history"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel a closed order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 CONFLICT', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('CONFLICT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/{{filledOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{filledOrderId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "description": "Balances, the ledger, simulated deposits and withdrawals.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{userToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Balances",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('USDT was spent, BTC was bought, nothing is locked', () => {",
+                  "  const of = (asset) => answer.balances.find((b) => b.asset === asset);",
+                  "  pm.expect(of('USDT').available).to.match(/^9\\d{3}\\.\\d{6}$/);",
+                  "  pm.expect(of('USDT').locked).to.equal('0.000000');",
+                  "  pm.expect(of('BTC').available).to.equal('0.00099900');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/balances",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "balances"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ledger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('USDT entries with the balance after each', () => {",
+                  "  pm.expect(answer.items).to.have.lengthOf(5);",
+                  "  answer.items.forEach((e) => pm.expect(e.asset).to.equal('USDT'));",
+                  "  pm.expect(answer.items[0]).to.include.keys('deltaAvailable', 'deltaLocked', 'availableAfter', 'lockedAfter');",
+                  "  pm.expect(answer.total).to.be.above(5);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/ledger?asset=USDT&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "ledger"
+              ],
+              "query": [
+                {
+                  "key": "asset",
+                  "value": "USDT"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deposit address",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('a simulated address', () => pm.expect(answer.address).to.match(/^sim-btc-[0-9a-f]{16}$/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/deposit-address/BTC",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "deposit-address",
+                "BTC"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deposit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('completed, and in the wallet', () => {",
+                  "  pm.expect(answer.transaction.status).to.equal('completed');",
+                  "  pm.expect(answer.transaction.amount).to.equal('0.25000000');",
+                  "  pm.expect(answer.balance.available).to.equal('0.25099900');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/deposits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset\": \"BTC\",\n  \"amount\": \"0.25\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deposit: over the limit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ amount: 'limit' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/deposits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset\": \"BTC\",\n  \"amount\": \"2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw before the identity check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 KYC_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('KYC_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset\": \"USDT\",\n  \"amount\": \"100\",\n  \"address\": \"sim-usdt-c41e09ab77d2f310\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Trader: withdraw with a wrong code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 INVALID_2FA_CODE', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('INVALID_2FA_CODE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{traderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset\": \"USDT\",\n  \"amount\": \"20\",\n  \"address\": \"sim-usdt-c41e09ab77d2f310\",\n  \"code\": \"111111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Trader: withdraw",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('waits for an admin; the fee comes out of it', () => {",
+                  "  pm.expect(answer.transaction.status).to.equal('pending');",
+                  "  pm.expect(answer.transaction.amount).to.equal('20.000000');",
+                  "  pm.expect(answer.transaction.fee).to.equal('1.000000');",
+                  "  pm.expect(answer.transaction.receiveAmount).to.equal('19.000000');",
+                  "});",
+                  "",
+                  "pm.environment.set('withdrawalId', answer.transaction.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{traderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset\": \"USDT\",\n  \"amount\": \"20\",\n  \"address\": \"sim-usdt-c41e09ab77d2f310\",\n  \"code\": \"{{traderCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Trader: pending withdrawals",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('it is there', () => pm.expect(answer.items.map((t) => t.id)).to.include(pm.environment.get('withdrawalId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{traderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/transactions?type=withdrawal&status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "withdrawal"
+                },
+                {
+                  "key": "status",
+                  "value": "pending"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Trader: cancel it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('cancelled', () => pm.expect(answer.transaction.status).to.equal('cancelled'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{traderToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/withdrawals/{{withdrawalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "withdrawals",
+                "{{withdrawalId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "KYC",
+      "description": "The identity form is multipart/form-answer. Its sample files are in `docs/postman/files`: set Postman's working directory (Settings, General) to `docs/postman`.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{userToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Not sent yet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('none', () => pm.expect(answer).to.eql({ status: 'none', application: null }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/kyc/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kyc",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send a PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ documentImage: 'type' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kyc"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullName",
+                  "type": "text",
+                  "value": "Postman Runner"
+                },
+                {
+                  "key": "dateOfBirth",
+                  "type": "text",
+                  "value": "1999-04-17"
+                },
+                {
+                  "key": "country",
+                  "type": "text",
+                  "value": "IN"
+                },
+                {
+                  "key": "documentType",
+                  "type": "text",
+                  "value": "passport"
+                },
+                {
+                  "key": "documentNumber",
+                  "type": "text",
+                  "value": "AB 12345"
+                },
+                {
+                  "key": "documentImage",
+                  "type": "file",
+                  "src": "files/not-an-image.pdf"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send without a photo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ documentImage: 'required' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kyc"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullName",
+                  "type": "text",
+                  "value": "Postman Runner"
+                },
+                {
+                  "key": "dateOfBirth",
+                  "type": "text",
+                  "value": "1999-04-17"
+                },
+                {
+                  "key": "country",
+                  "type": "text",
+                  "value": "IN"
+                },
+                {
+                  "key": "documentType",
+                  "type": "text",
+                  "value": "passport"
+                },
+                {
+                  "key": "documentNumber",
+                  "type": "text",
+                  "value": "AB 12345"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('pending, with only the last four characters of the number', () => {",
+                  "  pm.expect(answer.application.status).to.equal('pending');",
+                  "  pm.expect(answer.application.documentNumberLast4).to.equal('2345');",
+                  "  pm.expect(pm.response.text()).to.not.include('12345');",
+                  "});",
+                  "pm.test('doesn\\'t say where the images are', () => pm.expect(pm.response.text()).to.not.match(/images|uploads|\\.jpg/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kyc"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullName",
+                  "type": "text",
+                  "value": "Postman Runner"
+                },
+                {
+                  "key": "dateOfBirth",
+                  "type": "text",
+                  "value": "1999-04-17"
+                },
+                {
+                  "key": "country",
+                  "type": "text",
+                  "value": "IN"
+                },
+                {
+                  "key": "documentType",
+                  "type": "text",
+                  "value": "passport"
+                },
+                {
+                  "key": "documentNumber",
+                  "type": "text",
+                  "value": "AB 12345"
+                },
+                {
+                  "key": "documentImage",
+                  "type": "file",
+                  "src": "files/passport-sample.jpg"
+                },
+                {
+                  "key": "selfieImage",
+                  "type": "file",
+                  "src": "files/selfie-sample.png"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send it twice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 CONFLICT', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('CONFLICT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kyc"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullName",
+                  "type": "text",
+                  "value": "Postman Runner"
+                },
+                {
+                  "key": "dateOfBirth",
+                  "type": "text",
+                  "value": "1999-04-17"
+                },
+                {
+                  "key": "country",
+                  "type": "text",
+                  "value": "IN"
+                },
+                {
+                  "key": "documentType",
+                  "type": "text",
+                  "value": "passport"
+                },
+                {
+                  "key": "documentNumber",
+                  "type": "text",
+                  "value": "AB 12345"
+                },
+                {
+                  "key": "documentImage",
+                  "type": "file",
+                  "src": "files/passport-sample.jpg"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('pending', () => pm.expect(answer.status).to.equal('pending'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/kyc/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kyc",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "As the admin: the dashboard, freezing the new user, deciding on their identity check and their withdrawal, halting a market. Requests marked \"User\" are what the user meets meanwhile.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('counts and volumes', () => {",
+                  "  pm.expect(answer.users).to.be.a('number').above(0);",
+                  "  pm.expect(answer.pendingKyc).to.be.above(0);",
+                  "  pm.expect(answer.volume24h).to.match(/^\\d+(\\.\\d+)?$/);",
+                  "  pm.expect(answer.volumeSeries).to.have.lengthOf(14);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Find the user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('one, and no hash', () => {",
+                  "  pm.expect(answer.total).to.equal(1);",
+                  "  pm.expect(answer.items[0].id).to.equal(pm.environment.get('userId'));",
+                  "  pm.expect(pm.response.text()).to.not.match(/passwordHash|\\$2[aby]\\$/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users?search={{userEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "{{userEmail}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "One user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('with balances and orders', () => {",
+                  "  pm.expect(answer.user.email).to.equal(pm.environment.get('userEmail'));",
+                  "  pm.expect(answer.balances).to.be.an('array').and.not.empty;",
+                  "  pm.expect(answer.recentOrders.length).to.be.above(2);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Freeze the user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('frozen', () => pm.expect(answer.user.status).to.equal('frozen'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{userId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"frozen\",\n  \"reason\": \"Checked by the collection\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User: an order while frozen",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"BTC-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": \"{{restPrice}}\",\n  \"quantity\": \"0.001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unfreeze the user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('active', () => pm.expect(answer.user.status).to.equal('active'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{userId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Identity checks waiting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "const mine = answer.items.find((k) => k.userId === pm.environment.get('userId'));",
+                  "pm.test('the user\\'s is there, with a selfie', () => pm.expect(mine.hasSelfie).to.equal(true));",
+                  "pm.test('oldest first', () => answer.items.forEach((k, i) => i && pm.expect(k.createdAt >= answer.items[i - 1].createdAt).to.equal(true)));",
+                  "pm.environment.set('kycId', mine.id);",
+                  "pm.environment.set('seededKycId', answer.items[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/kyc?status=pending&limit=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "kyc"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "The document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('the image itself, never cached', () => {",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.equal('image/jpeg');",
+                  "  pm.expect(pm.response.headers.get('Cache-Control')).to.equal('no-store');",
+                  "  pm.expect(pm.response.size().body).to.equal(Number(pm.response.headers.get('Content-Length')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/kyc/{{kycId}}/document",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "kyc",
+                "{{kycId}}",
+                "document"
+              ]
+            },
+            "description": "Postman shows the picture."
+          },
+          "response": []
+        },
+        {
+          "name": "The selfie",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('a PNG', () => pm.expect(pm.response.headers.get('Content-Type')).to.equal('image/png'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/kyc/{{kycId}}/document?image=selfie",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "kyc",
+                "{{kycId}}",
+                "document"
+              ],
+              "query": [
+                {
+                  "key": "image",
+                  "value": "selfie"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A seeded application's document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('a placeholder', () => pm.expect(answer).to.eql({ placeholder: true, image: 'document' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/kyc/{{seededKycId}}/document",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "kyc",
+                "{{seededKycId}}",
+                "document"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject without a reason",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ reason: 'required' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/kyc/{{kycId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "kyc",
+                "{{kycId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"reject\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve the identity check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('approved', () => pm.expect(answer.application.status).to.equal('approved'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/kyc/{{kycId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "kyc",
+                "{{kycId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approve\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve it twice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 CONFLICT', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('CONFLICT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/kyc/{{kycId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "kyc",
+                "{{kycId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approve\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User: withdraw now",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('pending', () => pm.expect(answer.transaction.status).to.equal('pending'));",
+                  "",
+                  "pm.environment.set('userWithdrawalId', answer.transaction.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset\": \"USDT\",\n  \"amount\": \"100\",\n  \"address\": \"sim-usdt-c41e09ab77d2f310\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Withdrawals waiting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('the user\\'s is there, verified', () => {",
+                  "  const mine = answer.items.find((t) => t.id === pm.environment.get('userWithdrawalId'));",
+                  "  pm.expect(mine.userKycStatus).to.equal('approved');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/withdrawals?status=pending&limit=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "withdrawals"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve the withdrawal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('completed, with a transaction hash', () => {",
+                  "  pm.expect(answer.transaction.status).to.equal('completed');",
+                  "  pm.expect(answer.transaction.txHash).to.match(/^0x[0-9a-f]{40}$/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/withdrawals/{{userWithdrawalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "withdrawals",
+                "{{userWithdrawalId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approve\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User: the ledger of it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('99 sent and 1 fee, both out of the locked part', () => {",
+                  "  const sent = answer.items.map((e) => e.type + ' ' + e.deltaLocked).sort();",
+                  "  pm.expect(sent).to.eql(['withdrawal -99.000000', 'withdrawal_fee -1.000000']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/ledger?asset=USDT&type=withdrawal,withdrawal_fee",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "ledger"
+              ],
+              "query": [
+                {
+                  "key": "asset",
+                  "value": "USDT"
+                },
+                {
+                  "key": "type",
+                  "value": "withdrawal,withdrawal_fee"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Halt a market",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('halted', () => pm.expect(answer.market.status).to.equal('halted'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/markets/SOL-USDT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "markets",
+                "SOL-USDT"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"halted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User: an order on a halted market",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 MARKET_HALTED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('MARKET_HALTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"SOL-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": \"70.00\",\n  \"quantity\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resume the market",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('active', () => pm.expect(answer.market.status).to.equal('active'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/markets/SOL-USDT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "markets",
+                "SOL-USDT"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Audit log",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('everything above is in it', () => {",
+                  "  const actions = answer.items.map((a) => a.action);",
+                  "  pm.expect(actions).to.include.members(['admin.user_frozen', 'admin.user_unfrozen', 'admin.kyc_document_viewed', 'admin.kyc_approved', 'admin.withdrawal_approved', 'admin.market_halted', 'admin.market_resumed']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/audit-logs?limit=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "System health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const answer = pm.response.json().data;",
+                  "",
+                  "pm.test('the engine runs every market', () => pm.expect(answer.engine.marketsLoaded).to.be.above(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/system/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "system",
+                "health"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Errors",
+      "description": "One of each status in section 4. Every error has the same envelope, written in one place: middleware/errorHandler.js.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{userToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "400: one detail per field",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ market: 'unknown', quantity: 'positive', price: 'required' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Zod: an unknown market, a negative amount and no price.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"DOGE-INR\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"quantity\": \"-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "400: an amount as a JSON number",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ price: 'type' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "A JSON number has already been a float.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"BTC-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": 60000,\n  \"quantity\": \"0.001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "400: a page of 500",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ limit: 'range' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders?limit=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "500"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "400: a query operator for an email",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ email: 'type', password: 'type' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Reaching findOne, it would match any user.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": {\n    \"$ne\": null\n  },\n  \"password\": {\n    \"$ne\": null\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "400: not JSON",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{bad",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "401: no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHENTICATED', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('UNAUTHENTICATED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "401: a changed token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHENTICATED', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('UNAUTHENTICATED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}x",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "One character more: the signature doesn't match."
+          },
+          "response": []
+        },
+        {
+          "name": "403: not an admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "404: no such route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nope",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nope"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "404: a malformed id (Mongoose CastError)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('NOT_FOUND');",
+                  "});",
+                  "",
+                  "pm.test('errorHandler\\'s own words', () => pm.expect(pm.response.json().error.message).to.equal('Not found.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/not-an-id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "not-an-id"
+              ]
+            },
+            "description": "Mongoose can't cast the text to an ObjectId and throws a CastError; errorHandler answers 404, because nothing has that id."
+          },
+          "response": []
+        },
+        {
+          "name": "404: another user's order",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The id of one of the trader's orders, asked for as the trader",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/api/v1/orders?state=history&limit=1',",
+                  "  header: { Authorization: 'Bearer ' + pm.environment.get('traderToken') },",
+                  "}, (err, res) => pm.environment.set('traderOrderId', res.json().data.items[0].id));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('NOT_FOUND');",
+                  "});",
+                  "",
+                  "pm.test('a real order\\'s id', () => pm.expect(pm.environment.get('traderOrderId')).to.match(/^[0-9a-f]{24}$/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/{{traderOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{traderOrderId}}"
+              ]
+            },
+            "description": "It exists, but not for this user. A 403 would say that it exists."
+          },
+          "response": []
+        },
+        {
+          "name": "409: a duplicate email (MongoDB E11000)",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 CONFLICT', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('CONFLICT');",
+                  "});",
+                  "pm.test('its details', () => pm.expect(pm.response.json().error.details).to.eql({ email: 'taken' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "The unique index on users.email refuses the insert with E11000; Mongoose's post-save middleware (schemas/User.js) turns it into this 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"displayName\": \"Somebody Else\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "413: a body over 100 kb",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('bigText', 'x'.repeat(110 * 1024));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('413 PAYLOAD_TOO_LARGE', () => {",
+                  "  pm.response.to.have.status(413);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('PAYLOAD_TOO_LARGE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{bigText}}\",\n  \"password\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "422: off the tick size",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 MARKET_RULES', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('MARKET_RULES');",
+                  "});",
+                  "",
+                  "pm.test('with the nearest price', () => pm.expect(pm.response.json().error.details.price.code).to.equal('tick'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Well made, but the market's rules refuse it: the engine answers, not Zod.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"BTC-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": \"60000.005\",\n  \"quantity\": \"0.001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "422: not enough balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 INSUFFICIENT_BALANCE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('INSUFFICIENT_BALANCE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"market\": \"BTC-USDT\",\n  \"side\": \"buy\",\n  \"type\": \"limit\",\n  \"price\": \"{{restPrice}}\",\n  \"quantity\": \"10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "423: a locked account",
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('423 ACCOUNT_LOCKED', () => {",
+                  "  pm.response.to.have.status(423);",
+                  "  pm.expect(pm.response.json().error.code).to.equal('ACCOUNT_LOCKED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lockedEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -33,9 +33,10 @@ const freePort = () => new Promise((resolve) => {
 
 /**
  * Starts the server on a spare port with a MongoDB and a store file of its own,
- * so every check file begins from the seed data. Returns { base, stop, runScript, dataDir }.
+ * so every check file begins from the seed data. `settings` are further
+ * environment variables. Returns { base, stop, runScript, dataDir }.
  */
-export async function startServer() {
+export async function startServer(settings = {}) {
   const port = await freePort();
   const storeDir = mkdtempSync(join(tmpdir(), 'orichal-check-'));
   const mongo = await MongoMemoryServer.create();
@@ -53,6 +54,7 @@ export async function startServer() {
     DEMO_CONTROLS: 'true',
     TEST_ROUTES: 'true',
     DEMO_LATENCY: 'true', // some checks look for loading states
+    ...settings,
   };
   // Its request log is never read, so it goes nowhere: an unread pipe fills up and stalls the server
   const child = spawn(process.execPath, [join(root, 'server', 'src', 'server.js')], { cwd: root, stdio: 'ignore', env });

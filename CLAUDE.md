@@ -55,4 +55,4 @@ Fill this list in as the scripts appear.
 - `npm run seed`: resets MongoDB and the JSON store from `client/src/models/data` (from M3)
 - `npm run checks`, `npm run check:data`: behaviour and data checks
 - `npm run db:check-ledger`, `npm run db:explain`: ledger aggregation and query plans (M3, M7)
-- `npm run test:api`: the Postman collection through Newman (M9)
+- `npm run test:api`: the Postman collection through Newman, on a server and an in-memory MongoDB of its own (M9)

@@ -12,6 +12,8 @@ try {
   await page.goto(`${base}/login`);
   await page.waitForSelector('.auth-card');
   check('h1', (await text('h1')) === 'Log in');
+  // The card can appear a moment before the markets answer: their delay is simulated, and random
+  await page.waitForFunction(() => /BTC/.test(document.querySelector('.auth-facts')?.innerText ?? ''), null, { timeout: 5000 }).catch(() => {});
   check('aside facts from the markets', /BTC · ETH · SOL · BNB, in USDT/.test(await text('.auth-facts')), await text('.auth-facts'));
 
   // Empty submit
@@ -75,8 +77,9 @@ try {
   await page.waitForSelector('.auth-card');
   await page.click('.demo-signin-row:has-text("Admin") .link');
   await page.click('.auth-submit');
-  await page.waitForURL('**/admin/kyc');
-  check('admin lands on next', page.url().endsWith('/admin/kyc'));
+  // The path, not the whole address: the login page's own ends in ?next=/admin/kyc
+  await page.waitForURL((url) => url.pathname === '/admin/kyc');
+  check('admin lands on next', new URL(page.url()).pathname === '/admin/kyc');
 
   // An outside next is ignored
   await signOut();

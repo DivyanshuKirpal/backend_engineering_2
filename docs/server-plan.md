@@ -600,8 +600,8 @@ M8 · Validation, uploads and errors
 
 M9 · Postman and the full test run
 
-- [ ] Collection and environment with tests
-- [ ] `test:api` with Newman; the full check run recorded
+- [x] Collection and environment with tests
+- [x] `test:api` with Newman; the full check run recorded
 
 M10 · Documents and the tag
 
@@ -763,3 +763,18 @@ M10 · Documents and the tag
   - `scripts/checks/admin-kyc.check.mjs`: ten more checks with real images: drawn, in the same frame, named, the selfie, each view audited, both let go on closing and on leaving, the placeholder for a seeded application, and a broken file.
 
   Checks: `npm run checks` 590 in 22 files (`admin-kyc` 27 instead of 17); `npm run check:data` 3,947 on 26 files. The row in section 8 no longer says the photo is missing.
+- **24 Nov 2026 · M9, the Postman collection and the full test run.** What: a collection that tests the API from Postman or the command line, and a run of every check. Files and how:
+  - `docs/postman/crypto-exchange.postman_collection.json` (new): 93 requests in eight folders. One script checks the envelope of every answer; each request adds its status and the fields that matter. Scripts save the tokens and ids in the environment. The run makes its own users, so it works on seeded data and again on the same data. The trader's and the admin's logins have the cookie jar off, because a login ends the same browser's earlier session and Postman has one jar.
+  - `docs/postman/local.postman_environment.json` (new): `baseUrl`, the demo accounts, and the names the scripts fill, empty.
+  - `docs/postman/files/` (new): a drawn sample passport, a drawn selfie and a small PDF for the identity form, 20 KB together. They are test files made for this, not uploads.
+  - `scripts/test-api.mjs` (new, `npm run test:api`): starts a server of its own with an in-memory MongoDB, through the checks' harness; runs the collection with Newman 6.2.3 (a dev dependency); adds up that database's ledger; fails if a request went to any other server. The demo and test routes are off. Two deprecation warnings that come from Newman's own dependencies are hidden.
+  - `model/services/order.queries.js`: no check of the id before the query any more, so a malformed one reaches Mongoose, whose `CastError` `errorHandler.js` answers with 404. Its message is now "Not found."; no page shows it.
+  - `scripts/checks/harness.mjs`: `startServer` takes further settings. `api.check`: the malformed id goes through the `CastError`.
+  - `scripts/checks/auth.check.mjs`: two holes from the static phase, which failed two full runs of this milestone. One check read the login page's market facts the moment the card appeared, sometimes before `/markets` had answered (2 of 25 loads); it waits for them now. Another waited for the address `**/admin/kyc`, which the login page's own `/login?next=/admin/kyc` already matches, so it signed out 13 ms after clicking Log in and the two requests raced (2 of 45), and "admin lands on next" proved nothing; both compare the path now. The server and the pages were right in both cases.
+
+  Checks:
+  1. `npm run test:api`: 98 requests (93, and 5 that scripts send), 265 assertions, 0 failures, in 14 s; the 63 wallets match their 127 ledger entries. With simulated network delay and the whole collection twice over the same data: 196 requests, 530 assertions, 0 failures. With the `CastError` mapping broken on purpose: exactly that request fails, exit code 1. Atlas afterwards: no `postman-` user, the same counts as before.
+  2. `npm run checks`: 591 in 22 files (590 before; `api` 148). `npm run check:data`: 3,947 on 26 files. `npm run db:check-ledger` on Atlas: all 62 wallets match their 187 entries.
+  3. Postman's Collection Runner, with the screenshot for the report, is the owner's to run.
+
+  Departure from the plan, at the owner's request: `test:api` starts its own server on a throwaway database instead of using http://localhost:5173. It needed no permission rule. `npm audit` reports 19 findings, all inside Newman's dependencies; `npm audit --omit=dev` reports none.

@@ -49,10 +49,11 @@ export const ledgerQuery = (userId, orderId, tradeIds) => LedgerEntry
 /**
  * One of my orders with its fills and ledger entries. populate() fills in the
  * virtual `fills` with a second query, Trade.find({ orderId: { $in: [id] } }).
- * An id that isn't one, and another user's order, are both simply not found.
+ * A text that isn't an id makes Mongoose throw a CastError, which errorHandler.js
+ * answers with 404, as here for an unknown id and for another user's order.
  */
 export async function detail(userId, id) {
-  const order = /^[0-9a-f]{24}$/i.test(id) ? await Order.findOne({ _id: id, userId }).populate('fills').lean() : null;
+  const order = await Order.findOne({ _id: id, userId }).populate('fills').lean();
   if (!order) throw notFound('That order doesn\'t exist.');
   const ledger = await ledgerQuery(userId, order._id, order.fills.map((fill) => fill.tradeId));
   return {
