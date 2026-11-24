@@ -6,7 +6,7 @@
 import * as money from '../../client/src/models/domain/money.js';
 import { start } from './harness.mjs';
 
-const { base, check, fail, finish, snapshot } = await start({ browser: false });
+const { base, check, fail, finish, snapshot, runScript } = await start({ browser: false });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** One client, as a browser would be: its cookies (sent only under their path) and its access token. */
@@ -49,6 +49,10 @@ try {
   const call = (...args) => demo.call(...args);
   let r = await call('POST', '/demo/reset');
   check('the demo data resets', r.status === 200);
+  let script = runScript('check-ledger.js');
+  check('db:check-ledger on the seeded data', script.status === 0 && /All 59 wallets/.test(script.stdout), script.stdout);
+  script = runScript('explain.js');
+  check('db:explain on the seeded data: the compound indexes, nothing extra examined', script.status === 0, script.stdout);
 
   // Ledger consistency for the signed-in user
   const consistent = async (label) => {
@@ -279,6 +283,54 @@ try {
   r = await client().call('GET', '/wallet/nothing-here');
   check('a guest on a private group gets 401 before any 404', r.status === 401);
 
+  // 10d. Keyset pages: no gaps and no repeats, even with new orders arriving in between
+  const placed = [];
+  for (let i = 0; i < 6; i += 1) {
+    const batch = await Promise.all([0, 1, 2, 3, 4].map((j) => demo.call('POST', '/orders', { market: 'BTC-USDT', side: 'buy', type: 'limit', price: `500${i}${j}.00`, quantity: '0.00020' })));
+    placed.push(...batch.map((x) => x.body.data?.order.id));
+  }
+  check('30 more orders placed', placed.length === 30 && placed.every(Boolean), JSON.stringify(placed.slice(0, 2)));
+  await sleep(1200);
+  const whole = (await demo.call('GET', '/orders', null, { state: 'open', limit: 100 })).body.data.items.map((o) => o.id);
+  check('one page of 100 has them all, newest first', placed.every((id) => whole.includes(id)) && whole.length >= 30, String(whole.length));
+  const seen = [];
+  let next = null;
+  let pages = 0;
+  do {
+    r = await demo.call('GET', '/orders', null, { state: 'open', limit: 7, ...(next ? { cursor: next } : {}) });
+    seen.push(...r.body.data.items.map((o) => o.id));
+    next = r.body.data.nextCursor;
+    pages += 1;
+    // A new order on top of the list would push an offset down by one
+    if (pages <= 3) await demo.call('POST', '/orders', { market: 'BTC-USDT', side: 'buy', type: 'limit', price: `4900${pages}.00`, quantity: '0.00020' });
+  } while (next && pages < 20);
+  check(`pages of 7: the same orders in the same order, in ${pages} pages`, seen.join() === whole.join(), `${seen.length} of ${whole.length}, ${new Set(seen).size} different`);
+  await demo.call('DELETE', '/orders', null, { market: 'BTC-USDT' });
+  await sleep(1500);
+  const closed = [];
+  next = null;
+  do {
+    r = await demo.call('GET', '/orders', null, { state: 'history', limit: 9, ...(next ? { cursor: next } : {}) });
+    closed.push(...r.body.data.items);
+    next = r.body.data.nextCursor;
+  } while (next && closed.length < 200);
+  check('History pages the cancelled ones without gaps or repeats', new Set(closed.map((o) => o.id)).size === closed.length && placed.every((id) => closed.some((o) => o.id === id && o.status === 'cancelled')) && closed.every((o, i) => i === 0 || closed[i - 1].createdAt >= o.createdAt), String(closed.length));
+  r = await demo.call('GET', '/orders', null, { state: 'history', market: 'SOL-USDT', side: 'buy', limit: 100 });
+  check('filters by market and side', r.body.data.items.length > 0 && r.body.data.items.every((o) => o.market === 'SOL-USDT' && o.side === 'buy'));
+  r = await demo.call('GET', '/trades', null, { limit: 2 });
+  const trades = [...r.body.data.items];
+  while (r.body.data.nextCursor) trades.push(...(r = await demo.call('GET', '/trades', null, { limit: 2, cursor: r.body.data.nextCursor })).body.data.items);
+  const allTrades = (await demo.call('GET', '/trades', null, { limit: 100 })).body.data.items;
+  check(`trades page by 2: ${trades.length}, the same as one page`, trades.length > 3 && JSON.stringify(trades) === JSON.stringify(allTrades), `${trades.length} ${allTrades.length}`);
+  r = await demo.call('GET', `/orders/${id1}`);
+  check('one order with its fills and ledger, in the order written', r.body.data.fills.length >= 1 && r.body.data.fills[0].orderId === id1 && r.body.data.ledger.map((e) => e.type).join().startsWith('order_lock,trade_debit,trade_credit,trade_fee'), r.body.data.ledger.map((e) => e.type).join());
+  const foreign = (await snapshot('orders')).orders.find((o) => o.userId !== DEMO).id;
+  const notFound = [];
+  for (const id of ['abc', '000000000000000000000000', foreign, '%24ne', 'a'.repeat(300)]) notFound.push((await demo.call('GET', `/orders/${id}`)).status);
+  check('a malformed, unknown or somebody else\'s order id: 404', notFound.every((x) => x === 404), notFound.join());
+  r = await demo.call('GET', '/orders', null, { cursor: 'not-a-cursor' });
+  check('a broken cursor: 400', r.status === 400 && r.body.error.details.cursor === 'format', JSON.stringify(r.body));
+
   // 11. Register, the duplicate email, and the lockout
   const newcomer = client();
   r = await newcomer.call('POST', '/auth/register', { email: 'New.Person@Example.com', password: 'Correct-horse-42', displayName: 'New Person' });
@@ -306,6 +358,12 @@ try {
   check('no password, hash, code or token anywhere in the working set', !/orichal-demo|Correct-horse|\$2[aby]\$|passwordHash|codeHash|"credentials"|"lockouts"|refreshTokens|eyJ[\w-]+\.eyJ/.test(everything));
   const people = (await snapshot('users')).users;
   check('the lock is on the user', Date.parse(people.find((u) => u.id === newId).lockUntil) > Date.now());
+
+  // 12. The database scripts again, after everything above
+  script = runScript('check-ledger.js');
+  check('db:check-ledger after all of it', script.status === 0, script.stdout);
+  script = runScript('explain.js');
+  check('db:explain after all of it', script.status === 0, script.stdout);
 } catch (err) {
   fail(err);
 } finally {

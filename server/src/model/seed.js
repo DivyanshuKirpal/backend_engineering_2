@@ -151,7 +151,7 @@ export async function seedDatabase(data) {
 
   for (const [collection, Model] of Object.entries(MODELS)) {
     const docs = collection === 'users' ? users : data[collection].map((record) => toDocument(collection, record));
-    await Model.createIndexes();
+    await Model.syncIndexes(); // builds the schema's indexes and drops the ones it no longer has
     await Model.deleteMany({});
     await Model.insertMany(docs);
   }

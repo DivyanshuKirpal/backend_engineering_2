@@ -10,7 +10,8 @@ import { aboveZero, amount, notNegative, ref, withGetters } from './fields.js';
 const { Schema } = mongoose;
 
 export const OPEN_STATUSES = ['pending', 'open', 'partially_filled'];
-const STATUSES = [...OPEN_STATUSES, 'filled', 'cancelled', 'rejected'];
+export const CLOSED_STATUSES = ['filled', 'cancelled', 'rejected'];
+const STATUSES = [...OPEN_STATUSES, ...CLOSED_STATUSES];
 const CANCEL_REASONS = ['user', 'ioc_remainder', 'self_trade', 'market_halted', 'account_frozen'];
 
 const isMarketBuy = (order) => order.type === 'market' && order.side === 'buy';
@@ -53,7 +54,9 @@ const orderSchema = new Schema({
   appliedAt: { type: Date, default: null }, // when the engine applied it
 }, { collection: 'orders', ...withGetters });
 
-orderSchema.index({ userId: 1, status: 1, createdAt: -1 }); // my open orders and my history, newest first
+// My open orders and my history, newest first. _id breaks ties between orders of
+// the same millisecond, and has to be in the index for the index to give the order.
+orderSchema.index({ userId: 1, status: 1, createdAt: -1, _id: -1 });
 orderSchema.index({ market: 1, status: 1, createdAt: 1 }); // a market's open orders, oldest first, to rebuild its book
 orderSchema.index({ userId: 1, clientOrderId: 1 }, { unique: true }); // a retried request can't make a second order
 

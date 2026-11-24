@@ -11,6 +11,7 @@ This guide explains the server built in the CE-2 phase, for a teammate getting r
 5. [M4. The store on MongoDB](#m4-the-store-on-mongodb)
 6. [M5. Sign-in on MongoDB with bcrypt](#m5-sign-in-on-mongodb-with-bcrypt)
 7. [M6. Tokens and protected routes](#m6-tokens-and-protected-routes)
+8. [M7. Orders and trades from MongoDB](#m7-orders-and-trades-from-mongodb)
 
 ## M0. The plan in the repo
 
@@ -369,10 +370,10 @@ MongoDB stores **documents** (JSON-like objects) in **collections**. Mongoose is
 | `sessions` | signed-in device | References its user: sessions come and go on their own | `{ userId }`: the Security page's list. `{ expiresAt }` **TTL**: MongoDB deletes a session by itself once that time has passed |
 | `wallets` | user and asset | References its user | `{ userId, asset }` unique: one wallet per asset |
 | `ledgerEntries` | balance change | References its user: grows without limit, so it can't be embedded | `{ userId, asset, time: -1 }`: one asset's history, newest first. `{ refType, refId }`: the entries an order or a trade wrote |
-| `orders` | order | References its user | `{ userId, status, createdAt: -1 }`: my open orders and my history. `{ market, status, createdAt }`: a market's open orders. `{ userId, clientOrderId }` unique: a retried request can't make a second order |
-| `trades` | side of a fill | References its order and user | `{ userId, time: -1 }`: my trades. `{ orderId }`: an order's fills. `{ tradeId, orderId }` unique |
+| `orders` | order | References its user | `{ userId, status, createdAt: -1, _id: -1 }`: my open orders and my history ([M7](#m7-orders-and-trades-from-mongodb) says why `_id`). `{ market, status, createdAt }`: a market's open orders. `{ userId, clientOrderId }` unique: a retried request can't make a second order |
+| `trades` | side of a fill | References its order and user | `{ userId, time: -1, _id: -1 }`: my trades. `{ orderId }`: an order's fills. `{ tradeId, orderId }` unique |
 
-A **compound index** covers several fields in order. `{ userId, status, createdAt: -1 }` is sorted by user, then status, then newest first, so "my open orders, newest first" reads one short stretch of it and needs no sorting.
+A **compound index** covers several fields in order. `{ userId, status, createdAt: -1, _id: -1 }` is sorted by user, then status, then newest first, so "my open orders, newest first" reads one short stretch of it and needs no sorting.
 
 **Embedding or referencing?** Embed what is small, has a limit and is always read with its parent. Reference what grows without limit or is queried on its own. A user's ledger can have thousands of entries; inside the user document it would be loaded with every sign-in and would one day pass MongoDB's 16 MB limit per document.
 
@@ -677,3 +678,83 @@ In Postman, with `ACCESS_TOKEN_TTL=1m` in `server/.env` for the third:
 - **Why a 30-second grace?** Two tabs can send the same token at once; that isn't theft.
 - **401 or 403?** Not signed in, or signed in and not allowed.
 - **How can you log someone out if a JWT can't be taken back?** The token names its session, and the session is checked on every request.
+
+## M7. Orders and trades from MongoDB
+
+Until M7 the lists on the Orders page were arrays filtered in memory. Now `GET /orders`, `GET /orders/:id` and `GET /trades` are Mongoose queries ([`model/services/order.queries.js`](../server/src/model/services/order.queries.js)) that use the compound indexes. Placing and cancelling stay in the engine. The handlers flush the store first, so a list is never older than the engine's last change.
+
+### The list query
+
+```js
+Order.find({ userId, status: { $in: ['pending', 'open', 'partially_filled'] }, …after(cursor) })
+  .sort({ createdAt: -1, _id: -1 })
+  .limit(limit + 1)      // one extra, only to know whether there is a next page
+  .lean();               // plain objects: these rows are shown, never saved
+```
+
+Every query names the user, so nobody can read another user's rows.
+
+### Why a keyset cursor beats an offset
+
+An **offset** says "skip 20, give me 20". It has two faults:
+
+- A new order on top pushes everything down by one, so a row you have already seen comes again (and after a deletion, one is missed).
+- MongoDB still walks every row it skips: page 100 costs 100 times page 1.
+
+A **keyset cursor** says "the 20 after *this* row". It holds the row's sort key, `createdAt` and `_id`, and the next page starts exactly there ([`lib/cursor.js`](../server/src/lib/cursor.js)):
+
+```js
+{ createdAt: { $lte: t }, $or: [{ createdAt: { $lt: t } }, { _id: { $lt: id } }] }
+```
+
+`_id` breaks ties between two orders of the same millisecond. To the client it is opaque text (base64url): it only sends it back. The checks page through 30 orders by 7 while new ones arrive, and see every order once.
+
+### populate
+
+```js
+Order.findOne({ _id: id, userId }).populate('fills').lean()
+```
+
+An order document has no list of its fills. `fills` is the **virtual** from M3 (`Trade.orderId` = this `_id`), and **populate** fills it with a *second query*, `Trade.find({ orderId: { $in: [id] } })`. It isn't a join inside MongoDB; `$lookup` in an aggregation would be.
+
+A malformed id, an unknown one and another user's order all answer **404**. Answering 403 for somebody else's order would tell that it exists.
+
+### Reading an explain plan
+
+`npm run db:explain` ([`scripts/explain.js`](../server/scripts/explain.js)) asks MongoDB how it runs each query:
+
+| Word | Meaning |
+| --- | --- |
+| `IXSCAN` | Walks an index |
+| `FETCH` | Reads the documents the index pointed at |
+| `COLLSCAN` | Reads the whole collection: no index helps |
+| `SORT_MERGE` | Merges several index walks that are already in order (one per status) |
+| `SORT` | Sorts in memory, after reading everything |
+| keys / documents examined, returned | The work, against the result. Equal is as good as it gets |
+
+```text
+GET /orders   LIMIT < FETCH < SORT_MERGE < IXSCAN < IXSCAN < IXSCAN   documents examined 11, returned 11
+no index      SORT < COLLSCAN                                         documents examined 30, returned 11
+```
+
+With 30 orders nobody notices. With a million, the second line reads a million.
+
+**Why the index ends in `_id`.** The sort is `{ createdAt: -1, _id: -1 }`. If `_id` weren't in the index, the index would give only half the order and MongoDB would have to `SORT`, reading every order of the user however small the page. Index order: the fields compared for equality first (`userId`, `status`), then the sort.
+
+A second page examines one document more than it returns: the row the cursor points at, read and then left out.
+
+### How to check M7
+
+1. `npm run db:explain`: the compound index for all three queries, documents examined equal to returned.
+2. Postman: `GET /orders?state=history&limit=2`, then the same with `&cursor=` and the `nextCursor` it returned.
+3. `GET /orders/abc` and another user's order id: 404 both.
+4. The Orders page: Open, History and Trades, "Load more", and the order drawer with its fills and ledger lines.
+
+### Be ready to answer
+
+- **How does the cursor work, and why not an offset?** It holds the last row's sort key. An offset repeats or skips rows when the list changes, and walks what it skips.
+- **What does populate do?** A second query with `$in`, whose results Mongoose puts into the first.
+- **Read this plan.** Right to left: `IXSCAN` finds, `FETCH` reads, `LIMIT` stops. Compare documents examined with returned.
+- **Why does the order of fields in an index matter?** It is sorted by the first, then the second, and so on: equality first, then the sort.
+- **Why 404 and not 403 for somebody else's order?** 403 would confirm that it exists.
+- **Why flush before reading?** The engine works in memory; the flush brings MongoDB up to date first.

@@ -22,7 +22,7 @@ const tradeSchema = new Schema({
   time: { type: Date, required: true },
 }, { collection: 'trades', ...withGetters });
 
-tradeSchema.index({ userId: 1, time: -1 }); // my trades, newest first
+tradeSchema.index({ userId: 1, time: -1, _id: -1 }); // my trades, newest first
 tradeSchema.index({ orderId: 1 }); // an order's fills (Order.fills)
 tradeSchema.index({ tradeId: 1, orderId: 1 }, { unique: true });
 

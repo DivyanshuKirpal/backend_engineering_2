@@ -38,6 +38,7 @@ The **Simulator · demo funds** badge in the header opens the demo controls: res
 | `npm run dev` | Starts the Express server (`server/`) on port 5173 and restarts it when a file changes. It serves `client/`, where any path without a file falls back to `index.html` so links straight to a page work, and the API under `/api/v1`. `npm start` runs it without restarting |
 | `npm run seed` | Fills the MongoDB database in `MONGO_URI` and the JSON store with a fresh copy of the demo data; `npm run seed -- --yes` when that wipes an Atlas database |
 | `npm run db:check-ledger` | Adds up every ledger entry in MongoDB and compares the sums with the wallets |
+| `npm run db:explain` | Shows how MongoDB runs the order, trade and ledger queries: which index, and how many documents it examined |
 | `npm run check:data` | Checks the demo data in `client/src/models/data`: every balance equals the sum of its ledger entries, ids are unique, locks match open orders and pending withdrawals, amounts fit their decimals |
 | `npm run boards` | Cuts each design board out of the PDFs as a JPEG plus its text layer, into `.boards/` (git-ignored) |
 | `npm run shots -- --as=demo /wallet` | Screenshots pages at 1440 and 390 px into `.screenshots/` (git-ignored), with Playwright; `--fresh` resets the demo data first, `--verified` confirms the email so the verify banner doesn't show, `--kyc=none` puts the identity check back to Not started |

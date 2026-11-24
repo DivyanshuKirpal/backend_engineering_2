@@ -10,7 +10,7 @@
 //   try { await signIn('demo'); ...; check('label', condition, extra); }
 //   catch (err) { fail(err); } finally { await finish(); }
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -33,32 +33,31 @@ const freePort = () => new Promise((resolve) => {
 
 /**
  * Starts the server on a spare port with a MongoDB and a store file of its own,
- * so every check file begins from the seed data. Returns { base, stop }.
+ * so every check file begins from the seed data. Returns { base, stop, runScript }.
  */
 export async function startServer() {
   const port = await freePort();
   const storeDir = mkdtempSync(join(tmpdir(), 'orichal-check-'));
   const mongo = await MongoMemoryServer.create();
+  const env = {
+    ...process.env,
+    NODE_ENV: 'test',
+    PORT: String(port),
+    STORE_FILE: join(storeDir, 'store.json'),
+    // Never the database in server/.env: the checks reset the data.
+    MONGO_URI: mongo.getUri('orichal-checks'),
+    SEED_ON_START: 'true',
+    BCRYPT_ROUNDS: '4', // quick hashes: the checks sign in often
+    JWT_ACCESS_SECRET: randomBytes(48).toString('base64url'),
+    JWT_REFRESH_SECRET: randomBytes(48).toString('base64url'),
+    DEMO_CONTROLS: 'true',
+    TEST_ROUTES: 'true',
+    DEMO_LATENCY: 'true', // some checks look for loading states
+  };
   // Its request log is never read, so it goes nowhere: an unread pipe fills up and stalls the server
-  const child = spawn(process.execPath, [join(root, 'server', 'src', 'server.js')], {
-    cwd: root,
-    stdio: 'ignore',
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      PORT: String(port),
-      STORE_FILE: join(storeDir, 'store.json'),
-      // Never the database in server/.env: the checks reset the data.
-      MONGO_URI: mongo.getUri('orichal-checks'),
-      SEED_ON_START: 'true',
-      BCRYPT_ROUNDS: '4', // quick hashes: the checks sign in often
-      JWT_ACCESS_SECRET: randomBytes(48).toString('base64url'),
-      JWT_REFRESH_SECRET: randomBytes(48).toString('base64url'),
-      DEMO_CONTROLS: 'true',
-      TEST_ROUTES: 'true',
-      DEMO_LATENCY: 'true', // some checks look for loading states
-    },
-  });
+  const child = spawn(process.execPath, [join(root, 'server', 'src', 'server.js')], { cwd: root, stdio: 'ignore', env });
+  /** Runs a script of server/scripts on this server's database: { status, stdout }. */
+  const runScript = (file) => spawnSync(process.execPath, [join(root, 'server', 'scripts', file)], { cwd: root, env, encoding: 'utf8' });
   const base = `http://localhost:${port}`;
   const stop = async () => {
     child.kill();
@@ -73,7 +72,7 @@ export async function startServer() {
     if (child.exitCode != null) break;
     try {
       const res = await fetch(`${base}/api/v1/health`);
-      if (res.ok) return { base, stop };
+      if (res.ok) return { base, stop, runScript };
     } catch {
       // not up yet
     }
@@ -190,5 +189,5 @@ export async function start({ viewport = { width: 1440, height: 900 }, permissio
     process.exitCode = bad ? 1 : 0;
   };
 
-  return { page, context, base, shots, check, fail, signIn, api, snapshot, failNext, finish };
+  return { page, context, base, shots, check, fail, signIn, api, snapshot, failNext, runScript: server.runScript, finish };
 }

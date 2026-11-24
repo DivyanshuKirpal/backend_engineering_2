@@ -42,6 +42,7 @@ Invoke-RestMethod http://localhost:5173/api/v1/markets
 npm run seed                 # fills the six collections and the JSON store
 npm run seed -- --yes        # the same, when the Atlas database already holds data (it is wiped)
 npm run db:check-ledger      # proves every wallet equals the sum of its ledger entries
+npm run db:explain           # the query plans of the order, trade and ledger queries
 ```
 
 Run the seed once before the first start: the server won't start on an empty database (unless `SEED_ON_START=true`). Stop the server before seeding: it keeps its own copy of the data in memory. MongoDB and `server/data/store.json` are seeded together and belong together, so seed on the laptop you run. Two servers must not share one database for the same reason; a teammate uses another database name at the end of `MONGO_URI` (`/orichal-name`).
@@ -60,7 +61,7 @@ With `DEMO_CONTROLS=true` (the default), `/api/v1/demo` serves the Simulator men
 server/
 ├── .env.example                 every variable, with a safe example value
 ├── data/                        git-ignored: store.json
-├── scripts/                     seed.js (npm run seed), check-ledger.js (npm run db:check-ledger)
+├── scripts/                     seed.js, check-ledger.js and explain.js (npm run seed, db:check-ledger, db:explain)
 └── src/
     ├── server.js                starts the exchange, then the HTTP server and Socket.IO on PORT
     ├── app.js                   the middleware, in order: helmet, morgan (API lines only), JSON and
@@ -72,6 +73,7 @@ server/
     ├── lib/
     │   ├── errors.js            ApiError and the helpers for section 4's error codes
     │   ├── decimal.js           decimal strings to Decimal128 and back
+    │   ├── cursor.js            keyset cursors for "load more" lists
     │   └── util.js              list paging, small body checks, token lifetimes
     ├── middleware/
     │   ├── authenticate.js      the access token: sets req.user and req.session
@@ -86,7 +88,8 @@ server/
     │   ├── documents.js         records to MongoDB documents and back, field by field
     │   ├── schemas/             the Mongoose models: User, Session, Wallet, LedgerEntry, Order, Trade
     │   ├── services/            auth.service.js: registering and signing in against MongoDB;
-    │   │                        token.service.js: the two JWTs and the refresh rotation
+    │   │                        token.service.js: the two JWTs and the refresh rotation;
+    │   │                        order.queries.js: the order and trade reads
     │   └── exchange/
     │       ├── engine.js        matching and settlement: pending, open, filled, cancelled
     │       ├── market.js        the market simulator: books, the bot's ladder and taker, tickers, candles

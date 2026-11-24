@@ -506,6 +506,8 @@ Copy these rows into the review log under "### Server, CE-2 phase" (M0), and add
 | Change | 4 API | No rate limits yet | They need Redis |
 | Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status, email-verified and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
 | Change | 3 Schemas | `createdAt` and `updatedAt` are fields the code sets instead of Mongoose timestamps; `users` also stores `hasPassword` and `googleLinked`, and `sessions` the device name; only the indexes this phase's queries use exist (added in M3) | The API's times are the engine's own, to the millisecond; the records already carry those fields |
+| Addition | 4 API (WebSocket events) | Server to client: `token.expiring`, 30 s before the access token ends, and `session.ended`. When a session ends its sockets leave the private rooms and stay connected as a guest's, instead of being disconnected | The client renews its token before private events stop, and the public prices on the page go on |
+| Change | 3 Schemas (orders, trades) | The indexes behind my orders and my trades end in `_id`: `{ userId, status, createdAt: -1, _id: -1 }` and `{ userId, time: -1, _id: -1 }` (added in M7) | The keyset cursor sorts by time and id; without `_id` in the index MongoDB sorts in memory and examines every document of the user |
 | Change | 4 API (Health) | One `GET /api/v1/health` (`status`, `uptimeSeconds`, `time`; MongoDB's state from M3) instead of `/health/live`, `/health/ready` and `/metrics` outside `/api/v1` (added in M1) | No Docker, Nginx or Prometheus probes the server in this phase; one public route under the API's base path serves Postman and the demo |
 
 ## 9. Viva ownership
@@ -585,9 +587,9 @@ M6 · Tokens and protected routes
 
 M7 · Orders and trades from MongoDB
 
-- [ ] `order.queries.js`: list, detail with populate, trades; keyset cursor
-- [ ] Handlers on the queries; bad and foreign ids answer 404
-- [ ] `explain.js`
+- [x] `order.queries.js`: list, detail with populate, trades; keyset cursor
+- [x] Handlers on the queries; bad and foreign ids answer 404
+- [x] `explain.js`
 
 M8 · Validation, uploads and errors
 
@@ -718,4 +720,20 @@ M10 · Documents and the tag
 
   Also: a changed payload, `alg: none` and a refresh token sent as an access token all get 401. Login timing on Atlas, 22 interleaved tries each: 305 ms for an unknown email, 310 ms for a wrong password.
 
-  Departures: none from the architecture. Beyond the plan, the sockets follow their token's lifetime, as section 4 says.
+  Departure: the socket events `token.expiring` and `session.ended`, and that an ended session's sockets stay connected as a guest's (a row in section 8, added with M7). Beyond the plan, the private rooms follow the token's lifetime, as section 4 says.
+- **24 Nov 2026 · M7, orders and trades from MongoDB.** What: the order and trade reads are Mongoose queries on the compound indexes, with keyset cursors. Files and how:
+  - `lib/cursor.js` (new): a cursor is the last row's time and `_id`, base64url; the next page is the rows after that key. A broken cursor is a 400.
+  - `model/services/order.queries.js` (new): `list` and `trades` (`limit + 1`, `lean()`), `detail` (`findOne` with `populate('fills')`, then the ledger entries of the order and its trades). Every query names the user; an id that isn't one answers 404 without a query.
+  - `presenter/handlers/orders.js`: the three GET handlers flush the store, run the query and map with the same DTO mappers.
+  - `schemas/Order.js`, `Trade.js`: the two list indexes end in `_id`. `model/seed.js` uses `syncIndexes()`, which also drops an index the schema no longer has; the two replaced ones are dropped on Atlas.
+  - `server/scripts/explain.js` (new, `npm run db:explain`): the plans of the three queries, and of the order query without its index. It fails if a query doesn't use its compound index or examines a document it doesn't return. Its pages are smaller than what matches: with a page that holds everything, all plans cost the same and MongoDB may pick any index.
+  - `scripts/checks/`: the harness can run a database script on the check's own database; `api.check` runs `check-ledger.js` and `explain.js` on it.
+
+  Checks (on Atlas from a script and a browser, 11 of 11, and in `api.check`):
+  1. 30 more orders, placed and cancelled: History has 42 in 3 pages, the same ids in the same order as MongoDB; on the Orders page 20 rows, then 42 after "Load more". In `api.check`, pages of 7 stay free of gaps and repeats while new orders arrive. For every user, the queries and the old in-memory logic gave the same orders, fills and ledger lines: 147 comparisons, 0 different.
+  2. The drawer's answer has the same fills and ledger lines, in the order written.
+  3. `npm run db:explain`: IXSCAN on the compound index for all three, documents examined equal to returned (21 and 21 for a page of 20); without the index a COLLSCAN of all 60.
+  4. `GET /orders/abc`, an unknown id and another user's order: 404.
+  5. `npm run checks`: 521 in 22 files (`api` 91 instead of 78). `npm run check:data`: 3,947 on 26 files. `npm run db:check-ledger`: all 61 wallets in step with 186 entries.
+
+  Departure: the two indexes end in `_id` (a row in section 8). Also recorded now, missed in M6: the socket events `token.expiring` and `session.ended`, and that an ended session's sockets stay connected as a guest's.

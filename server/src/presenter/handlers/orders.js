@@ -1,14 +1,25 @@
-// Order and my-trade routes (section 4, order.routes.js). GET /orders/:id also
+// Order and my-trade routes (section 4, order.routes.js). Placing and cancelling
+// go to the engine; the reads are Mongoose queries (order.queries.js), after a
+// flush, so they include everything the engine has done. GET /orders/:id also
 // returns the order's ledger entries, one of the API needs in section 7.
 
-import { db } from '../../model/store.js';
-import { notFound } from '../../lib/errors.js';
-import { fillDto, ledgerDto } from '../mappers.js';
-import * as session from '../../model/exchange/session.js';
+import { requireFields } from '../../lib/util.js';
 import * as engine from '../../model/exchange/engine.js';
-import { cursorPage, newestFirst, oldestFirst, requireFields } from '../../lib/util.js';
+import * as session from '../../model/exchange/session.js';
+import * as orderQueries from '../../model/services/order.queries.js';
+import { flush } from '../../model/store.js';
+import { fillDto, ledgerDto } from '../mappers.js';
 
-const OPEN = new Set(['pending', 'open', 'partially_filled']);
+const text = (value) => (value == null ? undefined : String(value));
+
+/** The filters and page of a list request. */
+const filters = ({ query }) => ({
+  state: text(query.state),
+  market: text(query.market),
+  side: text(query.side),
+  cursor: text(query.cursor),
+  limit: Math.min(100, Math.max(1, Number(query.limit) || 25)),
+});
 
 export default [
   ['POST', '/orders', (ctx) => {
@@ -18,26 +29,17 @@ export default [
     return { status: 202, data: { order } };
   }],
 
-  ['GET', '/orders', (ctx) => {
+  ['GET', '/orders', async (ctx) => {
     const user = session.requireUser(ctx);
-    const state = ctx.query.state === 'history' ? 'history' : 'open';
-    const list = db().orders
-      .filter((o) => o.userId === user.id && (state === 'open' ? OPEN.has(o.status) : !OPEN.has(o.status)))
-      .filter((o) => !ctx.query.market || o.market === ctx.query.market)
-      .filter((o) => !ctx.query.side || o.side === ctx.query.side)
-      .sort(newestFirst());
-    return { data: cursorPage(list, ctx.query, engine.toOrderDto) };
+    await flush();
+    const { items, nextCursor } = await orderQueries.list(user.id, filters(ctx));
+    return { data: { items: items.map(engine.toOrderDto), nextCursor } };
   }],
 
-  ['GET', '/orders/:id', (ctx) => {
+  ['GET', '/orders/:id', async (ctx) => {
     const user = session.requireUser(ctx);
-    const order = db().orders.find((o) => o.id === ctx.params.id && o.userId === user.id);
-    if (!order) throw notFound('That order doesn\'t exist.');
-    const fills = db().fills.filter((f) => f.orderId === order.id && f.userId === user.id).sort(oldestFirst('time'));
-    const tradeIds = new Set(fills.map((f) => f.id));
-    const ledger = db().ledger
-      .filter((e) => e.userId === user.id && ((e.refType === 'order' && e.refId === order.id) || (e.refType === 'trade' && tradeIds.has(e.refId))))
-      .sort(oldestFirst('time'));
+    await flush();
+    const { order, fills, ledger } = await orderQueries.detail(user.id, ctx.params.id);
     return { data: { order: engine.toOrderDto(order), fills: fills.map(fillDto), ledger: ledger.map(ledgerDto) } };
   }],
 
@@ -51,12 +53,10 @@ export default [
     return { status: 202, data: engine.cancelAll(user.id, ctx.query.market) };
   }],
 
-  ['GET', '/trades', (ctx) => {
+  ['GET', '/trades', async (ctx) => {
     const user = session.requireUser(ctx);
-    const list = db().fills
-      .filter((f) => f.userId === user.id && (!ctx.query.market || f.market === ctx.query.market))
-      .filter((f) => !ctx.query.side || f.side === ctx.query.side)
-      .sort(newestFirst('time'));
-    return { data: cursorPage(list, ctx.query, fillDto) };
+    await flush();
+    const { items, nextCursor } = await orderQueries.trades(user.id, filters(ctx));
+    return { data: { items: items.map(fillDto), nextCursor } };
   }],
 ];

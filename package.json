@@ -9,6 +9,7 @@
     "start": "node server/src/server.js",
     "seed": "node server/scripts/seed.js",
     "db:check-ledger": "node server/scripts/check-ledger.js",
+    "db:explain": "node server/scripts/explain.js",
     "check:data": "node scripts/check-data.mjs",
     "boards": "node scripts/extract-boards.mjs",
     "vendor": "node scripts/copy-vendor.mjs",
