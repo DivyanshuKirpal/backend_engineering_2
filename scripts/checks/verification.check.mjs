@@ -1,10 +1,15 @@
 // Drives Verification: the form's checks, files, sending it, and the outcomes.
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { start } from './harness.mjs';
 
-const { page, base, shots, check, fail, finish, signIn, api } = await start();
+const { page, base, shots, check, fail, finish, signIn, api, snapshot, dataDir } = await start();
 const text = (sel) => page.locator(sel).first().innerText();
-const jpeg = { name: 'passport-sample.jpg', mimeType: 'image/jpeg', buffer: Buffer.alloc(2048, 1) };
+// The server looks at the first bytes, so the samples begin as real images do
+const JPEG = [0xff, 0xd8, 0xff, 0xe0];
+const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const image = (signature, size) => Buffer.concat([Buffer.from(signature), Buffer.alloc(size - signature.length, 1)]);
+const jpeg = { name: 'passport-sample.jpg', mimeType: 'image/jpeg', buffer: image(JPEG, 2048) };
 
 /** Sets the demo trader's check on the server, as an admin's decision would (a test route). */
 async function decide(status, reason = null) {
@@ -43,13 +48,13 @@ try {
   await page.setInputFiles('#kyc-document', jpeg);
   await page.waitForSelector('.file-drop-chosen:has-text("passport-sample.jpg")');
   check('document chosen', /passport-sample\.jpg\s*2 KB/.test(await text('.file-drop-chosen')));
-  const dropped = await page.evaluate(() => {
+  const dropped = await page.evaluate((bytes) => {
     const zone = document.querySelector('label[for="kyc-selfie"]');
     const dt = new DataTransfer();
-    dt.items.add(new File([new Uint8Array(1500)], 'selfie.png', { type: 'image/png' }));
+    dt.items.add(new File([new Uint8Array(bytes)], 'selfie.png', { type: 'image/png' }));
     zone.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
     return true;
-  });
+  }, [...image(PNG, 1500)]);
   await page.waitForSelector('.file-drop-chosen:has-text("selfie.png")');
   check('selfie dropped on', dropped);
 
@@ -66,6 +71,30 @@ try {
   const facts = await text('.kyc-facts');
   check('summary of what was sent', /Demo Trader/.test(facts) && /17 Apr 2001/.test(facts) && /India/.test(facts) && /National ID ending 8765/.test(facts), facts);
   check('session knows', (await page.evaluate(async () => (await import('/src/models/stores/session.store.js')).currentUser().kycStatus)) === 'pending');
+
+  // Both images are on the server's disk, under the user's id
+  const userId = (await snapshot('users')).users.find((u) => u.email === 'demo@orichal.app').id;
+  const files = readdirSync(join(dataDir, 'uploads', 'kyc', userId)).sort();
+  check('both images saved', files.length === 2 && /^[0-9a-f]{24}-document\.jpg$/.test(files[0]) && /^[0-9a-f]{24}-selfie\.png$/.test(files[1]), files.join());
+  check('the document byte for byte', readFileSync(join(dataDir, 'uploads', 'kyc', userId, files[0])).equals(jpeg.buffer));
+
+  // What only the server can see: a text file that says it is a JPEG
+  await decide('none');
+  await page.reload();
+  await page.waitForSelector('.kyc-form');
+  await page.fill('#kyc-name', 'Demo Trader');
+  await page.fill('#kyc-dob', '17042001');
+  await page.click('label.radio-card:has-text("National ID")');
+  await page.fill('#kyc-number', 'abcd 98765');
+  await page.check('#kyc-sample');
+  await page.setInputFiles('#kyc-document', { name: 'not-really.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('<html>not an image</html>') });
+  await page.click('button:has-text("Submit for review")');
+  await page.waitForSelector('.kyc-files .field-error');
+  check('the server\'s refusal shows beside the file', /Images must be JPEG or PNG/.test(await text('.kyc-files .field-error')));
+  await page.click('.kyc-files .file-drop-chosen button:has-text("Remove")');
+  await page.setInputFiles('#kyc-document', jpeg);
+  await page.click('button:has-text("Submit for review")');
+  await page.waitForSelector('.kyc-application');
 
   // Approved, then rejected and sent again
   await decide('approved');

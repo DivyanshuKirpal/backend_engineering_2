@@ -33,7 +33,7 @@ const freePort = () => new Promise((resolve) => {
 
 /**
  * Starts the server on a spare port with a MongoDB and a store file of its own,
- * so every check file begins from the seed data. Returns { base, stop, runScript }.
+ * so every check file begins from the seed data. Returns { base, stop, runScript, dataDir }.
  */
 export async function startServer() {
   const port = await freePort();
@@ -72,7 +72,7 @@ export async function startServer() {
     if (child.exitCode != null) break;
     try {
       const res = await fetch(`${base}/api/v1/health`);
-      if (res.ok) return { base, stop, runScript };
+      if (res.ok) return { base, stop, runScript, dataDir: storeDir };
     } catch {
       // not up yet
     }
@@ -189,5 +189,5 @@ export async function start({ viewport = { width: 1440, height: 900 }, permissio
     process.exitCode = bad ? 1 : 0;
   };
 
-  return { page, context, base, shots, check, fail, signIn, api, snapshot, failNext, runScript: server.runScript, finish };
+  return { page, context, base, shots, check, fail, signIn, api, snapshot, failNext, runScript: server.runScript, dataDir: server.dataDir, finish };
 }

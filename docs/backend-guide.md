@@ -12,6 +12,7 @@ This guide explains the server built in the CE-2 phase, for a teammate getting r
 6. [M5. Sign-in on MongoDB with bcrypt](#m5-sign-in-on-mongodb-with-bcrypt)
 7. [M6. Tokens and protected routes](#m6-tokens-and-protected-routes)
 8. [M7. Orders and trades from MongoDB](#m7-orders-and-trades-from-mongodb)
+9. [M8. Validation, uploads and errors](#m8-validation-uploads-and-errors)
 
 ## M0. The plan in the repo
 
@@ -151,7 +152,7 @@ The client's `http.js` unwraps exactly this shape, so keeping it in one file kee
 
 **[`server/src/middleware/notFound.js`](../server/src/middleware/notFound.js)** is mounted on `/api` after the router, so it only sees API requests no route answered. It doesn't write the 404 itself: it calls `next(notFound(...))`, so the error handler writes it like every other error.
 
-**[`server/src/middleware/errorHandler.js`](../server/src/middleware/errorHandler.js)** is the only place that writes an error response. In order, it maps:
+**[`server/src/middleware/errorHandler.js`](../server/src/middleware/errorHandler.js)** is the only place that writes an error response. In order, it maps (more kinds of error since [M8](#every-error-in-one-place)):
 
 | The error | The answer |
 | --- | --- |
@@ -256,7 +257,7 @@ Each handler file exports a table of rows, `[method, path, handler]`, as the moc
 
 | Context field | Built from | Used for |
 | --- | --- | --- |
-| `params`, `query`, `body` | `req.params`, `req.query`, `req.body` (and Multer's files) | The request's input |
+| `params`, `query`, `body` | `req.params`, `req.query`, `req.body` (and Multer's files); since M8 the validated values on `req.input` | The request's input |
 | `headers` | `req.headers` | `Idempotency-Key`, the bearer token |
 | `cookies.get / set / clear` | `req.cookies`, `res.cookie()`, `res.clearCookie()` | The `rt` cookie and the fail-next switch |
 | `userAgent`, `ip` | the `User-Agent` header, `req.ip` | Device names and audit entries |
@@ -310,7 +311,7 @@ HTTP is request and answer: the server can't speak first. A **WebSocket** is one
 
 ### Uploads with Multer
 
-The Verification page sends its form as `multipart/form-data`: text fields and image files in one body, which `express.json()` can't read. Multer, on `POST /kyc` only, reads it into memory: the text fields into `req.body`, the files into `req.files`. The adapter hands each file to the handler as `{ name, type, size }`, the shape the handler used to read from a browser `File`, so the handler's checks (JPEG or PNG, 5 MB) stayed as they were. M8 adds Multer's own limits and saves the files to disk.
+The Verification page sends its form as `multipart/form-data`: text fields and image files in one body, which `express.json()` can't read. Multer, on `POST /kyc` only, reads it into memory: the text fields into `req.body`, the files into `req.files`. The adapter hands each file to the handler as `{ name, type, size }`, the shape the handler used to read from a browser `File`, so the handler's checks (JPEG or PNG, 5 MB) stayed as they were. [M8](#safe-uploads) adds Multer's own limits and saves the files to disk.
 
 ### Demo and test routes
 
@@ -568,7 +569,7 @@ One session per login is what M6 needs: the refresh token will name its session 
 | --- | --- |
 | `model/schemas/User.js` | The virtual, the two hooks, the two instance methods |
 | `model/services/auth.service.js` | New: `register`, `checkPassword`, `passwordMatches`, `setPassword`, `codeMatches`, `setTwoFactor` |
-| `presenter/handlers/auth.js`, `users.js`, `wallet.js` | Call the service. `checkNewPassword` is shared by register and change |
+| `presenter/handlers/auth.js`, `users.js`, `wallet.js` | Call the service. Register and change share the new-password rule (a Zod rule since M8) |
 | `model/exchange/session.js` | `startSession` creates a session document; `revoke`, `revokeOthers`, `isLive` |
 | `model/seed.js` | No passwords in the working set; `credentials` and `lockouts` are gone |
 
@@ -758,3 +759,104 @@ A second page examines one document more than it returns: the row the cursor poi
 - **Why does the order of fields in an index matter?** It is sorted by the first, then the second, and so on: equality first, then the sort.
 - **Why 404 and not 403 for somebody else's order?** 403 would confirm that it exists.
 - **Why flush before reading?** The engine works in memory; the flush brings MongoDB up to date first.
+
+## M8. Validation, uploads and errors
+
+Before M8 each handler checked its own input by hand, and uploaded images were looked at and thrown away. Now three things happen in front of a handler, or after it fails:
+
+```text
+request → authenticate → requireAuth → (upload) → validate → handler → answer
+                                           any error ─────────────────→ errorHandler
+```
+
+### Validation with Zod
+
+A **schema** describes what a request may hold. The schemas are in [`presenter/validators/`](../server/src/presenter/validators/index.js), one file per group, and `VALIDATORS` says which schema checks which part of which route:
+
+```js
+'POST /orders': { body: order.place },
+'GET /orders':  { query: order.list },
+```
+
+The adapter puts [`validate(schemas)`](../server/src/middleware/validate.js) in front of each of those routes. It parses `req.body` or `req.query` with the schema and puts the **parsed** values on `req.input`, which the handler gets. It can't write them back to `req.query`: in Express 5 that is read-only.
+
+Parsing also **sanitises**: texts are trimmed, emails lower-cased, `?limit=20` becomes the number 20, and unknown keys are dropped. A sign-up that sends `role: "admin"` is an ordinary sign-up.
+
+**One detail per field.** Each rule's message holds a code and a sentence (`rule('positive', 'The amount must be above zero.')`, [`lib/validation.js`](../server/src/lib/validation.js)). The answer names every wrong field with its code, and `message` is the sentence of the first:
+
+```json
+{ "success": false, "error": { "code": "VALIDATION_ERROR", "message": "That market doesn't exist.",
+  "details": { "market": "unknown", "quantity": "positive", "price": "required" } } }
+```
+
+The client shows `message` beside the first field in `details`, so both follow the schema's order. Zod normally checks cross-field rules (a limit order needs a price) only once every field is right; the `when` option makes them run anyway, so one answer names everything.
+
+**400 or 422?** A 400 means the request is badly made: no price, a negative amount. A 422 means it is well made but the market refuses it: a price off the tick size, not enough balance. Those rules need the market and the wallet, so they stay in the engine.
+
+Four details to know:
+
+- **Amounts must be strings.** A JSON number has already been a float, so `0.1` is already wrong. It is refused with the code `type`.
+- **A text's length is checked first, and stops the rest** (`abort`), so no regular expression ever runs over 90 KB of input. Some expressions take quadratic time on a hostile text, which would stall the one thread for everybody.
+- **No query operators.** `{ "email": { "$ne": null } }` could match every user if it reached `findOne`. A schema that wants a string refuses an object.
+- **The password rules are the client's own** (`password.rules.js`), imported by the server.
+
+### Why the server validates when the client already did
+
+The client's checks are for the person: they answer at once, next to the field. They protect nothing, because anyone can send a request without the page (Postman, `curl`, a script). The server trusts nothing it receives.
+
+### Safe uploads
+
+A form with files is sent as `multipart/form-data`: one body in parts, separated by a **boundary** line, each part with its own headers (its field name, and for a file its name and type). `express.json()` can't read that. **Multer** reads the parts as they arrive: texts go to `req.body`, files to `req.files` ([`middleware/upload.js`](../server/src/middleware/upload.js)).
+
+What keeps an upload safe:
+
+| Danger | Answer |
+| --- | --- |
+| A huge file | `limits.fileSize`, 5 MB: Multer stops and throws `LIMIT_FILE_SIZE`, a 413 |
+| Too many files or fields | `limits.files` and the named `fields()`: 400 |
+| Not an image | `fileFilter` refuses by the stated type, before reading it |
+| A lie about the type | The type is only a label the client writes. The file's first bytes (its **signature**: `FF D8 FF` for a JPEG) must agree |
+| A name like `../../evil.js` | The browser's file name is never used: the server makes the name from ids |
+| Strangers | `requireAuth` runs first, so a guest's file isn't even read |
+| A half-sent form | 400, and nothing is saved |
+
+Memory storage means nothing is on the disk until every check has passed. Then [`model/uploads.js`](../server/src/model/uploads.js) writes `server/data/uploads/kyc/<userId>/<applicationId>-document.jpg`. No route serves that folder: the only way to an image is `GET /admin/kyc/:id/document`, for admins, and every view is written to the audit log.
+
+### Streams
+
+The admin's image is sent with a **stream**: `fs.createReadStream` reads the file in 64 KB pieces, and `pipeline(stream, res)` passes each piece on as the network takes it ([`view/http/respond.js`](../server/src/view/http/respond.js)). `readFile` would hold all 5 MB in memory for each viewer. `pipeline` also waits when the client is slow (**backpressure**) and closes the file if the client leaves.
+
+This is the one success answer without the envelope: the bytes themselves, as `image/jpeg`. `http.js` hands them to the caller as a Blob. The seeded applications never had images, so they answer `{ placeholder: true }`.
+
+The admin's page still shows its drawn frame instead of the photo. Drawing the photo means changing that page's presenter and view, which this phase leaves alone.
+
+### Every error, in one place
+
+[`errorHandler`](../server/src/middleware/errorHandler.js) turns each kind of error into the right answer:
+
+| Error | Answer | Because |
+| --- | --- | --- |
+| `ApiError` | Its own status | A handler refused on purpose |
+| `ZodError` | 400, one detail per field | The request doesn't fit |
+| Mongoose `ValidationError` | 400 with its paths | A document broke its schema |
+| Mongoose `CastError` | 404 | `"abc"` can't be an ObjectId, so nothing has that id |
+| `E11000` duplicate key | 409 | The request is fine, but it conflicts with what exists |
+| Multer `LIMIT_FILE_SIZE`, a body over 100 kb | 413 | Too large |
+| Another Multer limit, invalid JSON | 400 | A badly made request |
+| Anything else | 500 | Our fault: the stack goes to the log, never to the client |
+
+### How to check M8
+
+1. Postman, `POST /orders` with `{ "market": "DOGE-INR", "side": "buy", "type": "limit", "quantity": "-1" }`: 400 with three details. With price `61000.005`: 422.
+2. Postman, `POST /kyc`, Body → form-data, `documentImage` as a File: a 6 MB image 413, a PDF 400, a JPEG 201. Look in `server/data/uploads/kyc/`.
+3. As the admin, `GET /admin/kyc/<id>/document`: Postman shows the picture.
+4. `GET /orders?limit=500`: 400.
+
+### Be ready to answer
+
+- **Why validate on the server too?** The client can be bypassed; its checks are only for convenience.
+- **What does Multer do?** It reads a multipart body part by part, texts to `req.body` and files to `req.files`, within its limits.
+- **Why check the first bytes?** The stated type and the file name come from the client and can be anything.
+- **Why is a duplicate key a 409 and a bad id a 404?** The first conflicts with existing data; the second names nothing.
+- **Why a stream?** Constant memory whatever the file's size, and it keeps the client's pace.
+- **What is sanitising?** Bringing input into the form we expect: trimmed, lower-cased, unknown keys dropped.

@@ -32,6 +32,10 @@ export async function fetchTransport({ method, path, query, body, headers }) {
     headers: { ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}), ...headers },
     body: body == null ? undefined : isForm ? body : JSON.stringify(body),
   });
+  // An image (an identity document, for an admin) comes as its bytes, without the envelope
+  if (res.ok && res.headers.get('content-type')?.startsWith('image/')) {
+    return { status: res.status, body: { success: true, data: { image: await res.blob() } } };
+  }
   const json = res.status === 204 ? null : await res.json().catch(() => null);
   return { status: res.status, body: json };
 }

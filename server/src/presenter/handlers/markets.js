@@ -36,8 +36,7 @@ export default [
 
   ['GET', '/markets/:symbol/orderbook', (ctx) => {
     listed(ctx.params.symbol);
-    const depth = Math.min(100, Math.max(1, Number(ctx.query.depth) || 50));
-    return { data: market.snapshot(ctx.params.symbol, depth) };
+    return { data: market.snapshot(ctx.params.symbol, ctx.query.depth ?? 50) };
   }],
 
   ['GET', '/markets/:symbol/trades', (ctx) => {
@@ -47,8 +46,7 @@ export default [
 
   ['GET', '/markets/:symbol/candles', (ctx) => {
     listed(ctx.params.symbol);
-    const interval = ctx.query.interval ?? '1h';
-    const limit = Math.min(500, Math.max(1, Number(ctx.query.limit) || 500));
+    const { interval = '1h', limit = 500 } = ctx.query;
     const candles = market.candles(ctx.params.symbol, interval, limit);
     if (!candles) throw badRequest('Unknown interval.', { interval: 'value' });
     return { data: { candles } };

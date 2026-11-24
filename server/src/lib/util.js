@@ -1,7 +1,5 @@
 // Helpers the route handlers share: the two list styles of section 4 (cursor
-// feeds and page-number tables), small body checks, and token lifetimes.
-
-import { badRequest } from './errors.js';
+// feeds and page-number tables), and token lifetimes.
 
 export const newestFirst = (field = 'createdAt') => (a, b) => (a[field] < b[field] ? 1 : a[field] > b[field] ? -1 : 0);
 export const oldestFirst = (field = 'createdAt') => (a, b) => (a[field] < b[field] ? -1 : a[field] > b[field] ? 1 : 0);
@@ -20,13 +18,6 @@ export function numberedPage(list, query, map = (x) => x) {
   const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
   const page = Math.max(1, Number(query.page) || 1);
   return { items: list.slice((page - 1) * limit, page * limit).map(map), page, total: list.length };
-}
-
-export function requireFields(body, fields) {
-  const missing = fields.filter((f) => body?.[f] == null || String(body[f]).trim() === '');
-  if (missing.length) {
-    throw badRequest('Some fields are missing.', Object.fromEntries(missing.map((f) => [f, 'required'])));
-  }
 }
 
 export const lower = (s) => String(s ?? '').trim().toLowerCase();

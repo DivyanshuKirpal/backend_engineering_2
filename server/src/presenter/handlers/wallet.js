@@ -13,7 +13,7 @@ import * as wallet from '../../model/exchange/wallet.js';
 import { codeMatches } from '../../model/services/auth.service.js';
 import { notify } from '../../model/exchange/engine.js';
 import { grouped } from '../../model/exchange/text.js';
-import { cursorPage, newestFirst, requireFields } from '../../lib/util.js';
+import { cursorPage, newestFirst } from '../../lib/util.js';
 
 const asset = (code) => {
   const a = db().assets.find((x) => x.code === String(code ?? '').toUpperCase() && x.status === 'active');
@@ -39,7 +39,7 @@ export default [
 
   ['GET', '/wallet/ledger', (ctx) => {
     const user = session.requireUser(ctx);
-    const types = ctx.query.type ? new Set(String(ctx.query.type).split(',')) : null;
+    const types = ctx.query.type ? new Set(ctx.query.type.split(',')) : null;
     // Newest first; entries written in the same millisecond keep their write order, reversed.
     const list = db().ledger
       .map((e, i) => ({ e, i }))
@@ -73,11 +73,9 @@ export default [
   ['POST', '/wallet/deposits', (ctx) => {
     const user = session.requireUser(ctx);
     if (user.status !== 'active') throw new ApiError(403, 'FORBIDDEN', 'This account is frozen, so it can\'t deposit.');
-    requireFields(ctx.body, ['asset', 'amount']);
     const a = asset(ctx.body.asset);
     if (!a.depositEnabled) throw conflict(`${a.code} deposits are switched off.`);
-    const amount = String(ctx.body.amount).trim();
-    if (!money.isDecimal(amount) || !money.isPositive(amount)) throw badRequest('Enter an amount above zero.', { amount: 'required' });
+    const { amount } = ctx.body;
     if (!money.fitsDecimals(amount, a.decimals)) throw badRequest(`${a.code} amounts have at most ${a.decimals} decimals.`, { amount: 'decimals' });
     if (money.gt(amount, a.demoDepositLimit)) throw badRequest(`Simulated deposits are at most ${grouped(a.demoDepositLimit)} ${a.code}.`, { amount: 'limit' });
     const key = ctx.headers['idempotency-key'] ? `${user.id}|${ctx.headers['idempotency-key']}` : null;
@@ -104,14 +102,13 @@ export default [
   ['POST', '/wallet/withdrawals', async (ctx) => {
     const user = session.requireUser(ctx);
     // Looked up first: from the checks below to the lock, nothing else may run in between
-    const codeOk = !user.twoFactorEnabled || (await codeMatches(user.id, ctx.body?.code));
+    const codeOk = !user.twoFactorEnabled || (await codeMatches(user.id, ctx.body.code));
     if (user.status !== 'active') throw new ApiError(403, 'FORBIDDEN', 'This account is frozen, so it can\'t withdraw.');
     if (user.kycStatus !== 'approved') throw new ApiError(403, 'KYC_REQUIRED', 'Verify your identity before withdrawing.');
-    requireFields(ctx.body, ['asset', 'amount', 'address']);
     const a = asset(ctx.body.asset);
     if (!codeOk) throw new ApiError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
     const free = wallet.balance(user.id, a.code).available;
-    const check = withdrawalRules.validate(a, { address: ctx.body.address, amount: String(ctx.body.amount), code: ctx.body.code ?? '000000' }, free, { ...user, twoFactorEnabled: false });
+    const check = withdrawalRules.validate(a, { address: ctx.body.address, amount: ctx.body.amount, code: ctx.body.code ?? '000000' }, free, { ...user, twoFactorEnabled: false });
     if (!check.ok) {
       const [field, err] = Object.entries(check.errors)[0];
       if (err.code === 'balance') throw new ApiError(422, 'INSUFFICIENT_BALANCE', `Not enough ${a.code} available.`, check.errors);
@@ -126,7 +123,7 @@ export default [
     const t = newTransaction(user, {
       type: 'withdrawal', asset: a.code, amount, fee: money.fixed(a.withdrawFee, a.decimals),
       receiveAmount: money.fixed(money.sub(amount, a.withdrawFee), a.decimals),
-      address: String(ctx.body.address).trim(), status: 'pending',
+      address: ctx.body.address, status: 'pending',
     });
     if (key) db().idempotency[key] = t.id;
     wallet.lock(user.id, a.code, amount, 'withdrawal_lock', { refType: 'transaction', refId: t.id, time: t.createdAt });

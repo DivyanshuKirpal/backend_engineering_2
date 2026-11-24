@@ -1,32 +1,17 @@
-// KYC routes (section 4, kyc.routes.js). Images arrive as multipart uploads
-// (Multer, in the adapter) and are only checked for type and size; until M8
-// saves them, the server keeps their file names, never their contents.
+// KYC routes (section 4, kyc.routes.js). By the time a handler runs, the form's
+// images are read and checked (middleware/upload.js) and its fields validated.
 
-import { db, newId, persist } from '../../model/store.js';
 import { badRequest, conflict } from '../../lib/errors.js';
-import { kycDto } from '../mappers.js';
 import * as session from '../../model/exchange/session.js';
-import { requireFields } from '../../lib/util.js';
+import { db, newId, persist } from '../../model/store.js';
+import { removeImages, saveKycImage } from '../../model/uploads.js';
+import { kycDto } from '../mappers.js';
 
-const DOCUMENT_TYPES = ['passport', 'national_id', 'driving_licence'];
-const MAX_IMAGE = 5 * 1024 * 1024;
-
-function checkImage(file, field, required) {
-  if (!file) {
-    if (required) throw badRequest('Add a photo of the document.', { [field]: 'required' });
-    return null;
+/** One open application per user. */
+function refuseSecond(user) {
+  if (db().kyc.some((k) => k.userId === user.id && (k.status === 'pending' || k.status === 'approved'))) {
+    throw conflict('You already have an application open.');
   }
-  if (!['image/jpeg', 'image/png'].includes(file.type)) throw badRequest('Images must be JPEG or PNG.', { [field]: 'type' });
-  return file.name;
-}
-
-function age(dateOfBirth) {
-  const dob = new Date(`${dateOfBirth}T00:00:00Z`);
-  const now = new Date();
-  let years = now.getUTCFullYear() - dob.getUTCFullYear();
-  const beforeBirthday = now.getUTCMonth() < dob.getUTCMonth() || (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() < dob.getUTCDate());
-  if (beforeBirthday) years -= 1;
-  return years;
 }
 
 export default [
@@ -36,33 +21,30 @@ export default [
     return { data: { status: user.kycStatus, application: latest ? kycDto(latest) : null } };
   }],
 
-  ['POST', '/kyc', (ctx) => {
+  ['POST', '/kyc', async (ctx) => {
     const user = session.requireUser(ctx);
-    const body = ctx.body ?? {};
-    requireFields(body, ['fullName', 'dateOfBirth', 'country', 'documentType', 'documentNumber']);
-    if (db().kyc.some((k) => k.userId === user.id && (k.status === 'pending' || k.status === 'approved'))) {
-      throw conflict('You already have an application open.');
+    const { fullName, dateOfBirth, country, documentType, documentNumber, documentImage, selfieImage } = ctx.body;
+    if (!documentImage) throw badRequest('Add a photo of the document.', { documentImage: 'required' });
+    refuseSecond(user);
+
+    const id = newId();
+    const images = {
+      document: await saveKycImage(user.id, id, 'document', documentImage),
+      selfie: selfieImage ? await saveKycImage(user.id, id, 'selfie', selfieImage) : null,
+    };
+    try {
+      refuseSecond(user); // another one may have come in while the files were written
+    } catch (err) {
+      await removeImages(Object.values(images));
+      throw err;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.dateOfBirth) || Number.isNaN(Date.parse(body.dateOfBirth))) {
-      throw badRequest('Enter a real date of birth.', { dateOfBirth: 'format' });
-    }
-    if (age(body.dateOfBirth) < 18) throw badRequest('You need to be 18 or older.', { dateOfBirth: 'age' });
-    if (!/^[A-Z]{2}$/.test(body.country)) throw badRequest('Choose a country.', { country: 'format' });
-    if (!DOCUMENT_TYPES.includes(body.documentType)) throw badRequest('Choose a document type.', { documentType: 'value' });
-    const number = String(body.documentNumber).replace(/\s+/g, '');
-    if (number.length < 5) throw badRequest('Document numbers are at least 5 characters.', { documentNumber: 'length' });
-    if (body.documentImage?.size > MAX_IMAGE || body.selfieImage?.size > MAX_IMAGE) {
-      throw badRequest('Images are at most 5 MB each.', { documentImage: 'size' });
-    }
-    checkImage(body.documentImage, 'documentImage', true);
-    const selfie = checkImage(body.selfieImage, 'selfieImage', false);
 
     const app = {
-      id: newId(), status: 'pending',
-      fullName: String(body.fullName).trim(), dateOfBirth: body.dateOfBirth, country: body.country,
-      documentType: body.documentType, documentNumberLast4: number.slice(-4).toUpperCase(),
+      id, status: 'pending',
+      fullName, dateOfBirth, country, documentType,
+      documentNumberLast4: documentNumber.replace(/\s+/g, '').slice(-4).toUpperCase(),
       rejectReason: null, createdAt: new Date().toISOString(), reviewedAt: null, reviewedBy: null,
-      hasSelfie: Boolean(selfie),
+      hasSelfie: Boolean(images.selfie), images,
       userId: user.id, userEmail: user.email, userDisplayName: user.displayName, userCreatedAt: user.createdAt,
     };
     db().kyc.push(app);

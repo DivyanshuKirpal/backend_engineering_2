@@ -3,10 +3,12 @@
 // logout, orders that rest, fill and cancel, the market rules, a deposit and a
 // withdrawal, an admin's approval, and the ledger after each. In the static
 // phase this file drove the mock backend inside the page (mock.check.mjs).
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import * as money from '../../client/src/models/domain/money.js';
 import { start } from './harness.mjs';
 
-const { base, check, fail, finish, snapshot, runScript } = await start({ browser: false });
+const { base, check, fail, finish, snapshot, runScript, dataDir } = await start({ browser: false });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** One client, as a browser would be: its cookies (sent only under their path) and its access token. */
@@ -354,16 +356,122 @@ try {
   check('a signed-in session goes on through the lock', (await newcomer.call('GET', '/users/me')).status === 200);
   r = await client().call('POST', '/auth/login', { email: 'nobody@example.com', password: 'whatever-1' });
   check('an unknown email answers like a wrong password', r.status === 401 && r.body.error.message === 'That email and password don\'t match an account.');
+  // 12. Validation: one detail per field, whatever else is wrong
+  const refused = async (label, [method, path, body, query], details, status = 400) => {
+    const res = await demo.call(method, path, body, query);
+    check(label, res.status === status && JSON.stringify(res.body.error.details ?? null) === JSON.stringify(details), `${res.status} ${JSON.stringify(res.body.error)}`);
+    return res;
+  };
+  const before = (await snapshot('orders')).orders.length;
+  r = await refused('an order with an unknown market, a negative amount and no price', ['POST', '/orders', { market: 'DOGE-INR', side: 'buy', type: 'limit', quantity: '-1' }], { market: 'unknown', quantity: 'positive', price: 'required' });
+  check('   says what is wrong with the first field', r.body.error.code === 'VALIDATION_ERROR' && r.body.error.message === 'That market doesn\'t exist.', r.body.error.message);
+  await refused('an empty order', ['POST', '/orders', {}], { market: 'required', side: 'value', type: 'value' });
+  await refused('a list instead of an order', ['POST', '/orders', [1]], { body: 'invalid_type' });
+  await refused('amounts as JSON numbers', ['POST', '/orders', { market: 'BTC-USDT', side: 'buy', type: 'limit', price: 61000, quantity: 0.01 }], { price: 'type', quantity: 'type' });
+  await refused('amounts that aren\'t decimals', ['POST', '/orders', { market: 'BTC-USDT', side: 'buy', type: 'limit', price: '6e4', quantity: '0,01' }], { price: 'decimal', quantity: 'decimal' });
+  await refused('more decimals than the money code holds', ['POST', '/orders', { market: 'BTC-USDT', side: 'buy', type: 'limit', price: '61000', quantity: '0.0000000000000000001' }], { quantity: 'decimal' });
+  await refused('a market buy without a total, a market sell without an amount', ['POST', '/orders', { market: 'BTC-USDT', side: 'buy', type: 'market', quantity: '1' }], { quoteQuantity: 'required' });
+  await refused('   and the sell', ['POST', '/orders', { market: 'BTC-USDT', side: 'sell', type: 'market' }], { quantity: 'required' });
+  check('none of them became an order', (await snapshot('orders')).orders.length === before);
+  r = await call('POST', '/orders', { market: 'BTC-USDT', side: 'buy', type: 'limit', price: '61000.005', quantity: '0.001' });
+  check('a price off the tick is still the engine\'s 422', r.status === 422 && r.body.error.code === 'MARKET_RULES' && r.body.error.details.price.code === 'tick', JSON.stringify(r.body));
+  await refused('GET /orders?limit=500', ['GET', '/orders', null, { limit: '500' }], { limit: 'range' });
+  await refused('   limit=0, state=closed, side=hold and a market that isn\'t one', ['GET', '/orders', null, { limit: '0', state: 'closed', side: 'hold', market: '$ne' }], { state: 'value', market: 'format', side: 'value', limit: 'range' });
+  for (const path of ['/trades', '/wallet/ledger', '/wallet/transactions', '/notifications', '/users/me/activity']) await refused(`   ${path}?limit=101`, ['GET', path, null, { limit: '101' }], { limit: 'range' });
+  await refused('an offset that isn\'t a number', ['GET', '/wallet/ledger', null, { cursor: 'abc' }], { cursor: 'format' });
+  check('candles may ask for 500, not 501', (await call('GET', '/markets/BTC-USDT/candles', null, { limit: '500' })).status === 200 && (await call('GET', '/markets/BTC-USDT/candles', null, { limit: '501' })).status === 400);
+  r = await fetch(`${base}/api/v1/orders?side=buy&side=sell`, { headers: { Authorization: `Bearer ${(await call('POST', '/auth/refresh')).body.data.accessToken}` } });
+  check('a parameter given twice: 400', r.status === 400);
+  await refused('a query operator in place of an email', ['POST', '/auth/login', { email: { $ne: null }, password: { $ne: null } }], { email: 'type', password: 'type' });
+  await refused('a sign-up with everything wrong', ['POST', '/auth/register', { email: 'nope', displayName: 'x', password: 'short' }], { email: 'format', displayName: 'length', password: 'weak' });
+  await refused('a 2FA code that isn\'t six digits', ['POST', '/auth/login/2fa', { loginTicket: 'x', code: '12' }], { code: 'format' });
+  await refused('a withdrawal without amount and address', ['POST', '/wallet/withdrawals', { asset: 'USDT' }], { amount: 'required', address: 'required' });
+  await refused('a deposit of nothing', ['POST', '/wallet/deposits', { asset: 'BTC', amount: '0' }], { amount: 'positive' });
+  await refused('an unknown theme', ['PATCH', '/users/me', { preferences: { theme: 'neon' } }], { 'preferences.theme': 'value' });
+  r = await client().call('POST', '/auth/register', { email: '  Mixed.Case@Example.COM ', password: 'Correct-horse-42', displayName: '  Mixed   Case ', role: 'admin', isBot: true, kycStatus: 'approved' });
+  check('sanitised: the email trimmed and lower-cased, unknown keys dropped', r.status === 201 && r.body.data.user.email === 'mixed.case@example.com' && r.body.data.user.displayName === 'Mixed   Case' && r.body.data.user.role === 'user' && r.body.data.user.kycStatus === 'none', JSON.stringify(r.body));
+  r = await call('POST', '/orders', { market: 'BTC-USDT', side: 'buy', type: 'limit', price: ' 60000.00 ', quantity: '0.001', status: 'filled', userId: newId });
+  check('   an order\'s too', r.status === 202 && r.body.data.order.price === '60000.00' && r.body.data.order.status === 'pending' && (await snapshot('orders')).orders.find((o) => o.id === r.body.data.order.id).userId === DEMO, JSON.stringify(r.body));
+  const raw = async (body, type = 'application/json') => fetch(`${base}/api/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': type }, body });
+  check('a body that isn\'t JSON: 400', (await raw('{bad')).status === 400);
+  r = await raw(JSON.stringify({ email: 'x'.repeat(120 * 1024) }));
+  check('a body over 100 kb: 413', r.status === 413 && (await r.json()).error.code === 'PAYLOAD_TOO_LARGE');
+  const t0 = performance.now();
+  r = await raw(JSON.stringify({ email: `a@${'.'.repeat(90000)} x`, password: 'x' }));
+  check('a 90 kb email is refused at once', r.status === 400 && performance.now() - t0 < 3000, `${Math.round(performance.now() - t0)} ms`);
+
+  // 13. Identity images
+  const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(3000, 7)]);
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(2000, 9)]);
+  const FORM = { fullName: ' New Person ', dateOfBirth: '1999-04-17', country: 'IN', documentType: 'passport', documentNumber: 'ab 12345' };
+  const send = async (who, fields, files = {}) => {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.set(k, v);
+    for (const [k, list] of Object.entries(files)) for (const [bytes, type, name] of list) form.append(k, new Blob([bytes], { type }), name);
+    const res = await fetch(`${base}/api/v1/kyc`, { method: 'POST', headers: { Authorization: `Bearer ${who.token}` }, body: form });
+    return { status: res.status, body: await res.json() };
+  };
+  const person = { token: (await newcomer.call('POST', '/auth/refresh')).body.data.accessToken };
+  const folder = join(dataDir, 'uploads', 'kyc', newId);
+  const doc = (bytes, type = 'image/jpeg', name = 'passport.jpg') => ({ documentImage: [[bytes, type, name]] });
+  r = await send(person, FORM, doc(Buffer.concat([JPEG, Buffer.alloc(6 * 1024 * 1024)])));
+  check('a 6 MB image: 413', r.status === 413 && r.body.error.code === 'PAYLOAD_TOO_LARGE' && r.body.error.details.documentImage === 'size', JSON.stringify(r.body));
+  r = await send(person, FORM, doc(Buffer.from('%PDF-1.7'), 'application/pdf', 'scan.pdf'));
+  check('a PDF: 400', r.status === 400 && r.body.error.details.documentImage === 'type', JSON.stringify(r.body));
+  r = await send(person, FORM, doc(Buffer.from('%PDF-1.7 and more'), 'image/jpeg', 'scan.jpg'));
+  check('a PDF that says it is a JPEG: 400', r.status === 400 && r.body.error.details.documentImage === 'type', JSON.stringify(r.body));
+  r = await send(person, FORM, doc(PNG, 'image/jpeg', 'x.jpg'));
+  check('a PNG that says it is a JPEG: 400', r.status === 400 && r.body.error.details.documentImage === 'type', JSON.stringify(r.body));
+  r = await send(person, FORM);
+  check('no image: 400', r.status === 400 && r.body.error.details.documentImage === 'required', JSON.stringify(r.body));
+  r = await send(person, FORM, { documentImage: [[JPEG, 'image/jpeg', '1.jpg'], [JPEG, 'image/jpeg', '2.jpg']] });
+  check('two documents: 400', r.status === 400 && r.body.error.details.documentImage === 'unexpected', JSON.stringify(r.body));
+  r = await send(person, FORM, { ...doc(JPEG), avatar: [[JPEG, 'image/jpeg', 'a.jpg']] });
+  check('a file the form doesn\'t have: 400', r.status === 400 && r.body.error.details.avatar === 'unexpected', JSON.stringify(r.body));
+  r = await send(person, { ...FORM, dateOfBirth: '2001-02-31', country: 'india', documentType: 'library_card', documentNumber: '12' }, doc(JPEG));
+  check('the fields: one detail each', r.status === 400 && JSON.stringify(r.body.error.details) === JSON.stringify({ dateOfBirth: 'format', country: 'format', documentType: 'value', documentNumber: 'length' }), JSON.stringify(r.body));
+  r = await send(person, { ...FORM, dateOfBirth: '2015-01-01' }, doc(JPEG));
+  check('under 18: 400', r.status === 400 && r.body.error.details.dateOfBirth === 'age');
+  let res = await fetch(`${base}/api/v1/kyc`, { method: 'POST', headers: { Authorization: `Bearer ${person.token}`, 'Content-Type': 'multipart/form-data' }, body: 'x' });
+  check('multipart without a boundary: 400', res.status === 400, String(res.status));
+  res = await fetch(`${base}/api/v1/kyc`, { method: 'POST', headers: { Authorization: `Bearer ${person.token}`, 'Content-Type': 'multipart/form-data; boundary=abc' }, body: '--abc\r\nContent-Disposition: form-data; name="fullName"\r\n\r\nhalf' });
+  check('a form cut short: 400', res.status === 400, String(res.status));
+  check('a guest can\'t upload: 401', (await send({ token: '' }, FORM, doc(JPEG))).status === 401);
+  check('nothing was saved for any of them', !existsSync(folder));
+  r = await send(person, FORM, { documentImage: [[JPEG, 'image/jpeg', '../../../evil.jpg']], selfieImage: [[PNG, 'image/png', 'me.png']] });
+  check('a JPEG and a PNG: 201', r.status === 201 && r.body.data.application.status === 'pending' && r.body.data.application.fullName === 'New Person' && r.body.data.application.documentNumberLast4 === '2345', JSON.stringify(r.body));
+  const kycId = r.body.data.application.id;
+  check('both on disk, under the user\'s id, named by the server', readdirSync(folder).sort().join() === `${kycId}-document.jpg,${kycId}-selfie.png` && readFileSync(join(folder, `${kycId}-document.jpg`)).equals(JPEG), existsSync(folder) ? readdirSync(folder).join() : 'no folder');
+  check('the answer doesn\'t say where', !/images|uploads|\.jpg/.test(JSON.stringify(r.body)));
+  r = await send(person, FORM, doc(JPEG));
+  check('a second application: 409', r.status === 409);
+  const reviewer = client();
+  reviewer.setToken((await reviewer.call('POST', '/auth/login', { email: 'admin@orichal.app', password: 'orichal-demo' })).body.data.accessToken);
+  const adminToken = (await reviewer.call('POST', '/auth/refresh')).body.data.accessToken;
+  const image = (id, which, token) => fetch(`${base}/api/v1/admin/kyc/${id}/document${which ? `?image=${which}` : ''}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  res = await image(kycId, '', adminToken);
+  check('the admin gets the document\'s bytes, as image/jpeg, never cached', res.status === 200 && res.headers.get('content-type') === 'image/jpeg' && res.headers.get('cache-control') === 'no-store' && res.headers.get('content-length') === String(JPEG.length) && Buffer.from(await res.arrayBuffer()).equals(JPEG), `${res.status} ${res.headers.get('content-type')} ${res.headers.get('cache-control')}`);
+  res = await image(kycId, 'selfie', adminToken);
+  check('   and the selfie', res.headers.get('content-type') === 'image/png' && Buffer.from(await res.arrayBuffer()).equals(PNG));
+  check('   both views are in the audit log', (await snapshot('audit')).audit.filter((a) => a.action === 'admin.kyc_document_viewed' && a.targetId === kycId).map((a) => a.metadata.image).sort().join() === 'document,selfie');
+  const seededKyc = (await snapshot('kyc')).kyc.find((k) => !k.images).id;
+  res = await image(seededKyc, '', adminToken);
+  check('a seeded application has no image: the placeholder', res.status === 200 && (await res.json()).data.placeholder === true);
+  check('its applicant 403, a guest 401, an unknown one 404', [(await image(kycId, '', person.token)).status, (await image(kycId, '', null)).status, (await image('abc', '', adminToken)).status].join() === '403,401,404');
+  check('no folder is served to the public', !(await (await fetch(`${base}/uploads/kyc/${newId}/${kycId}-document.jpg`)).headers.get('content-type')).startsWith('image/'));
+
   const everything = JSON.stringify(await snapshot());
   check('no password, hash, code or token anywhere in the working set', !/orichal-demo|Correct-horse|\$2[aby]\$|passwordHash|codeHash|"credentials"|"lockouts"|refreshTokens|eyJ[\w-]+\.eyJ/.test(everything));
   const people = (await snapshot('users')).users;
   check('the lock is on the user', Date.parse(people.find((u) => u.id === newId).lockUntil) > Date.now());
 
-  // 12. The database scripts again, after everything above
+  // 14. The database scripts again, after everything above, and a reset that takes the images along
   script = runScript('check-ledger.js');
   check('db:check-ledger after all of it', script.status === 0, script.stdout);
   script = runScript('explain.js');
   check('db:explain after all of it', script.status === 0, script.stdout);
+  await call('POST', '/demo/reset');
+  check('a reset deletes the images', !existsSync(folder));
 } catch (err) {
   fail(err);
 } finally {

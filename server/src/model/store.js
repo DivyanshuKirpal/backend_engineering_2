@@ -25,6 +25,7 @@ import { connectDb, explainConnection } from '../config/db.js';
 import { env } from '../config/env.js';
 import { MODELS, changedPaths, fieldsThatDiffer, filterOf, keyOf, toRecord } from './documents.js';
 import { FILE_KEYS, VERSION, buildSeed, seedDatabase } from './seed.js';
+import { clearImages } from './uploads.js';
 
 const COLLECTIONS = Object.keys(MODELS);
 const FLUSH_DELAY = 200;
@@ -217,6 +218,7 @@ export function reset() {
   const done = queue.then(async () => {
     const fresh = await buildSeed();
     await seedDatabase(fresh);
+    await clearImages(); // the applications they belong to are gone
     data = fresh;
     for (const collection of COLLECTIONS) {
       written[collection] = new Map(data[collection].map((record) => [keyOf(collection, record), JSON.stringify(record)]));

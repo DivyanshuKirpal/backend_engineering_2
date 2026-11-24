@@ -49,7 +49,7 @@ Run the seed once before the first start: the server won't start on an empty dat
 
 ## The data
 
-While the server runs, the data lives in memory as its working set. Users, sessions, wallets, ledger entries, orders and trades are saved in MongoDB, before each write request is answered; the other collections are saved in `server/data/store.json` (`STORE_FILE`, git-ignored). To start again from the seed data, run `npm run seed -- --yes` or use **Reset demo data** in the header's Simulator menu, which resets the database for everyone.
+While the server runs, the data lives in memory as its working set. Users, sessions, wallets, ledger entries, orders and trades are saved in MongoDB, before each write request is answered; the other collections are saved in `server/data/store.json` (`STORE_FILE`, git-ignored), and the images people send for their identity check in `server/data/uploads/` beside it. A seed or a reset deletes the images too. To start again from the seed data, run `npm run seed -- --yes` or use **Reset demo data** in the header's Simulator menu, which resets the database for everyone.
 
 ## Demo routes
 
@@ -60,7 +60,7 @@ With `DEMO_CONTROLS=true` (the default), `/api/v1/demo` serves the Simulator men
 ```text
 server/
 ├── .env.example                 every variable, with a safe example value
-├── data/                        git-ignored: store.json
+├── data/                        git-ignored: store.json and uploads/ (identity images)
 ├── scripts/                     seed.js, check-ledger.js and explain.js (npm run seed, db:check-ledger, db:explain)
 └── src/
     ├── server.js                starts the exchange, then the HTTP server and Socket.IO on PORT
@@ -74,11 +74,14 @@ server/
     │   ├── errors.js            ApiError and the helpers for section 4's error codes
     │   ├── decimal.js           decimal strings to Decimal128 and back
     │   ├── cursor.js            keyset cursors for "load more" lists
-    │   └── util.js              list paging, small body checks, token lifetimes
+    │   ├── validation.js        how a Zod rule carries its code and sentence, and how they become an answer
+    │   └── util.js              list paging, token lifetimes
     ├── middleware/
     │   ├── authenticate.js      the access token: sets req.user and req.session
     │   ├── requireAuth.js       401 without a signed-in user
     │   ├── authorize.js         the role, read again from MongoDB: 403
+    │   ├── validate.js          checks a request with its Zod schemas; parsed values on req.input
+    │   ├── upload.js            Multer for the identity form: JPEG or PNG, 5 MB, real first bytes
     │   ├── notFound.js          an /api path with no route: 404 NOT_FOUND
     │   ├── failNext.js          the Simulator menu's "make the next request fail"
     │   └── errorHandler.js      the only writer of error responses
@@ -86,6 +89,7 @@ server/
     │   ├── store.js             the working set: loaded from MongoDB, flushed back with $set bulk writes
     │   ├── seed.js              how the demo data is made, and how it fills MongoDB
     │   ├── documents.js         records to MongoDB documents and back, field by field
+    │   ├── uploads.js           the identity images on disk
     │   ├── schemas/             the Mongoose models: User, Session, Wallet, LedgerEntry, Order, Trade
     │   ├── services/            auth.service.js: registering and signing in against MongoDB;
     │   │                        token.service.js: the two JWTs and the refresh rotation;
@@ -99,10 +103,11 @@ server/
     │       ├── lifecycle.js     start-up and the demo reset
     │       └── text.js          the server's own number grouping for notification text
     ├── presenter/               PRESENTER: check input, call the model, shape the answer
+    │   ├── validators/          the Zod schemas, and which route each one checks
     │   ├── handlers/            one table of [method, path, handler] per section 4 group, plus demo.js
     │   └── mappers.js           records to the DTOs of section 4
     └── view/                    VIEW: which URL, which middleware
-        ├── http/respond.js      the envelope: ok, created, accepted, noContent, fail
+        ├── http/respond.js      the envelope: ok, created, accepted, noContent, fail; and file, a stream
         ├── routes/index.js      the /api/v1 router and the adapter that mounts the handler tables
         └── sockets/gateway.js   Socket.IO: the handshake, public and private rooms, the bus relay
 ```

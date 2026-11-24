@@ -503,6 +503,7 @@ Copy these rows into the review log under "### Server, CE-2 phase" (M0), and add
 | Change | 1 Folders | bcryptjs instead of bcrypt | Pure JavaScript, no native build on Windows |
 | Change | 1 Folders | morgan request logs instead of pino; no metrics | morgan is the course's logger; metrics come with Prometheus |
 | Change | 1 Folders, 4 API | KYC images are saved under `server/data/uploads` instead of Cloudinary | Cloud storage comes later |
+| Addition | 4 API (Admin) | `GET /admin/kyc/:id/document` answers `{ placeholder: true, image }` for an application without that image; the admin's page keeps its drawn frame and doesn't show the photo yet | The seeded applications came without images; the page's presenter and view are outside this phase's client changes |
 | Change | 4 API | No rate limits yet | They need Redis |
 | Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status, email-verified and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
 | Change | 3 Schemas | `createdAt` and `updatedAt` are fields the code sets instead of Mongoose timestamps; `users` also stores `hasPassword` and `googleLinked`, and `sessions` the device name; only the indexes this phase's queries use exist (added in M3) | The API's times are the engine's own, to the millisecond; the records already carry those fields |
@@ -593,9 +594,9 @@ M7 · Orders and trades from MongoDB
 
 M8 · Validation, uploads and errors
 
-- [ ] Zod validators, `validate`, sanitising
-- [ ] `upload`; KYC files on disk; the admin document stream
-- [ ] `errorHandler` maps Zod, Mongoose, Multer and parser errors
+- [x] Zod validators, `validate`, sanitising
+- [x] `upload`; KYC files on disk; the admin document stream
+- [x] `errorHandler` maps Zod, Mongoose, Multer and parser errors
 
 M9 · Postman and the full test run
 
@@ -737,3 +738,20 @@ M10 · Documents and the tag
   5. `npm run checks`: 521 in 22 files (`api` 91 instead of 78). `npm run check:data`: 3,947 on 26 files. `npm run db:check-ledger`: all 61 wallets in step with 186 entries.
 
   Departure: the two indexes end in `_id` (a row in section 8). Also recorded now, missed in M6: the socket events `token.expiring` and `session.ended`, and that an ended session's sockets stay connected as a guest's.
+- **24 Nov 2026 · M8, validation, uploads and errors.** What: input is checked by Zod schemas before a handler runs, identity images are real uploads, and every database or upload error is a clear 4xx. Files and how:
+  - `presenter/validators/` (new): the shared rules, one file of schemas per group (auth, users, markets, orders, wallet, KYC, admin) and `index.js`, which says which schema checks which route (29 routes). `lib/validation.js` (new): each rule carries a code and a sentence, and a `ZodError` becomes one detail per field. The amounts' rule takes a decimal string above zero within what Decimal128 and `money.js` hold; a length check stops the rules after it.
+  - `middleware/validate.js` (new): the parsed values on `req.input`; the adapter in `view/routes/index.js` gives them to the handler. The hand-written checks left the handlers, and `requireFields` left `lib/util.js`. A market's settings (admin) keep their own check, the rules shared with the client.
+  - `middleware/upload.js` (new): Multer's limits, the stated type, then the first bytes. `model/uploads.js` (new): saves under `uploads/kyc/<userId>/` beside the JSON store, with a name the server makes; a seed or reset deletes them. `handlers/kyc.js` saves; `handlers/admin.js` opens a stream and `view/http/respond.js` sends it with `pipeline()`.
+  - `middleware/errorHandler.js`: Zod, Mongoose `ValidationError` and `CastError`, E11000, Multer, the body parser.
+  - `client/src/models/api/http.js`: an `image/*` answer is a success whose data is a Blob.
+  - `scripts/checks/`: `api.check` has the validation and upload checks, `verification.check` sends images that begin as real ones and looks at the disk; the harness tells where the data folder is.
+
+  Checks (on Atlas from a script and a browser, 19 of 19, and in `api.check`):
+  1. An order with an unknown market, a negative amount and no price: 400 with `{ market: "unknown", quantity: "positive", price: "required" }`. Off the tick: 422 `MARKET_RULES`.
+  2. A 6 MB image 413, a PDF 400 (also one that says it is a JPEG), nothing on disk; a JPEG of exactly 5 MB 201 and on disk byte for byte. The admin's page opens the application, its request answers `200 image/jpeg`, and through the client's own API it decodes to the 900 × 600 picture. A client that leaves halfway doesn't disturb the server.
+  3. `GET /orders?limit=500`: 400.
+  4. `npm run checks`: 580 in 22 files (521 before; `api` 147 instead of 91, `verification` 20 instead of 17). `npm run check:data`: 3,947 on 26 files.
+
+  Also, with real errors on the handler: a Mongoose `ValidationError` 400 with its paths, a `CastError` 404, a duplicate key 409, anything else 500.
+
+  Departures: the placeholder answer, and the admin's page not drawing the photo (a row in section 8): it needs the page's presenter and view, outside this phase's client changes. As the plan's check says, an unknown market on `POST /orders` is now a 400; it was a 404.

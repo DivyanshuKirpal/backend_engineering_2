@@ -7,7 +7,6 @@ import * as session from '../../model/exchange/session.js';
 import { notify } from '../../model/exchange/engine.js';
 import * as authService from '../../model/services/auth.service.js';
 import { cursorPage, newestFirst } from '../../lib/util.js';
-import { checkNewPassword } from './auth.js';
 
 const DEMO_SECRET = 'JBSWY3DPEHPK3PXP';
 const SECURITY_ACTIONS = new Set([
@@ -22,17 +21,14 @@ export default [
 
   ['PATCH', '/users/me', (ctx) => {
     const user = session.requireUser(ctx);
-    const { displayName, preferences } = ctx.body ?? {};
+    const { displayName, preferences } = ctx.body;
     if (displayName != null) {
-      const name = String(displayName).trim();
-      if (name.length < 2 || name.length > 40) throw badRequest('Display names are 2 to 40 characters.', { displayName: 'length' });
-      user.displayName = name;
+      user.displayName = displayName;
       for (const list of [db().kyc, db().transactions]) {
-        for (const r of list) if (r.userId === user.id) r.userDisplayName = name;
+        for (const r of list) if (r.userId === user.id) r.userDisplayName = displayName;
       }
     }
     if (preferences) {
-      if (preferences.theme != null && !['light', 'dark'].includes(preferences.theme)) throw badRequest('Unknown theme.', { theme: 'value' });
       user.preferences = {
         theme: preferences.theme ?? user.preferences.theme,
         hideSmallBalances: preferences.hideSmallBalances ?? user.preferences.hideSmallBalances,
@@ -44,10 +40,8 @@ export default [
 
   ['PATCH', '/users/me/password', async (ctx) => {
     const user = session.requireUser(ctx);
-    const current = String(ctx.body?.currentPassword ?? '');
-    const next = String(ctx.body?.newPassword ?? '');
+    const { currentPassword: current, newPassword: next } = ctx.body;
     if (!(await authService.passwordMatches(user.id, current))) throw badRequest('Your current password isn\'t right.', { currentPassword: 'wrong' });
-    checkNewPassword(next, 'newPassword');
     if (next === current) throw badRequest('Choose a password you haven\'t used here.', { newPassword: 'same' });
     await authService.setPassword(user.id, next);
     const revoked = await session.revokeOthers(user.id, ctx.session.id);
@@ -66,7 +60,7 @@ export default [
 
   ['POST', '/users/me/2fa/enable', async (ctx) => {
     const user = session.requireUser(ctx);
-    if (String(ctx.body?.code ?? '') !== authService.DEMO_CODE) throw wrongCode();
+    if (ctx.body.code !== authService.DEMO_CODE) throw wrongCode();
     await authService.setTwoFactor(user.id, true);
     session.audit(ctx, user, 'user.2fa_enabled');
     notify(user.id, 'security', 'Two-factor turned on', 'Logging in and withdrawing now ask for a code from your authenticator app.', '/account/security');
@@ -76,8 +70,8 @@ export default [
 
   ['POST', '/users/me/2fa/disable', async (ctx) => {
     const user = session.requireUser(ctx);
-    if (!(await authService.codeMatches(user.id, ctx.body?.code))) throw wrongCode();
-    if (user.hasPassword && !(await authService.passwordMatches(user.id, ctx.body?.password))) {
+    if (!(await authService.codeMatches(user.id, ctx.body.code))) throw wrongCode();
+    if (user.hasPassword && !(await authService.passwordMatches(user.id, ctx.body.password ?? ''))) {
       throw badRequest('Your password isn\'t right.', { password: 'wrong' });
     }
     await authService.setTwoFactor(user.id, false);

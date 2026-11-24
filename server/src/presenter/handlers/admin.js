@@ -7,6 +7,7 @@ import * as money from '../../../../client/src/models/domain/money.js';
 import { CONFIG_FIELDS, validateConfig, validateNewMarket } from '../../../../client/src/models/domain/market.rules.js';
 import { db, persist } from '../../model/store.js';
 import { badRequest, conflict, notFound } from '../../lib/errors.js';
+import { openImage } from '../../model/uploads.js';
 import { adminUserDto, auditDto, kycDto, transactionDto } from '../mappers.js';
 import * as session from '../../model/exchange/session.js';
 import * as wallet from '../../model/exchange/wallet.js';
@@ -98,14 +99,12 @@ export default [
   ['PATCH', '/admin/users/:id/status', (ctx) => {
     const admin = session.requireAdmin(ctx);
     const u = userOr404(ctx.params.id);
-    const next = ctx.body?.status;
-    if (!['active', 'frozen'].includes(next)) throw badRequest('Status is active or frozen.', { status: 'value' });
-    if (next === 'frozen' && !String(ctx.body?.reason ?? '').trim()) throw badRequest('Give a reason for freezing.', { reason: 'required' });
+    const { status: next, reason } = ctx.body;
     if (u.id === admin.id) throw conflict('You can\'t freeze your own account.');
     u.status = next;
     let cancelled = 0;
     if (next === 'frozen') cancelled = systemCancel({ userId: u.id, reason: 'account_frozen' });
-    session.audit(ctx, admin, next === 'frozen' ? 'admin.user_frozen' : 'admin.user_unfrozen', { targetType: 'user', targetId: u.id, metadata: { reason: ctx.body?.reason ?? null, ordersCancelled: cancelled } });
+    session.audit(ctx, admin, next === 'frozen' ? 'admin.user_frozen' : 'admin.user_unfrozen', { targetType: 'user', targetId: u.id, metadata: { reason: reason ?? null, ordersCancelled: cancelled } });
     persist();
     return { data: { user: adminUserDto(u) } };
   }],
@@ -113,8 +112,7 @@ export default [
   ['PATCH', '/admin/users/:id/role', (ctx) => {
     const admin = session.requireAdmin(ctx);
     const u = userOr404(ctx.params.id);
-    const role = ctx.body?.role;
-    if (!['user', 'admin'].includes(role)) throw badRequest('Role is user or admin.', { role: 'value' });
+    const { role } = ctx.body;
     if (u.role === 'admin' && role === 'user' && humans().filter((x) => x.role === 'admin').length === 1) {
       throw conflict('There must always be at least one admin.');
     }
@@ -132,13 +130,15 @@ export default [
     return { data: numberedPage(list, { limit: 20, ...ctx.query }, (k) => kycDto(k, { admin: true })) };
   }],
 
-  ['GET', '/admin/kyc/:id/document', (ctx) => {
+  ['GET', '/admin/kyc/:id/document', async (ctx) => {
     const admin = session.requireAdmin(ctx);
     const k = db().kyc.find((x) => x.id === ctx.params.id);
     if (!k) throw notFound('That application doesn\'t exist.');
-    const image = ctx.query.image === 'selfie' ? 'selfie' : 'document';
+    const { image = 'document' } = ctx.query;
     session.audit(ctx, admin, 'admin.kyc_document_viewed', { targetType: 'kyc', targetId: k.id, metadata: { image } });
-    return { data: { placeholder: true, image } };
+    // The seeded applications came without images
+    const file = await openImage(k.images?.[image]);
+    return file ? { file } : { data: { placeholder: true, image } };
   }],
 
   ['PATCH', '/admin/kyc/:id', (ctx) => {
@@ -146,10 +146,7 @@ export default [
     const k = db().kyc.find((x) => x.id === ctx.params.id);
     if (!k) throw notFound('That application doesn\'t exist.');
     if (k.status !== 'pending') throw conflict('That application has already been decided.');
-    const decision = ctx.body?.decision;
-    const reason = String(ctx.body?.reason ?? '').trim();
-    if (!['approve', 'reject'].includes(decision)) throw badRequest('Decide approve or reject.', { decision: 'value' });
-    if (decision === 'reject' && !reason) throw badRequest('Give the reason the user will see.', { reason: 'required' });
+    const { decision, reason } = ctx.body;
     const u = db().users.find((x) => x.id === k.userId);
     k.status = decision === 'approve' ? 'approved' : 'rejected';
     k.rejectReason = decision === 'reject' ? reason : null;
@@ -178,10 +175,7 @@ export default [
     const t = db().transactions.find((x) => x.id === ctx.params.id && x.type === 'withdrawal');
     if (!t) throw notFound('That withdrawal doesn\'t exist.');
     if (t.status !== 'pending') throw conflict('That withdrawal has already been decided.');
-    const decision = ctx.body?.decision;
-    const reason = String(ctx.body?.reason ?? '').trim();
-    if (!['approve', 'reject'].includes(decision)) throw badRequest('Decide approve or reject.', { decision: 'value' });
-    if (decision === 'reject' && !reason) throw badRequest('Give the reason the user will see.', { reason: 'required' });
+    const { decision, reason } = ctx.body;
     const now = new Date().toISOString();
     const ref = { refType: 'transaction', refId: t.id, time: now };
     const shown = `${grouped(t.amount)} ${t.asset}`;

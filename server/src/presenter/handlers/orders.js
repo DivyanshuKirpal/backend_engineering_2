@@ -3,28 +3,18 @@
 // flush, so they include everything the engine has done. GET /orders/:id also
 // returns the order's ledger entries, one of the API needs in section 7.
 
-import { requireFields } from '../../lib/util.js';
 import * as engine from '../../model/exchange/engine.js';
 import * as session from '../../model/exchange/session.js';
 import * as orderQueries from '../../model/services/order.queries.js';
 import { flush } from '../../model/store.js';
 import { fillDto, ledgerDto } from '../mappers.js';
 
-const text = (value) => (value == null ? undefined : String(value));
-
-/** The filters and page of a list request. */
-const filters = ({ query }) => ({
-  state: text(query.state),
-  market: text(query.market),
-  side: text(query.side),
-  cursor: text(query.cursor),
-  limit: Math.min(100, Math.max(1, Number(query.limit) || 25)),
-});
+/** The filters and page of a list request, already validated. */
+const filters = ({ query }) => ({ ...query, limit: query.limit ?? 25 });
 
 export default [
   ['POST', '/orders', (ctx) => {
     const user = session.requireUser(ctx);
-    requireFields(ctx.body, ['market', 'side', 'type']);
     const order = engine.place(user.id, ctx.body, ctx.headers['idempotency-key']);
     return { status: 202, data: { order } };
   }],
