@@ -11,6 +11,7 @@
 //   catch (err) { fail(err); } finally { await finish(); }
 
 import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -51,6 +52,8 @@ export async function startServer() {
       MONGO_URI: mongo.getUri('orichal-checks'),
       SEED_ON_START: 'true',
       BCRYPT_ROUNDS: '4', // quick hashes: the checks sign in often
+      JWT_ACCESS_SECRET: randomBytes(48).toString('base64url'),
+      JWT_REFRESH_SECRET: randomBytes(48).toString('base64url'),
       DEMO_CONTROLS: 'true',
       TEST_ROUTES: 'true',
       DEMO_LATENCY: 'true', // some checks look for loading states

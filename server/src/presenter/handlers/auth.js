@@ -75,13 +75,13 @@ export default [
     return { data: await signedIn(ctx, user) };
   }],
 
-  ['POST', '/auth/refresh', (ctx) => {
-    const { accessToken } = session.refresh(ctx);
+  ['POST', '/auth/refresh', async (ctx) => {
+    const { accessToken } = await session.refresh(ctx);
     return { data: { accessToken } };
   }],
 
-  ['POST', '/auth/logout', (ctx) => {
-    session.endSession(ctx);
+  ['POST', '/auth/logout', async (ctx) => {
+    await session.endSession(ctx);
     return { status: 204, data: null };
   }],
 

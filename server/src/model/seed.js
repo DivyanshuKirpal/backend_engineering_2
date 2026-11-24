@@ -20,7 +20,7 @@ export const VERSION = 1;
 /** The parts of the working set that live in STORE_FILE; the rest is in MongoDB (documents.js, MODELS). */
 export const FILE_KEYS = [
   'meta', 'assets', 'markets', 'transactions', 'kyc', 'audit', 'notifications', 'addresses', 'stats', 'health',
-  'idempotency', 'refreshTokens',
+  'idempotency',
 ];
 
 const SEED_FILES = {
@@ -130,7 +130,6 @@ export async function buildSeed() {
     stats: s.stats,
     health: s.health,
     idempotency: {},
-    refreshTokens: {}, // SHA-256 of an rt cookie's token -> session id (session.js)
   };
 }
 

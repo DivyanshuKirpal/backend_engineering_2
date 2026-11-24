@@ -50,7 +50,7 @@ export default [
     checkNewPassword(next, 'newPassword');
     if (next === current) throw badRequest('Choose a password you haven\'t used here.', { newPassword: 'same' });
     await authService.setPassword(user.id, next);
-    const revoked = session.revokeOthers(user.id, ctx.session.id);
+    const revoked = await session.revokeOthers(user.id, ctx.session.id);
     session.audit(ctx, user, 'user.password_changed', { metadata: { otherSessionsSignedOut: revoked } });
     notify(user.id, 'security', 'Password changed', 'Your other devices were signed out.', '/account/security');
     persist();
@@ -93,19 +93,19 @@ export default [
     return { data: { sessions: list.map((s) => sessionDto(s, ctx.session.id)) } };
   }],
 
-  ['DELETE', '/users/me/sessions/:id', (ctx) => {
+  ['DELETE', '/users/me/sessions/:id', async (ctx) => {
     const user = session.requireUser(ctx);
     const s = db().sessions.find((x) => x.id === ctx.params.id && x.userId === user.id && session.isLive(x));
     if (!s) throw notFound('That device isn\'t signed in.');
     if (s.id === ctx.session.id) throw conflict('Use Log out to end this device\'s session.');
-    session.revoke(s);
+    await session.revoke(s);
     session.audit(ctx, user, 'user.session_revoked', { metadata: { device: s.device } });
     return { status: 204, data: null };
   }],
 
-  ['DELETE', '/users/me/sessions', (ctx) => {
+  ['DELETE', '/users/me/sessions', async (ctx) => {
     const user = session.requireUser(ctx);
-    const revoked = session.revokeOthers(user.id, ctx.session.id);
+    const revoked = await session.revokeOthers(user.id, ctx.session.id);
     session.audit(ctx, user, 'user.sessions_revoked', { metadata: { revoked } });
     persist();
     return { data: { revoked } };

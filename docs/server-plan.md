@@ -578,9 +578,10 @@ M5 · Sign-in on MongoDB with bcrypt
 
 M6 · Tokens and protected routes
 
-- [ ] `token.service`: access JWT, refresh JWT with rotation, the 30 s grace and reuse detection
-- [ ] `authenticate`, `requireAuth`, `authorize` on the route groups
-- [ ] Socket.IO handshake on the JWT; `Cache-Control: no-store`
+- [x] `token.service`: access JWT, refresh JWT with rotation, the 30 s grace and reuse detection
+- [x] `authenticate`, `requireAuth`, `authorize` on the route groups
+- [x] Socket.IO handshake on the JWT; `Cache-Control: no-store`
+- [x] Login takes the same time for an unknown email as for a wrong password (the owner's request, 24 Nov)
 
 M7 · Orders and trades from MongoDB
 
@@ -698,4 +699,23 @@ M10 · Documents and the tag
   5. The Security page (`security.check`): the password changed, then used. On Atlas: the old one refused, the other device signed out.
   6. `npm run checks`: 492 in 22 files (476 before; `api` 62 instead of 46). `npm run check:data`: 3,947 on 26 files. `npm run db:check-ledger`: 60 wallets in step.
 
-  Departures: the row "a sign-in revives the user's first session" is removed from section 8 and the md's review log. `security.check` now expects four devices, this login's first, so the Security page no longer matches its board's three. The answer for an unknown email is slowed by a bcrypt comparison but still comes sooner than a wrong password's (about 270 ms against 410 ms on Atlas), which also writes its count.
+  Departures: the row "a sign-in revives the user's first session" is removed from section 8 and the md's review log. `security.check` now expects four devices, this login's first, so the Security page no longer matches its board's three. (An unknown email was refused sooner than a wrong password; M6 fixed that.)
+- **24 Nov 2026 · M6, tokens and protected routes.** What: JWT access tokens, a refresh cookie that rotates, and the routes guarded by Express middleware. Files and how:
+  - `package.json`: jsonwebtoken 9.0.3. `config/env.js` and `.env.example`: both JWT secrets are required, with no default.
+  - `model/services/token.service.js` (new): the access JWT `{ sub, role, sid }` and the refresh JWT `{ sid, ver }`, HS256 only, with two secrets. `rotate()` is one conditional `findOneAndUpdate`; a token one version behind within 30 s of the rotation gets the current one; anything older ends the session and writes `auth.refresh_reused` to the audit log.
+  - `exchange/session.js`: sessions are ended in MongoDB directly (`updateMany`) and remembered; the token and cookie maps of M2 are gone, from `store.json` too.
+  - `middleware/authenticate.js`, `requireAuth.js`, `authorize.js`, mounted in `view/routes/index.js`; `authorize` reads the role and status from MongoDB on every admin request. Private and auth answers are `no-store`.
+  - `view/sockets/gateway.js`: the handshake checks the JWT. The private rooms last as long as the token: `token.expiring` 30 s before, out at expiry, and out at once when the session ends. `socket.js` then asks `http.js` for a new token (`refreshToken` is exported now), reconnects with it and dispatches `reconnect`, so nothing missed in between stays missed.
+  - `model/services/auth.service.js`: an unknown email does the work of a wrong password: the dummy hash, the round trip of the count and a change to the JSON file. The dummy hash alone was there since M5 and didn't equalise them.
+
+  Checks (on Atlas from a script with real waiting, 22 of 22, and in `api.check`):
+  1. `GET /users/me`: 401 and 200. `GET /admin/stats`: 403 and 200.
+  2. After a minute the access token gets 401, and is a guest on a public route; `POST /auth/refresh` gives a new one.
+  3. Two refreshes within 30 s both succeed and rotate once. The old cookie after 30 s: 401, `revokedAt` in Atlas, gone from the Security page's list, the owner's access token dead at once.
+  4. A role changed by the admin, or straight in Atlas, applies to the trader's existing token; frozen, the trader can look but an order gets 403.
+  5. A browser left alone past two expiries refreshed by itself, still got live events, kept its session over a reload and lost it at logout.
+  6. `npm run checks`: 508 in 22 files (492 before; `api` 78 instead of 62). `npm run check:data`: 3,947 on 26 files.
+
+  Also: a changed payload, `alg: none` and a refresh token sent as an access token all get 401. Login timing on Atlas, 22 interleaved tries each: 305 ms for an unknown email, 310 ms for a wrong password.
+
+  Departures: none from the architecture. Beyond the plan, the sockets follow their token's lifetime, as section 4 says.

@@ -10,6 +10,7 @@ This guide explains the server built in the CE-2 phase, for a teammate getting r
 4. [M3. MongoDB, the models and the seed](#m3-mongodb-the-models-and-the-seed)
 5. [M4. The store on MongoDB](#m4-the-store-on-mongodb)
 6. [M5. Sign-in on MongoDB with bcrypt](#m5-sign-in-on-mongodb-with-bcrypt)
+7. [M6. Tokens and protected routes](#m6-tokens-and-protected-routes)
 
 ## M0. The plan in the repo
 
@@ -134,7 +135,7 @@ Four choices in that order are worth being able to explain:
 2. A **Zod schema** describes each variable: its type, its allowed values and its default. For example, `PORT` must be a whole number from 1 to 65535 (5173 if unset), and `DEMO_CREDIT_USDT` must look like a decimal amount and stays a string, since money is never a JavaScript number.
 3. `safeParse` checks everything at once. If anything is wrong, the server prints each bad variable's name and rule (never its value, which may be a secret) and exits with code 1.
 
-Every other file imports the checked, frozen `env` object instead of reading `process.env`. A typo then fails loudly at start-up, not halfway through a request. The two JWT secrets are optional until M6, when tokens are signed with them.
+Every other file imports the checked, frozen `env` object instead of reading `process.env`. A typo then fails loudly at start-up, not halfway through a request. The two JWT secrets have no default and must be set (since M6).
 
 **[`server/.env.example`](../server/.env.example)** lists every variable with a safe value and a comment; see [M0](#keeping-secrets-and-run-time-files-out-of-git) for why the real `.env` is never committed.
 
@@ -291,7 +292,7 @@ The mock kept its stand-in for the refresh cookie in one `localStorage` key. Mov
 - `POST /auth/logout` revokes the session and forgets its tokens; the cookie is cleared.
 - In M2 a sign-in still revived the user's first session, as the mock did. Since M5 every login has a session of its own; see [M5](#m5-sign-in-on-mongodb-with-bcrypt).
 
-M6 replaces both tokens with JWTs: a signed access token `{ sub, role, sid }` and a rotating refresh token `{ sid, ver }`.
+[M6](#m6-tokens-and-protected-routes) replaced both tokens with JWTs: a signed access token `{ sub, role, sid }` and a rotating refresh token `{ sid, ver }`.
 
 ### Live events with Socket.IO
 
@@ -588,3 +589,91 @@ In Atlas, **Browse Collections** → `users`, filter `{ email: "the new email" }
 - **How does a duplicate email become a 409?** The unique index refuses it with E11000, and the error-handling middleware turns that into an `ApiError`.
 - **Why `$inc` for the count?** Reading, adding and saving loses counts when guesses arrive together.
 - **Why one session per login?** So a device can be signed out alone, and so M6 can tell a stolen refresh token from a second device.
+
+## M6. Tokens and protected routes
+
+M6 replaces the random tokens of M2 with **JWTs**, rotates the refresh cookie on every use, and guards the routes with Express middleware.
+
+### What a JWT is
+
+A **JWT** (JSON Web Token) is three parts joined by dots: a header, a **payload** and a **signature**.
+
+```text
+eyJhbGciOiJIUzI1NiJ9 . eyJyb2xlIjoidXNlciIsInNpZCI6Ii4uLiJ9 . 3mJ0c…
+   { alg: "HS256" }        { sub, role, sid, iat, exp }          HMAC-SHA256 of the first two, with the secret
+```
+
+Anyone who holds the token can **read** the payload: it is base64, not encryption. Nobody without the secret can **make or change** one, because the signature wouldn't match. So nothing secret goes into it, and the server can trust what it says without keeping a list of tokens.
+
+| | Access token | Refresh token |
+| --- | --- | --- |
+| Payload | `{ sub: user id, role, sid: session id }` | `{ sid, ver }` |
+| Lives | 15 minutes (`ACCESS_TOKEN_TTL`) | 7 days (`REFRESH_TOKEN_TTL`) |
+| Kept | in the page's memory, sent as `Authorization: Bearer` | in the httpOnly `rt` cookie |
+| Signed with | `JWT_ACCESS_SECRET` | `JWT_REFRESH_SECRET`, so one can't pass for the other |
+
+Why two? The access token goes with every request, so it lives a short time and JavaScript must be able to send it; a script injected into the page could steal it, but only for minutes. The refresh token is worth a week, so it stays where no script can read it. Reading a token fixes the algorithm (`algorithms: ['HS256']`), because a token that names its own algorithm could name `none`.
+
+A JWT can't be taken back before it expires, so each one also names its session: [`exchange/session.js`](../server/src/model/exchange/session.js) refuses it once that session has ended.
+
+### Rotation and reuse detection
+
+Every `POST /auth/refresh` gives a **new** refresh token and raises the session's `tokenVersion` ([`token.service.js`](../server/src/model/services/token.service.js)).
+
+| The cookie's `ver` is | What happens |
+| --- | --- |
+| the session's `tokenVersion` | It rotates: `tokenVersion + 1`, `rotatedAt` now, new cookie |
+| one behind, and the rotation was under 30 s ago | Another tab has just rotated: the current token, without rotating again |
+| anything older | Somebody kept a copy. The session is **revoked**, an audit entry is written, 401 |
+
+Why end the session? After a theft both the thief and the owner hold tokens, and the server can't tell them apart. Whichever comes second shows an old one, and then both are out; the owner logs in again.
+
+The rotation is **one conditional update**, so two refreshes at the same moment can't both rotate:
+
+```js
+Session.findOneAndUpdate(
+  { _id: sid, tokenVersion: ver, revokedAt: null, expiresAt: { $gt: now } },   // only if it is still that version
+  { $inc: { tokenVersion: 1 }, $set: { rotatedAt: now, … } },
+)
+```
+
+### The middleware
+
+In [`view/routes/index.js`](../server/src/view/routes/index.js), in this order:
+
+| Middleware | On | What it does |
+| --- | --- | --- |
+| [`authenticate`](../server/src/middleware/authenticate.js) | every request | A valid token sets `req.user` and `req.session`. Refuses nobody: on `/markets` a bad token just means a guest. Private answers get `Cache-Control: no-store` |
+| [`requireAuth`](../server/src/middleware/requireAuth.js) | `/users`, `/orders`, `/trades`, `/wallet`, `/kyc`, `/notifications`, `/admin` | 401 without a user. `http.js` then refreshes once and retries |
+| [`authorize('admin')`](../server/src/middleware/authorize.js) | `/admin` | Reads the role and status **again from MongoDB**; 403 if not an active admin |
+
+**401 or 403?** 401 means "I don't know who you are": sign in and try again. 403 means "I know you, and you may not".
+
+**Why read the role again when the token has it?** The token's role can be 15 minutes old. A demoted admin must lose access now, so `authorize` asks MongoDB. The checks promote and demote the trader and use the *same* token each time.
+
+### Live events
+
+The Socket.IO handshake checks the same access JWT. A socket outlives its token, so the private room is tied to it: 30 seconds before expiry the server sends `token.expiring`, the page refreshes and reconnects with the new token, and at expiry the socket leaves the room. When a session ends, its sockets leave the private rooms at once and go on as a guest's.
+
+### Login takes the same time for an unknown email
+
+If an unknown email were refused instantly, the time would tell which emails have accounts. Comparing a **dummy hash** costs the same bcrypt work; but a wrong password also makes one more round trip (its count) and writes an audit entry, so the unknown-email path does that much too. Measured on Atlas, 22 tries each: 305 ms and 310 ms.
+
+### How to check M6
+
+In Postman, with `ACCESS_TOKEN_TTL=1m` in `server/.env` for the third:
+
+1. `GET /users/me`: 401 without a token, 200 with the trader's. `GET /admin/stats`: 403 with the trader's, 200 with the admin's.
+2. Paste an access token into a JWT decoder: the payload is readable. Change one character and send it: 401.
+3. After a minute `GET /users/me` gets 401; `POST /auth/refresh` with the cookie gives a new token.
+4. Refresh twice quickly: both 200. Send the first cookie again after 30 seconds: 401, and in Atlas the session has `revokedAt`.
+5. While the trader is signed in, change their `role` to `admin` in Atlas's Browse Collections: their existing token reaches `/admin/stats`. Change it back: 403.
+
+### Be ready to answer
+
+- **What does a JWT hold, and who can read it?** A payload anyone can read and a signature only the server can make. No secrets in it.
+- **Why the access token in memory and the refresh token in an httpOnly cookie?** The short-lived one must be readable by the page's code; the long-lived one must not be.
+- **What is rotation, and what is reuse detection?** Each refresh token works once. An old one means a copy exists, so the session ends.
+- **Why a 30-second grace?** Two tabs can send the same token at once; that isn't theft.
+- **401 or 403?** Not signed in, or signed in and not allowed.
+- **How can you log someone out if a JWT can't be taken back?** The token names its session, and the session is checked on every request.

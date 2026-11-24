@@ -12,7 +12,7 @@
 // token, it reconnects with the new one.
 
 import { io } from '/assets/vendor/socket.io.esm.min.js';
-import { onAccessTokenRefreshed } from '../api/http.js';
+import { onAccessTokenRefreshed, refreshToken } from '../api/http.js';
 
 class Socket extends EventTarget {
   #socket = null;
@@ -49,15 +49,22 @@ class Socket extends EventTarget {
       this.#lost = true;
       this.#setStatus('reconnecting');
     });
+    // The access token is about to expire, and the private room with it: get a new one
+    socket.on('token.expiring', () => refreshToken().catch(() => {}));
     socket.onAny((event, payload) => {
       if (this.status === 'connected') this.dispatchEvent(new CustomEvent(event, { detail: payload }));
     });
     this.#socket = socket;
   }
 
-  /** Connects, or reconnects with a new access token after login, refresh or logout. */
-  connect(token = this.#token) {
+  /**
+   * Connects, or reconnects with a new access token after login, refresh or
+   * logout. `reload` also dispatches `reconnect` once it is back, for what was
+   * missed in between.
+   */
+  connect(token = this.#token, { reload = false } = {}) {
     this.#token = token;
+    if (reload) this.#lost = true;
     if (!this.#socket) {
       this.#open();
       return;
@@ -103,6 +110,6 @@ class Socket extends EventTarget {
 
 export const socket = new Socket();
 
-// A request that hit a 401 refreshed the access token (http.js); the socket
-// follows, so the server puts it back in the user's room (section 4).
-onAccessTokenRefreshed((token) => socket.connect(token));
+// The access token was refreshed (http.js), after a 401 or because it was about
+// to expire; the socket follows, so the server puts it in the user's room again.
+onAccessTokenRefreshed((token) => socket.connect(token, { reload: true }));

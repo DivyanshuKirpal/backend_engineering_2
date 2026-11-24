@@ -59,7 +59,8 @@ export function getAccessToken() {
   return accessToken;
 }
 
-async function refreshToken() {
+/** Asks for a new access token with the rt cookie; calls made together share one request. Null when the session has ended. */
+export async function refreshToken() {
   refreshing ??= TRANSPORT({ method: 'POST', path: '/auth/refresh', headers: {} })
     .then((res) => {
       accessToken = res.body?.success ? res.body.data.accessToken : null;

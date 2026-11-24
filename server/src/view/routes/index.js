@@ -8,16 +8,19 @@
 // ApiError goes to middleware/errorHandler.js by itself (Express 5).
 //
 // In front of every route: wait for the exchange (a demo reset may be under
-// way), plus the mock's simulated network delay when DEMO_LATENCY is on; then,
-// with DEMO_CONTROLS, the fail-next switch.
+// way), plus the mock's simulated network delay when DEMO_LATENCY is on; with
+// DEMO_CONTROLS, the fail-next switch; then authenticate, which finds out who is
+// asking. The private groups need a signed-in user, and /admin an admin.
 
 import { Router } from 'express';
 import multer from 'multer';
 import { mongoState } from '../../config/db.js';
 import { env } from '../../config/env.js';
+import { authenticate } from '../../middleware/authenticate.js';
+import { requireAdmin } from '../../middleware/authorize.js';
 import { failNext } from '../../middleware/failNext.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
 import { whenReady } from '../../model/exchange/lifecycle.js';
-import * as session from '../../model/exchange/session.js';
 import { flush, flushState } from '../../model/store.js';
 import admin from '../../presenter/handlers/admin.js';
 import auth from '../../presenter/handlers/auth.js';
@@ -55,7 +58,6 @@ async function exchangeReady(req, res, next) {
 
 /** The context a handler gets: what the mock built from a request, now from Express's req and res. */
 function context(req, res) {
-  const who = session.fromHeader(req.headers);
   const body = req.body || req.files ? { ...req.body } : null;
   // Each uploaded file in the shape the handlers read from a browser File
   for (const [field, [file]] of Object.entries(req.files ?? {})) {
@@ -75,8 +77,8 @@ function context(req, res) {
     },
     userAgent: req.get('user-agent') ?? '',
     ip: (req.ip ?? '').replace(/^::ffff:/, ''), // an IPv4 address, not IPv6's mapped form
-    user: who?.user ?? null,
-    session: who?.session ?? null,
+    user: req.user,
+    session: req.session,
   };
 }
 
@@ -118,9 +120,14 @@ apiRouter.get('/health', (req, res) => {
   });
 });
 
+const PRIVATE = ['/users', '/orders', '/trades', '/wallet', '/kyc', '/notifications'];
+
 apiRouter.use(exchangeReady);
+if (env.DEMO_CONTROLS) apiRouter.use(failNext);
+apiRouter.use(authenticate);
+apiRouter.use(PRIVATE, requireAuth);
+apiRouter.use('/admin', requireAuth, requireAdmin);
 if (env.DEMO_CONTROLS) {
-  apiRouter.use(failNext);
   mount(apiRouter, demoRoutes);
   if (env.TEST_ROUTES) mount(apiRouter, testRoutes);
 }

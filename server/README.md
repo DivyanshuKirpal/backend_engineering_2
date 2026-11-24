@@ -13,7 +13,13 @@ npm run dev
 
 Then open http://localhost:5173. `npm run dev` runs `node --watch`, which restarts the server when a file it uses changes; `npm start` runs it once, without watching. Ctrl+C stops it and saves the data first.
 
-The server needs MongoDB: copy the example settings and put your connection string in the copy (see MongoDB below). Every other variable has a default.
+The server needs MongoDB and two signing secrets: copy the example settings, put your connection string in `MONGO_URI` (see MongoDB below), and a different random string in each of `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`:
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"
+```
+
+Every other variable has a default.
 
 ```powershell
 Copy-Item server/.env.example server/.env
@@ -68,6 +74,9 @@ server/
     │   ├── decimal.js           decimal strings to Decimal128 and back
     │   └── util.js              list paging, small body checks, token lifetimes
     ├── middleware/
+    │   ├── authenticate.js      the access token: sets req.user and req.session
+    │   ├── requireAuth.js       401 without a signed-in user
+    │   ├── authorize.js         the role, read again from MongoDB: 403
     │   ├── notFound.js          an /api path with no route: 404 NOT_FOUND
     │   ├── failNext.js          the Simulator menu's "make the next request fail"
     │   └── errorHandler.js      the only writer of error responses
@@ -76,12 +85,13 @@ server/
     │   ├── seed.js              how the demo data is made, and how it fills MongoDB
     │   ├── documents.js         records to MongoDB documents and back, field by field
     │   ├── schemas/             the Mongoose models: User, Session, Wallet, LedgerEntry, Order, Trade
-    │   ├── services/            auth.service.js: registering and signing in against MongoDB
+    │   ├── services/            auth.service.js: registering and signing in against MongoDB;
+    │   │                        token.service.js: the two JWTs and the refresh rotation
     │   └── exchange/
     │       ├── engine.js        matching and settlement: pending, open, filled, cancelled
     │       ├── market.js        the market simulator: books, the bot's ladder and taker, tickers, candles
     │       ├── wallet.js        the only code that changes a balance; a ledger entry for every change
-    │       ├── session.js       one session per login, the rt cookie, access tokens, audit entries
+    │       ├── session.js       one session per login, the rt cookie, audit entries
     │       ├── bus.js           the in-process event bus the gateway taps
     │       ├── lifecycle.js     start-up and the demo reset
     │       └── text.js          the server's own number grouping for notification text

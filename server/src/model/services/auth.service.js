@@ -4,12 +4,13 @@
 // tell the store's working set through remember().
 
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import { env } from '../../config/env.js';
 import { ApiError, unauthenticated } from '../../lib/errors.js';
 import { toRecord } from '../documents.js';
 import { audit } from '../exchange/session.js';
 import { User } from '../schemas/User.js';
-import { remember } from '../store.js';
+import { db, persist, remember } from '../store.js';
 
 const LOCK_AFTER = 5; // wrong passwords in a row
 const LOCK_MINUTES = 15;
@@ -23,9 +24,7 @@ const locked = (until) => new ApiError(423, 'ACCOUNT_LOCKED', 'Too many wrong pa
 /** A user document as the working set's own record. */
 const taken = (doc) => remember('users', toRecord('users', doc));
 
-// Compared when no account has the email, so that answer isn't instant while a
-// wrong password takes a bcrypt comparison. It narrows the difference; it
-// doesn't hide it: a wrong password also writes its count to MongoDB.
+// What is compared when no account has the email; see unknownEmail().
 const nobody = bcrypt.hash('no account has this password', env.BCRYPT_ROUNDS);
 
 /** bcrypt reads at most 72 bytes; a longer password would lose its end silently. */
@@ -40,10 +39,7 @@ export async function register({ email, password, displayName }) {
 export async function checkPassword(ctx, email, password) {
   const doc = await User.findByEmail(email).select('+passwordHash');
   if (doc?.isLocked) throw locked(doc.lockUntil);
-  if (!doc?.passwordHash || doc.isBot) {
-    await bcrypt.compare(password, await nobody);
-    throw refused();
-  }
+  if (!doc?.passwordHash || doc.isBot) return unknownEmail(password);
   if (!(await doc.comparePassword(password))) return wrongPassword(ctx, doc);
   if (doc.failedLoginCount > 0 || doc.lockUntil) {
     doc.failedLoginCount = 0;
@@ -53,9 +49,26 @@ export async function checkPassword(ctx, email, password) {
   return taken(doc);
 }
 
+// $inc adds in the database, so guesses sent at the same moment are all counted
+const countWrong = (id) => User.findByIdAndUpdate(id, { $inc: { failedLoginCount: 1 } }, { returnDocument: 'after' });
+
+/**
+ * An email without an account, refused in the time a wrong password takes, so
+ * the time doesn't tell which emails have accounts. That takes the same work: a
+ * bcrypt comparison, the round trip of the count (for an id nobody has), and a
+ * change to the JSON file, where a wrong password leaves its audit entry.
+ */
+async function unknownEmail(password) {
+  await bcrypt.compare(password, await nobody);
+  await countWrong(new mongoose.Types.ObjectId());
+  const { meta } = db();
+  meta.unknownLogins = (meta.unknownLogins ?? 0) + 1;
+  persist();
+  throw refused();
+}
+
 async function wrongPassword(ctx, { _id }) {
-  // $inc adds in the database, so guesses sent at the same moment are all counted
-  const doc = await User.findByIdAndUpdate(_id, { $inc: { failedLoginCount: 1 } }, { returnDocument: 'after' });
+  const doc = await countWrong(_id);
   if (doc.failedLoginCount >= LOCK_AFTER) {
     doc.failedLoginCount = 0;
     doc.lockUntil = new Date(Date.now() + LOCK_MINUTES * 60 * 1000);
@@ -63,6 +76,12 @@ async function wrongPassword(ctx, { _id }) {
   }
   audit(ctx, taken(doc), 'auth.login_failed');
   throw doc.isLocked ? locked(doc.lockUntil) : refused();
+}
+
+/** The user as MongoDB has them now, role and status included. */
+export async function reload(userId) {
+  const doc = await User.findById(userId).lean();
+  return doc && taken(doc);
 }
 
 /** Whether this is the user's password: asked again before a change that needs it. */

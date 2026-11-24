@@ -1,30 +1,28 @@
-// Sessions: who is signed in, and on which device. Moved from the mock, where a
-// localStorage key stood in for the refresh cookie. On a server one stand-in
-// shared by everyone would sign every visitor in as whoever logged in last, so
-// the cookie is real now:
+// Sessions: who is signed in, and on which device. One document per login in
+// MongoDB, one per device, and two JWTs that name it (token.service.js):
 //
-//   - `rt` holds a random token. It is httpOnly (the page's JavaScript can't
-//     read it), SameSite=Strict, sent only to /api/v1/auth, and Secure in
-//     production. The store keeps the token's SHA-256 hash, never the token,
-//     mapped to the session, so a copy of the store file can't sign anyone in.
-//   - Access tokens are random strings kept in memory, sent back as
-//     `Authorization: Bearer`. A server restart forgets them; the client then
-//     gets a new one from /auth/refresh with its cookie.
+//   - the refresh token is in the `rt` cookie. It is httpOnly (the page's
+//     JavaScript can't read it), SameSite=Strict, sent only to /api/v1/auth, and
+//     Secure in production. Every use rotates it.
+//   - the access token is in the page's memory and comes back as
+//     `Authorization: Bearer`. A signature proves it, so the server keeps no
+//     list of them; it is refused once its session has ended.
 //
-// M6 replaces both with JWTs, rotated as section 4 says. Every function that
+// Sessions are read and written in MongoDB directly, then remembered in the
+// store's working set, where every request looks them up. Every function that
 // needs the request takes its context, `ctx`, from the adapter
 // (view/routes/index.js): ctx.cookies, ctx.userAgent and ctx.ip.
 
-import { createHash, randomBytes } from 'node:crypto';
 import { env } from '../../config/env.js';
 import { forbidden, unauthenticated } from '../../lib/errors.js';
 import { durationMs } from '../../lib/util.js';
 import { toRecord } from '../documents.js';
 import { Session } from '../schemas/Session.js';
+import * as tokens from '../services/token.service.js';
 import { db, newId, persist, remember } from '../store.js';
+import { publish } from './bus.js';
 
 const COOKIE = 'rt';
-const tokens = new Map(); // access token -> session id
 const tickets = new Map(); // 2FA login ticket -> { userId, attemptsLeft, expiresAt }
 
 const cookieOptions = () => ({
@@ -33,29 +31,26 @@ const cookieOptions = () => ({
   secure: env.NODE_ENV === 'production',
   path: '/api/v1/auth',
 });
-const expiry = () => new Date(Date.now() + durationMs(env.REFRESH_TOKEN_TTL)).toISOString();
-const hash = (token) => createHash('sha256').update(token).digest('hex');
 
 /** Signed in: not ended, and used within its lifetime (MongoDB deletes it some time after that). */
 export const isLive = (session) => !session.revokedAt && Date.parse(session.expiresAt) > Date.now();
 
-export function issueToken(sessionId) {
-  const token = randomBytes(24).toString('base64url');
-  tokens.set(token, sessionId);
-  return token;
+const findLive = (sid) => db().sessions.find((s) => s.id === sid && isLive(s)) ?? null;
+
+/** A session document as the working set's record. Answers can arrive out of order, so one that has ended stays ended. */
+function taken(doc) {
+  const record = toRecord('sessions', doc);
+  const mine = db().sessions.find((s) => s.id === record.id);
+  return remember('sessions', mine?.revokedAt ? { ...record, revokedAt: mine.revokedAt } : record);
 }
 
-/** The session and user behind an access token, or null. */
+/** The session and user behind an access token, or null. `claims` is the token's payload. */
 export function fromToken(token) {
-  const sessionId = token && tokens.get(token);
-  const session = sessionId && db().sessions.find((s) => s.id === sessionId && isLive(s));
-  const user = session && db().users.find((u) => u.id === session.userId);
-  return user ? { user, session } : null;
-}
-
-/** The session and user behind an `Authorization: Bearer` header. */
-export function fromHeader(headers) {
-  return fromToken(/^Bearer (.+)$/.exec(headers?.authorization ?? '')?.[1]);
+  const claims = tokens.readAccess(token);
+  const session = claims && findLive(claims.sid);
+  if (!session || session.userId !== claims.sub) return null;
+  const user = db().users.find((u) => u.id === claims.sub);
+  return user ? { user, session, claims } : null;
 }
 
 export function requireUser(ctx) {
@@ -94,36 +89,35 @@ export function audit(ctx, actor, action, { targetType = 'user', targetId = acto
   persist();
 }
 
-/** Sends the rt cookie, for seven days from now (REFRESH_TOKEN_TTL). */
-function sendCookie(ctx, token) {
-  ctx.cookies.set(COOKIE, token, { ...cookieOptions(), maxAge: durationMs(env.REFRESH_TOKEN_TTL) });
+/** Sends the rt cookie: the session's current refresh token, for one refresh lifetime from now. */
+function sendCookie(ctx, session) {
+  ctx.cookies.set(COOKIE, tokens.signRefresh(session), { ...cookieOptions(), maxAge: durationMs(env.REFRESH_TOKEN_TTL) });
 }
 
-/** Forgets every refresh and access token of a session. */
-function forget(sessionId) {
-  for (const [key, id] of Object.entries(db().refreshTokens)) if (id === sessionId) delete db().refreshTokens[key];
-  for (const [token, id] of tokens) if (id === sessionId) tokens.delete(token);
+/** Ends sessions: their access and refresh tokens stop working at once, and their sockets leave the user's room. */
+async function end(sessions) {
+  if (!sessions.length) return;
+  const revokedAt = new Date().toISOString();
+  await Session.updateMany({ _id: { $in: sessions.map((s) => s.id) } }, { $set: { revokedAt } });
+  for (const session of sessions) {
+    remember('sessions', { ...session, revokedAt });
+    publish(`session:${session.id}`, 'session.ended', {});
+  }
 }
 
-/** Ends a session: it stops working at once, on whichever device it is. */
-export function revoke(session) {
-  session.revokedAt = new Date().toISOString();
-  forget(session.id);
-  persist();
-}
+export const revoke = (session) => end([session]);
 
 /** Ends every live session of a user but one; returns how many that was. */
-export function revokeOthers(userId, keepId) {
+export async function revokeOthers(userId, keepId) {
   const others = db().sessions.filter((s) => s.userId === userId && s.id !== keepId && isLive(s));
-  others.forEach(revoke);
+  await end(others);
   return others.length;
 }
 
-/** The live session behind this browser's rt cookie, if it has one. */
+/** The live session this browser's rt cookie names, whatever the token's version. */
 function fromCookie(ctx) {
-  const token = ctx.cookies.get(COOKIE);
-  const sessionId = token && db().refreshTokens[hash(token)];
-  return (sessionId && db().sessions.find((s) => s.id === sessionId && isLive(s))) || null;
+  const claims = tokens.readRefresh(ctx.cookies.get(COOKIE));
+  return claims && findLive(claims.sid);
 }
 
 /**
@@ -134,52 +128,45 @@ function fromCookie(ctx) {
  */
 export async function startSession(ctx, user) {
   const earlier = fromCookie(ctx);
-  if (earlier) revoke(earlier);
-  const doc = await Session.create({
-    userId: user.id, device: deviceName(ctx.userAgent).device, userAgent: ctx.userAgent, ip: ctx.ip, expiresAt: expiry(),
-  });
-  const session = remember('sessions', toRecord('sessions', doc));
+  if (earlier) await revoke(earlier);
+  const session = taken(await Session.create({
+    userId: user.id, device: deviceName(ctx.userAgent).device, userAgent: ctx.userAgent, ip: ctx.ip, expiresAt: tokens.sessionExpiry(),
+  }));
   user.lastLoginAt = session.createdAt;
   audit(ctx, user, 'auth.login');
-  const token = randomBytes(32).toString('base64url');
-  db().refreshTokens[hash(token)] = session.id;
-  sendCookie(ctx, token);
-  persist();
-  return { session, accessToken: issueToken(session.id) };
+  sendCookie(ctx, session);
+  return { session, accessToken: tokens.signAccess(user, session) };
 }
 
-/** POST /auth/refresh: the rt cookie's session gets a new access token. */
-export function refresh(ctx) {
-  const token = ctx.cookies.get(COOKIE);
-  const key = token ? hash(token) : null;
-  const session = fromCookie(ctx);
-  const user = session && db().users.find((u) => u.id === session.userId);
-  if (!user) {
-    if (key) delete db().refreshTokens[key];
-    ctx.cookies.clear(COOKIE, cookieOptions());
-    persist();
-    throw unauthenticated('Your session has ended. Log in again.');
+/** POST /auth/refresh: a new access token and the next refresh token, for the rt cookie's. */
+export async function refresh(ctx) {
+  const claims = tokens.readRefresh(ctx.cookies.get(COOKIE));
+  const { session: doc, reused } = claims ? await tokens.rotate(claims) : {};
+  const session = doc && taken(doc);
+  const user = session && isLive(session) && db().users.find((u) => u.id === session.userId);
+  if (user) {
+    sendCookie(ctx, session);
+    return { user, session, accessToken: tokens.signAccess(user, session) };
   }
-  session.lastUsedAt = new Date().toISOString();
-  session.expiresAt = expiry();
-  // The same token again with a fresh expiry: seven days after the last use, as
-  // section 3 has it. Rotating it on every refresh comes with M6.
-  sendCookie(ctx, token);
-  persist();
-  return { user, session, accessToken: issueToken(session.id) };
+  if (reused) {
+    // An old refresh token: somebody kept a copy. Nobody can tell whose this one is, so the session ends for both.
+    const ended = taken(reused);
+    await revoke(ended);
+    audit(ctx, db().users.find((u) => u.id === ended.userId), 'auth.refresh_reused', { metadata: { device: ended.device } });
+  }
+  ctx.cookies.clear(COOKIE, cookieOptions());
+  throw unauthenticated('Your session has ended. Log in again.');
 }
 
 /** POST /auth/logout: ends the cookie's session; works without an access token. */
-export function endSession(ctx) {
+export async function endSession(ctx) {
   const session = fromCookie(ctx);
-  if (session) revoke(session);
+  if (session) await revoke(session);
   ctx.cookies.clear(COOKIE, cookieOptions());
-  persist();
 }
 
-/** For a demo reset: every access token and 2FA ticket goes. (The refresh map is in the store, which the reset replaces.) */
-export function forgetAll() {
-  tokens.clear();
+/** For a demo reset: the 2FA tickets go. (The sessions are in MongoDB, which the reset empties, so their tokens name nothing.) */
+export function forgetTickets() {
   tickets.clear();
 }
 

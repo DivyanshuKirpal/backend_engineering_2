@@ -8,7 +8,7 @@ New to the code? [`docs/frontend-guide.md`](docs/frontend-guide.md) is a beginne
 
 ## Run it
 
-Needs Node 22 or later and a MongoDB database (the team uses Atlas): copy `server/.env.example` to `server/.env` and put the connection string in `MONGO_URI`.
+Needs Node 22 or later and a MongoDB database (the team uses Atlas): copy `server/.env.example` to `server/.env`, put the connection string in `MONGO_URI` and make the two JWT secrets as the file says.
 
 ```powershell
 npm install

@@ -77,9 +77,9 @@ export const testRoutes = [
   }],
 
   ['GET', '/demo/db', (ctx) => {
-    // The refresh-token hashes stay out; password hashes are never in the working set.
-    const { refreshTokens, ...visible } = db();
-    const only = ctx.query.only ? String(ctx.query.only).split(',') : Object.keys(visible);
-    return { data: Object.fromEntries(only.filter((key) => key in visible).map((key) => [key, visible[key]])) };
+    // No password hash is ever in the working set, and no token is kept anywhere.
+    const data = db();
+    const only = ctx.query.only ? String(ctx.query.only).split(',') : Object.keys(data);
+    return { data: Object.fromEntries(only.filter((key) => key in data).map((key) => [key, data[key]])) };
   }],
 ];

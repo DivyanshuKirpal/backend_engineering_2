@@ -32,7 +32,7 @@ export async function reset() {
   await whenReady();
   ready = (async () => {
     market.clear();
-    session.forgetAll();
+    session.forgetTickets();
     await store.reset();
     await market.init();
     market.start();

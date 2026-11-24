@@ -6,7 +6,7 @@
 //
 // docs/server-plan.md section 5 lists the variables; server/.env.example has a
 // safe example of each. Every variable has a default for local development
-// except the JWT secrets, which are required from M6.
+// except the two JWT secrets: a default anybody can read would let anybody sign.
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,8 +24,8 @@ try {
 /** "true" or "false" in the environment, a boolean in the code. */
 const flag = (fallback) => z.enum(['true', 'false']).default(fallback).transform((v) => v === 'true');
 
-const secret = z.string().min(32, 'must be at least 32 characters. Make one with: '
-  + 'node -e "console.log(require(\'node:crypto\').randomBytes(48).toString(\'base64url\'))"');
+const MAKE_ONE = 'Make one with: node -e "console.log(require(\'node:crypto\').randomBytes(48).toString(\'base64url\'))"';
+const secret = z.string(`is not set. ${MAKE_ONE}`).min(32, `must be at least 32 characters. ${MAKE_ONE}`);
 
 const duration = z.string().regex(/^\d+[smhd]$/, 'must be a number followed by s, m, h or d, such as 15m or 7d');
 
@@ -34,8 +34,8 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(5173),
   MONGO_URI: z.string().regex(/^mongodb(\+srv)?:\/\//, 'must start with mongodb:// or mongodb+srv://')
     .default('mongodb://127.0.0.1:27017/orichal'),
-  JWT_ACCESS_SECRET: secret.optional(), // required from M6
-  JWT_REFRESH_SECRET: secret.optional(), // required from M6
+  JWT_ACCESS_SECRET: secret,
+  JWT_REFRESH_SECRET: secret,
   ACCESS_TOKEN_TTL: duration.default('15m'),
   REFRESH_TOKEN_TTL: duration.default('7d'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
@@ -47,7 +47,7 @@ const schema = z.object({
   DEMO_CONTROLS: flag('true'),
   DEMO_LATENCY: flag('false'),
   TEST_ROUTES: flag('false'),
-}).refine((e) => !e.JWT_ACCESS_SECRET || e.JWT_ACCESS_SECRET !== e.JWT_REFRESH_SECRET, {
+}).refine((e) => e.JWT_ACCESS_SECRET !== e.JWT_REFRESH_SECRET, {
   path: ['JWT_REFRESH_SECRET'],
   message: 'must be different from JWT_ACCESS_SECRET',
 });
