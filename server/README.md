@@ -13,7 +13,7 @@ npm run dev
 
 Then open http://localhost:5173. `npm run dev` runs `node --watch`, which restarts the server when a file it uses changes; `npm start` runs it once, without watching. Ctrl+C stops it and saves the data first.
 
-The settings are optional for now. Every variable has a default for local development, so the server starts without a `server/.env`. To change one, copy the example and edit the copy:
+The server needs MongoDB: copy the example settings and put your connection string in the copy (see MongoDB below). Every other variable has a default.
 
 ```powershell
 Copy-Item server/.env.example server/.env
@@ -38,11 +38,11 @@ npm run seed -- --yes        # the same, when the Atlas database already holds d
 npm run db:check-ledger      # proves every wallet equals the sum of its ledger entries
 ```
 
-Stop the server before seeding: it keeps its own copy of the data in memory. Two servers must not share one database for the same reason; a teammate uses another database name at the end of `MONGO_URI` (`/orichal-name`).
+Run the seed once before the first start: the server won't start on an empty database (unless `SEED_ON_START=true`). Stop the server before seeding: it keeps its own copy of the data in memory. MongoDB and `server/data/store.json` are seeded together and belong together, so seed on the laptop you run. Two servers must not share one database for the same reason; a teammate uses another database name at the end of `MONGO_URI` (`/orichal-name`).
 
 ## The data
 
-The demo data lives in memory while the server runs and is saved to `server/data/store.json` (`STORE_FILE`, git-ignored) 200 ms after each change and when the server stops. The first start seeds it from `client/src/models/data`, moving every timestamp so the newest lands just before now. To start again from the seed data, delete the file or use **Reset demo data** in the header's Simulator menu, which resets it for everyone on the server.
+While the server runs, the data lives in memory as its working set. Users, sessions, wallets, ledger entries, orders and trades are saved in MongoDB, before each write request is answered; the other collections are saved in `server/data/store.json` (`STORE_FILE`, git-ignored). To start again from the seed data, run `npm run seed -- --yes` or use **Reset demo data** in the header's Simulator menu, which resets the database for everyone.
 
 ## Demo routes
 
@@ -72,7 +72,7 @@ server/
     │   ├── failNext.js          the Simulator menu's "make the next request fail"
     │   └── errorHandler.js      the only writer of error responses
     ├── model/                   MODEL: the data and the exchange
-    │   ├── store.js             the working set, saved to STORE_FILE
+    │   ├── store.js             the working set: loaded from MongoDB, flushed back with $set bulk writes
     │   ├── seed.js              how the demo data is made, and how it fills MongoDB
     │   ├── documents.js         records to MongoDB documents and back, field by field
     │   ├── schemas/             the Mongoose models: User, Session, Wallet, LedgerEntry, Order, Trade

@@ -18,8 +18,10 @@ server/.env
 # Server data written at run time: the JSON store and uploaded KYC images
 server/data/
 
-# The local record of the AI-assisted build conversation
+# The local record of the AI-assisted build conversation, and this laptop's own
+# Claude Code permissions
 claude_conversation.txt
+.claude/settings.local.json
 
 # Logs and OS files
 npm-debug.log*

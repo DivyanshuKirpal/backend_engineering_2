@@ -41,6 +41,7 @@ const FIELDS = {
     ['kycStatus', 'kycStatus'], ['hasPassword', 'hasPassword'],
     ['twoFactorEnabled', 'twoFactor.enabled'], ['twoFactorEnabledAt', 'twoFactor.enabledAt', 'date'],
     ['preferences.theme', 'preferences.theme'], ['preferences.hideSmallBalances', 'preferences.hideSmallBalances'],
+    ['watchlist', 'watchlist', 'list'],
     ['failedLoginCount', 'failedLoginCount'], ['lastLoginAt', 'lastLoginAt', 'date'], ['createdAt', 'createdAt', 'date'],
   ],
   sessions: [
@@ -111,6 +112,24 @@ export function toRecord(collection, doc) {
   }
   return record;
 }
+
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+/** What to $set for a record: the paths whose values differ from its last copy, or all of them when there is none. */
+export function changedPaths(collection, record, last) {
+  const paths = {};
+  for (const [field, path, type] of FIELDS[collection]) {
+    if (KEYS[collection].includes(field)) continue; // the filter fixes these
+    const value = read(record, field);
+    if (value === undefined || (last && same(value, read(last, field)))) continue;
+    paths[path] = convert(type, 'to', value);
+  }
+  return paths;
+}
+
+/** The stored fields (top-level names, such as `preferences`) in which two records differ. */
+export const fieldsThatDiffer = (collection, a, b) => [...new Set(FIELDS[collection].map(([field]) => field.split('.')[0]))]
+  .filter((field) => !same(a[field], b[field]));
 
 /** One string per record, the same before and after a save. */
 export const keyOf = (collection, record) => KEYS[collection].map((field) => record[field]).join('|');

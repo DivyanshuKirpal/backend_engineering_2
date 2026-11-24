@@ -147,5 +147,5 @@ try {
   console.log(`${board.length} board runs; ${flagged} flagged`);
 } finally {
   await browser.close();
-  server.stop();
+  await server.stop();
 }

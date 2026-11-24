@@ -18,6 +18,7 @@ import { env } from '../../config/env.js';
 import { failNext } from '../../middleware/failNext.js';
 import { whenReady } from '../../model/exchange/lifecycle.js';
 import * as session from '../../model/exchange/session.js';
+import { flush, flushState } from '../../model/store.js';
 import admin from '../../presenter/handlers/admin.js';
 import auth from '../../presenter/handlers/auth.js';
 import { demoRoutes, testRoutes } from '../../presenter/handlers/demo.js';
@@ -81,7 +82,15 @@ function context(req, res) {
 
 function adapt(handler) {
   return async (req, res) => {
-    const { status = 200, data } = await handler(context(req, res));
+    let result;
+    try {
+      result = await handler(context(req, res));
+    } finally {
+      // What a write changed is in MongoDB before it is answered. A refused one
+      // may have changed something too, such as a count of failed logins.
+      if (req.method !== 'GET') await flush();
+    }
+    const { status = 200, data } = result;
     const answer = ANSWER[status];
     if (!answer) throw new Error(`A handler returned status ${status}, which respond.js has no answer for`);
     answer(res, data);
@@ -98,11 +107,12 @@ function mount(router, table) {
 export const apiRouter = Router();
 
 // GET /api/v1/health answers at once, even during a reset: the process is up,
-// and whether its MongoDB connection is.
+// whether its MongoDB connection is, and whether the last flush got through.
 apiRouter.get('/health', (req, res) => {
   ok(res, {
     status: 'ok',
     mongo: mongoState(),
+    flush: flushState(),
     uptimeSeconds: Math.round(process.uptime()),
     time: new Date().toISOString(),
   });

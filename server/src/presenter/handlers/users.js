@@ -140,25 +140,24 @@ export default [
 
   ['GET', '/users/me/watchlist', (ctx) => {
     const user = session.requireUser(ctx);
-    return { data: { watchlist: [...(db().watchlists[user.id] ?? [])] } };
+    return { data: { watchlist: [...user.watchlist] } };
   }],
 
   ['PUT', '/users/me/watchlist/:symbol', (ctx) => {
     const user = session.requireUser(ctx);
     if (!db().markets.some((m) => m.symbol === ctx.params.symbol && m.status !== 'delisted')) throw notFound('That market doesn\'t exist.');
-    const list = db().watchlists[user.id] ?? (db().watchlists[user.id] = []);
-    if (!list.includes(ctx.params.symbol)) {
-      if (list.length >= 50) throw conflict('Your watchlist is full.');
-      list.push(ctx.params.symbol);
+    if (!user.watchlist.includes(ctx.params.symbol)) {
+      if (user.watchlist.length >= 50) throw conflict('Your watchlist is full.');
+      user.watchlist.push(ctx.params.symbol);
     }
     persist();
-    return { data: { watchlist: [...list] } };
+    return { data: { watchlist: [...user.watchlist] } };
   }],
 
   ['DELETE', '/users/me/watchlist/:symbol', (ctx) => {
     const user = session.requireUser(ctx);
-    db().watchlists[user.id] = (db().watchlists[user.id] ?? []).filter((s) => s !== ctx.params.symbol);
+    user.watchlist = user.watchlist.filter((s) => s !== ctx.params.symbol);
     persist();
-    return { data: { watchlist: [...db().watchlists[user.id]] } };
+    return { data: { watchlist: [...user.watchlist] } };
   }],
 ];

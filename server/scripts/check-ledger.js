@@ -58,7 +58,7 @@ for (const key of new Set([...ledger.keys(), ...held.keys()])) {
 }
 
 console.log(differences
-  ? `${differences} differences between ${wallets.length} wallets and their ledger entries.`
+  ? `${differences} ${differences === 1 ? 'difference' : 'differences'} between ${wallets.length} wallets and their ledger entries.`
   : `All ${wallets.length} wallets of ${people.length} people equal the sums of their ${entries} ledger entries.`);
 await disconnectDb();
 process.exitCode = differences ? 1 : 0;

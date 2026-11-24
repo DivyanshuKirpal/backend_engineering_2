@@ -38,11 +38,12 @@ export async function reset() {
     market.start();
     engine.replayPending();
   })();
+  ready.catch(() => { ready = null; }); // a failed reset: the next request starts the exchange again
   return ready;
 }
 
-/** On shutdown: the simulator's timers stop and the store is saved at once. */
-export function stop() {
+/** On shutdown: the simulator's timers stop and everything unsaved is written at once. */
+export async function stop() {
   market.stop();
-  store.saveNow();
+  await store.flush();
 }

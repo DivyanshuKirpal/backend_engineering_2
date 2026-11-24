@@ -1,7 +1,7 @@
 // Shared set-up for the behaviour checks in this folder (Playwright). Starts
 // the Express server (server/src/server.js) on a spare port with its own
-// temporary store file and the demo controls, the test routes and the
-// simulated network delay switched on; opens one page; signs in through the
+// in-memory MongoDB (mongodb-memory-server) and temporary store file, and the
+// demo controls, the test routes and the simulated network delay switched on; opens one page; signs in through the
 // API; and counts the checks: it prints only the failures, then one line with
 // the file's count. screenshots.mjs and compare.mjs start the same server.
 //
@@ -16,6 +16,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 import { chromium } from 'playwright';
 
 export const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -30,12 +31,13 @@ const freePort = () => new Promise((resolve) => {
 });
 
 /**
- * Starts the server on a spare port with a store file of its own, so every
- * check file begins from the seed data. Returns { base, stop }.
+ * Starts the server on a spare port with a MongoDB and a store file of its own,
+ * so every check file begins from the seed data. Returns { base, stop }.
  */
 export async function startServer() {
   const port = await freePort();
   const storeDir = mkdtempSync(join(tmpdir(), 'orichal-check-'));
+  const mongo = await MongoMemoryServer.create();
   // Its request log is never read, so it goes nowhere: an unread pipe fills up and stalls the server
   const child = spawn(process.execPath, [join(root, 'server', 'src', 'server.js')], {
     cwd: root,
@@ -45,16 +47,19 @@ export async function startServer() {
       NODE_ENV: 'test',
       PORT: String(port),
       STORE_FILE: join(storeDir, 'store.json'),
-      // Never the database in server/.env: the checks reset the data. Nothing listens here.
-      MONGO_URI: 'mongodb://127.0.0.1:1/orichal-checks',
+      // Never the database in server/.env: the checks reset the data.
+      MONGO_URI: mongo.getUri('orichal-checks'),
+      SEED_ON_START: 'true',
+      BCRYPT_ROUNDS: '4', // quick hashes: the checks sign in often
       DEMO_CONTROLS: 'true',
       TEST_ROUTES: 'true',
       DEMO_LATENCY: 'true', // some checks look for loading states
     },
   });
   const base = `http://localhost:${port}`;
-  const stop = () => {
+  const stop = async () => {
     child.kill();
+    await mongo.stop();
     try {
       rmSync(storeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     } catch {
@@ -71,7 +76,7 @@ export async function startServer() {
     }
     await new Promise((r) => setTimeout(r, 100));
   }
-  stop();
+  await stop();
   throw new Error('The server did not start (try npm run dev to see why)');
 }
 
@@ -178,7 +183,7 @@ export async function start({ viewport = { width: 1440, height: 900 }, permissio
     console.log(`${name}: ${ok} ok, ${bad} failed`);
     if (errors.length) console.log('  page errors:', errors.slice(0, 8));
     await browser?.close();
-    server.stop();
+    await server.stop();
     process.exitCode = bad ? 1 : 0;
   };
 

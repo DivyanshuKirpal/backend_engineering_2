@@ -17,6 +17,12 @@ const SEED_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..',
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 export const VERSION = 1;
 
+/** The parts of the working set that live in STORE_FILE; the rest is in MongoDB (documents.js, MODELS). */
+export const FILE_KEYS = [
+  'meta', 'assets', 'markets', 'transactions', 'kyc', 'audit', 'notifications', 'addresses', 'stats', 'health',
+  'idempotency', 'refreshTokens', 'credentials', 'lockouts',
+];
+
 const SEED_FILES = {
   assets: 'assets.json',
   markets: 'markets.json',
@@ -105,12 +111,13 @@ export async function buildSeed() {
   const boardNow = newestTime(timed);
   const offsetMs = Date.now() - 1500 - boardNow;
   const s = shiftTimes(timed, offsetMs);
+  const watchlists = new Map(s.watchlists.items.map((w) => [w.userId, w.watchlist]));
 
   return {
     meta: { version: VERSION, seededAt: new Date().toISOString(), offsetMs, boardNow: new Date(boardNow).toISOString() },
     assets: raw.assets.assets,
     markets: raw.markets.markets.map(({ ticker, ...config }) => config),
-    users: s.users.items,
+    users: s.users.items.map((user) => ({ ...user, watchlist: watchlists.get(user.id) ?? [] })),
     credentials: Object.fromEntries(s.accounts.accounts.map((a) => [a.email, { password: a.password, twoFactorCode: a.twoFactorCode }])),
     balances: s.balances.items,
     ledger: orderTiedIds(s.ledger.items),
@@ -121,7 +128,6 @@ export async function buildSeed() {
     sessions: s.sessions.items.map(seedSession),
     audit: s.audit.items,
     notifications: s.notifications.items,
-    watchlists: Object.fromEntries(s.watchlists.items.map((w) => [w.userId, w.watchlist])),
     addresses: s.addresses.items,
     stats: s.stats,
     health: s.health,
@@ -143,7 +149,6 @@ export async function seedDatabase(data) {
     const account = data.credentials[record.email];
     if (account) doc.passwordHash = await hash(account.password);
     if (account?.twoFactorCode) doc.twoFactor.codeHash = await hash(account.twoFactorCode);
-    doc.watchlist = data.watchlists[record.id] ?? [];
     return doc;
   }));
 

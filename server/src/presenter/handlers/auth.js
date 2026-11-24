@@ -49,11 +49,10 @@ export default [
       emailVerified: false, kycStatus: 'none', twoFactorEnabled: false, twoFactorEnabledAt: null,
       hasPassword: true, googleLinked: false, avatarUrl: null,
       preferences: { theme: 'light', hideSmallBalances: false },
-      createdAt: now, isBot: false, failedLoginCount: 0, lastLoginAt: null,
+      watchlist: [], createdAt: now, isBot: false, failedLoginCount: 0, lastLoginAt: null,
     };
     db().users.unshift(user);
     db().credentials[email] = { password: String(ctx.body.password), twoFactorCode: null };
-    db().watchlists[user.id] = [];
     for (const a of db().assets) db().addresses.push({ userId: user.id, asset: a.code, address: `sim-${a.code.toLowerCase()}-${randomHex()}` });
     wallet.credit(user.id, 'USDT', '10000', 'demo_credit', { refType: 'system', note: 'Sign-up credit', time: now });
     session.audit(ctx, user, 'user.registered');

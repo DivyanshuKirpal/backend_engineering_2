@@ -8,6 +8,7 @@ This guide explains the server built in the CE-2 phase, for a teammate getting r
 2. [M1. The Express skeleton](#m1-the-express-skeleton)
 3. [M2. The API on the server](#m2-the-api-on-the-server)
 4. [M3. MongoDB, the models and the seed](#m3-mongodb-the-models-and-the-seed)
+5. [M4. The store on MongoDB](#m4-the-store-on-mongodb)
 
 ## M0. The plan in the repo
 
@@ -439,3 +440,71 @@ In Atlas: **Browse Collections** → `orichal`. Open `users`, find `{ "email": "
 - **What is a virtual?** A property worked out when read, such as `Wallet.total`. Nothing is stored, so nothing can disagree.
 - **Embedding or referencing?** Preferences are embedded; the ledger is referenced, because it grows without limit and is queried on its own.
 - **What does the aggregation do?** `$match` keeps the entries, `$group` adds them up per user and asset, and the script compares the sums with the wallets.
+
+## M4. The store on MongoDB
+
+In M4 the six collections live in MongoDB. The server loads them when it starts, and every change is in MongoDB before the request that made it is answered.
+
+### Why the engine keeps a working copy in memory
+
+The matching engine and the wallet are ordinary synchronous code over arrays: find the order, walk the book, move the balances. Exchanges work this way too, because matching must handle one order at a time and can't wait on a network call in the middle. So [`model/store.js`](../server/src/model/store.js) keeps a **working set** in memory and makes each change permanent.
+
+| Where | What |
+| --- | --- |
+| MongoDB | users, sessions, wallets, ledger entries, orders, trades |
+| `server/data/store.json` | transactions, KYC, notifications, audit logs, deposit addresses, markets and assets config, stats, idempotency keys (these move for the final evaluation) |
+
+Because each server holds its own working set, **only one server may use a database at a time**. Two would overwrite each other.
+
+### Starting: `open()`
+
+1. Connect to MongoDB. If it can't be reached, the server prints what to check and exits.
+2. Build the indexes (`Model.init()`), so the unique ones exist before the first write.
+3. If the database is empty: seed it when `SEED_ON_START=true` (the checks do), otherwise say to run `npm run seed` and exit.
+4. Load each collection with `find().sort(…).lean()` and turn every document into a record. **`lean()`** returns plain objects instead of Mongoose documents, which is much faster when nothing needs `save()`.
+
+### Saving: `flush()`
+
+A **flush** writes what changed since the last one:
+
+1. For each collection, compare every record with the copy that was last written.
+2. For each record that differs, build one `updateOne` that **`$set`s only the fields that changed**. A new record is an *upsert*: update it, or insert it if it isn't there.
+3. Send one `bulkWrite` per collection: one round trip to Atlas however many records changed.
+4. Remember the new copies, and save the JSON file if it changed.
+
+When does it run? The adapter awaits a flush before answering any request that isn't a GET, so a `202` for an order means the order is already in MongoDB. Changes nobody is waiting for (the engine filling an order half a second later) call `persist()`, which flushes within 200 ms. Flushes run one at a time, through a queue of promises.
+
+If a flush fails, because Atlas is away, nothing is lost: what wasn't written still differs from its last copy, so the next flush sends it again. The server retries every 5 seconds, and `GET /health` shows `"flush": "failing: …"`.
+
+**Why `$set` and never a replace?** A replace writes the whole document. The working set doesn't hold `passwordHash`, so replacing a user would delete their password. For the same reason the paths are dotted: `$set: { 'twoFactor.enabled': true }` leaves `twoFactor.codeHash` alone.
+
+**What about transactions?** An order's lock is three writes (order, wallet, ledger entry) in three collections. Without a multi-document transaction a crash between them could leave them out of step; `npm run db:check-ledger` would show it. Transactions come with the service rewrite for the final evaluation (a departures row says so).
+
+### `remember()`
+
+Sign-in (M5) writes to MongoDB directly, so the working set has to be told. `remember(collection, record)` copies over only the fields that changed in MongoDB since the last flush. A change the working set hasn't flushed yet is therefore not undone, and nothing is written twice.
+
+### The checks on an in-memory MongoDB
+
+Each check file gets its own throwaway MongoDB from **mongodb-memory-server**, a dev dependency that runs a real `mongod` on a temporary folder and deletes it afterwards. The harness always sets `MONGO_URI`, so the checks can never reach the database in `server/.env`. The first run downloads `mongod`.
+
+### How to check M4
+
+```powershell
+npm run dev          # "MongoDB connected: database orichal, Atlas"
+npm run checks
+npm run db:check-ledger
+```
+
+1. Place an order in the browser. In Atlas, **Browse Collections** → `orders` (sort by `{ createdAt: -1 }`): it is there. In `ledgerEntries`, filter `{ refId: ObjectId("the order's id") }`: its `order_lock` entry.
+2. Stop the server, start it again and reload: the order and the balances are back.
+3. `curl.exe http://localhost:5173/api/v1/health` shows `"mongo":"up","flush":"ok"`.
+
+### Be ready to answer
+
+- **Why a working copy in memory?** The engine is synchronous and handles one order at a time; it can't wait on the network in the middle of a match.
+- **What happens between the engine's change and MongoDB?** The record changes in memory; a flush compares it with the last written copy and sends a `bulkWrite` with the changed fields, before the request is answered or within 200 ms.
+- **Why `$set` and not a replace?** A replace would wipe fields the working set doesn't hold, such as `passwordHash`.
+- **What is a bulk write, and an upsert?** Many operations in one round trip; an update that inserts when nothing matches.
+- **What does `lean()` do?** Returns plain objects, skipping Mongoose's document wrappers.
+- **What if Atlas goes away?** Reads still work from memory, changes wait, the server retries, and `/health` says so.

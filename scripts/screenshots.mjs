@@ -63,5 +63,5 @@ try {
   }
 } finally {
   await browser.close();
-  server.stop();
+  await server.stop();
 }

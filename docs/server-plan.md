@@ -564,10 +564,10 @@ M3 · MongoDB, models and the seed
 
 M4 · The store on MongoDB
 
-- [ ] Load at start, flush with `$set` bulk writes, `remember`
-- [ ] The adapter awaits the flush on writes
-- [ ] The watchlist embedded in the user
-- [ ] Checks on `mongodb-memory-server`
+- [x] Load at start, flush with `$set` bulk writes, `remember`
+- [x] The adapter awaits the flush on writes
+- [x] The watchlist embedded in the user
+- [x] Checks on `mongodb-memory-server`
 
 M5 · Sign-in on MongoDB with bcrypt
 
@@ -668,3 +668,18 @@ M10 · Documents and the tag
   5. `npm run checks`: 476 in 22 files. `npm run check:data`: 3,947 on 26 files.
 
   Departures: `toDocument` and `toRecord` are in `model/documents.js`, not `presenter/mappers.js`, because the store uses them and the model must not import the presenter. A new row in section 8 and the md's review log: times set by the code instead of Mongoose timestamps, three extra stored fields, only the indexes in use.
+- **24 Nov 2026 · M4, the store on MongoDB.** What: users, sessions, wallets, ledger entries, orders and trades live in MongoDB; the server loads them at start and flushes every change. Files and how:
+  - `model/store.js`: `open()` connects, builds the indexes, seeds an empty database when `SEED_ON_START=true` (otherwise it says to run `npm run seed`), and loads each collection with a sorted `find().lean()`. `flush()` compares every record with the copy last written and sends one `bulkWrite` per collection; flushes run one at a time. A failed flush keeps its changes, retries in 5 s and shows on `/health`. `persist()` flushes within 200 ms. `remember()` takes in only what changed in MongoDB since the last flush, so an unflushed change isn't undone. `reset()` reseeds both stores. The six collections left `store.json`.
+  - `model/documents.js`: `changedPaths` and `fieldsThatDiffer`; the user's `watchlist`, embedded, with its three handlers. `model/seed.js`: which keys stay in the file.
+  - `view/routes/index.js` awaits a flush after every request that isn't a GET, refused ones included. `server.js` exits with a clear message when MongoDB can't be reached, and flushes on Ctrl+C. New sessions carry `expiresAt`, renewed on refresh.
+  - `scripts/checks/harness.mjs` starts a `mongodb-memory-server` (11.4.0, `mongod` 8.2.6) per check file with `SEED_ON_START=true` and `BCRYPT_ROUNDS=4`. npm 11 holds back that package's install script; it isn't needed, because the first run fetches `mongod`. `.claude/settings.local.json` (git-ignored) lets Claude Code run the two check commands, by the owner's decision.
+
+  Checks:
+  1. On Atlas, from a script: the order, the wallet change and the ledger entry are there when `POST /orders` is answered (about 50 ms per write); the engine's own change follows within the 200 ms flush.
+  2. After a restart the order and every balance are the same, the order is back on the book, and the `rt` cookie still refreshes.
+  3. `npm run db:check-ledger` after the trades: all 59 wallets in step with 114 entries. With one wallet altered as the script read it, it names the wallet and exits 1.
+  4. `npm run checks`: 476 in 22 files, each on its own in-memory database. `npm run check:data`: 3,947 on 26 files.
+
+  Also checked on Atlas: the flush keeps `passwordHash` and `twoFactor.codeHash`; a flush made to fail shows on `/health` and is retried; a flush with nothing changed sends nothing.
+
+  Departures from the plan: a flush `$set`s only the fields that changed and upserts only new records. The plan's upsert on every record would have made half a document out of a session that the TTL index had already deleted. Nothing new against the architecture.

@@ -8,7 +8,6 @@ import mongoose from 'mongoose';
 import { connectDb, disconnectDb, explainConnection, isLocal } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 import { MODELS } from '../src/model/documents.js';
-import { seedDatabase } from '../src/model/seed.js';
 import * as store from '../src/model/store.js';
 
 try {
@@ -32,10 +31,9 @@ if (total > 0 && !isLocal() && !process.argv.includes('--yes')) {
 }
 
 try {
-  const data = await store.reset();
-  const counts = await seedDatabase(data);
+  await store.reset();
   console.log(`Seeded database "${name}" (${isLocal() ? 'local' : 'Atlas'}):`);
-  for (const [collection, count] of Object.entries(counts)) console.log(`  ${collection.padEnd(14)} ${count}`);
+  for (const Model of models) console.log(`  ${Model.collection.name.padEnd(14)} ${await Model.countDocuments()}`);
   console.log(`and the JSON store, ${env.STORE_FILE}`);
 } catch (err) {
   console.error(`The seed failed: ${err.message}`);

@@ -33,6 +33,7 @@ const cookieOptions = () => ({
   secure: env.NODE_ENV === 'production',
   path: '/api/v1/auth',
 });
+const expiry = () => new Date(Date.now() + durationMs(env.REFRESH_TOKEN_TTL)).toISOString();
 const hash = (token) => createHash('sha256').update(token).digest('hex');
 
 export function issueToken(sessionId) {
@@ -115,8 +116,12 @@ export function startSession(ctx, user) {
   if (session) {
     session.revokedAt = null;
     session.lastUsedAt = now;
+    session.expiresAt = expiry();
   } else {
-    session = { id: newId(), device: deviceName(ctx.userAgent).device, ip: ctx.ip, lastUsedAt: now, createdAt: now, userId: user.id };
+    session = {
+      id: newId(), userId: user.id, device: deviceName(ctx.userAgent).device, userAgent: ctx.userAgent, ip: ctx.ip,
+      tokenVersion: 0, rotatedAt: null, createdAt: now, lastUsedAt: now, expiresAt: expiry(), revokedAt: null,
+    };
     db().sessions.push(session);
   }
   user.lastLoginAt = now;
@@ -144,6 +149,7 @@ export function refresh(ctx) {
     throw unauthenticated('Your session has ended. Log in again.');
   }
   session.lastUsedAt = new Date().toISOString();
+  session.expiresAt = expiry();
   // The same token again with a fresh expiry: seven days after the last use, as
   // section 3 has it. Rotating it on every refresh comes with M6.
   sendCookie(ctx, token);
