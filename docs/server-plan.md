@@ -503,7 +503,7 @@ Copy these rows into the review log under "### Server, CE-2 phase" (M0), and add
 | Change | 1 Folders | bcryptjs instead of bcrypt | Pure JavaScript, no native build on Windows |
 | Change | 1 Folders | morgan request logs instead of pino; no metrics | morgan is the course's logger; metrics come with Prometheus |
 | Change | 1 Folders, 4 API | KYC images are saved under `server/data/uploads` instead of Cloudinary | Cloud storage comes later |
-| Addition | 4 API (Admin) | `GET /admin/kyc/:id/document` answers `{ placeholder: true, image }` for an application without that image; the admin's page keeps its drawn frame and doesn't show the photo yet | The seeded applications came without images; the page's presenter and view are outside this phase's client changes |
+| Addition | 4 API (Admin) | `GET /admin/kyc/:id/document` answers `{ placeholder: true, image }` for an application without that image, and the admin's page then keeps its drawn placeholder | The seeded applications came without images |
 | Change | 4 API | No rate limits yet | They need Redis |
 | Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status, email-verified and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
 | Change | 3 Schemas | `createdAt` and `updatedAt` are fields the code sets instead of Mongoose timestamps; `users` also stores `hasPassword` and `googleLinked`, and `sessions` the device name; only the indexes this phase's queries use exist (added in M3) | The API's times are the engine's own, to the millisecond; the records already carry those fields |
@@ -755,3 +755,11 @@ M10 · Documents and the tag
   Also, with real errors on the handler: a Mongoose `ValidationError` 400 with its paths, a `CastError` 404, a duplicate key 409, anything else 500.
 
   Departures: the placeholder answer, and the admin's page not drawing the photo (a row in section 8): it needs the page's presenter and view, outside this phase's client changes. As the plan's check says, an unknown market on `POST /orders` is now a 400; it was a 404.
+- **24 Nov 2026 · After M8, the uploaded image on the admin's KYC page.** What: the page draws the image a person sent, inside the frame that held only the placeholder; seeded applications keep the placeholder. The owner allowed client changes to three more files for this: `admin.api.js`, the admin KYC presenter and its view. Files and how:
+  - `client/src/models/api/admin.api.js`: `kycDocument` gives a Blob, or null when the application has no such image.
+  - `client/src/presenters/admin/kyc.presenter.js`: an object URL for each image, since an `<img>` can't send the access token. It is revoked when another application is opened or the page is left. An image the browser can't draw becomes "The image didn't load."
+  - `client/src/views/components/admin/KycReview.js`: the image fitted whole into the frame, with an alternative text naming the document and the person. No stylesheet changed.
+  - `server/src/app.js`: `blob:` in the content security policy's `img-src`; without it the browser refuses to draw the image (tried: the check fails with the policy's own message).
+  - `scripts/checks/admin-kyc.check.mjs`: ten more checks with real images: drawn, in the same frame, named, the selfie, each view audited, both let go on closing and on leaving, the placeholder for a seeded application, and a broken file.
+
+  Checks: `npm run checks` 590 in 22 files (`admin-kyc` 27 instead of 17); `npm run check:data` 3,947 on 26 files. The row in section 8 no longer says the photo is missing.

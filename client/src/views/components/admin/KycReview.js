@@ -1,6 +1,6 @@
 // KycQueueTable and KycReviewPanel (section 5; board Admin · KYC review): the
 // applications in a list, and the one open beside it with its facts, the
-// document image (a placeholder in this phase) and the decision.
+// document image and the decision.
 
 import { h, cx } from '../../dom.js';
 
@@ -30,13 +30,20 @@ export function KycQueueTable(vm, { open }) {
       : h('tr', {}, h('td', { colspan: span, class: 'kyc-empty' }, vm.empty))));
 }
 
-/** The drawn stand-in for a document: a photo and four lines of text. */
-function DocumentPlaceholder(status, caption) {
+// The whole document has to be readable, so it is fitted into the frame, never cropped to fill it
+const FITTED = { display: 'block', width: '100%', height: '100%', objectFit: 'contain' };
+
+/** The uploaded image in its frame, or the drawn stand-in (a photo and four lines of text) when there is none. */
+function DocumentFrame({ status, src, alt }, { sent, none }, onFailed) {
+  const caption = status === 'error' ? 'The image didn\'t load.' : status === 'ready' ? (src ? sent : none) : 'Opening the image…';
   return h('figure', { class: cx('doc-placeholder', `doc-${status}`) },
-    h('div', { class: 'doc-shape', 'aria-hidden': 'true' },
-      h('span', { class: 'doc-photo' }),
-      h('span', { class: 'doc-lines' }, [0, 1, 2, 3].map((i) => h('span', { key: i, class: 'doc-line' })))),
-    h('figcaption', {}, status === 'error' ? 'The image didn\'t load.' : status === 'loading' ? 'Opening the image…' : caption));
+    src
+      ? h('div', { key: 'image', class: 'doc-shape' },
+        h('img', { key: src, class: 'doc-image', src, alt, style: FITTED, onError: () => onFailed(src) }))
+      : h('div', { key: 'drawn', class: 'doc-shape', 'aria-hidden': 'true' },
+        h('span', { class: 'doc-photo' }),
+        h('span', { class: 'doc-lines' }, [0, 1, 2, 3].map((i) => h('span', { key: i, class: 'doc-line' })))),
+    h('figcaption', {}, caption));
 }
 
 /** r: the KYC presenter's review vm. */
@@ -50,12 +57,12 @@ export function KycReviewPanel(r, actions) {
       h('dd', {}, f.value, f.mono ? [' ', h('span', { class: 't-mono kyc-review-mono' }, f.mono)] : null)))),
     h('div', { class: 'kyc-review-image' },
       h('h3', { class: 'panel-label' }, 'Document image'),
-      DocumentPlaceholder(r.image, 'Placeholder. The real image is streamed to admins only.'),
+      DocumentFrame(r.image, { sent: 'As it was sent. Streamed to admins only.', none: 'Placeholder. The real image is streamed to admins only.' }, actions.imageFailed),
       r.selfie == null
         ? null
-        : r.selfie === 'idle'
+        : r.selfie.status === 'idle'
           ? h('button', { type: 'button', class: 'btn btn-quiet btn-sm kyc-selfie-btn', onClick: actions.openSelfie }, 'Open the selfie')
-          : DocumentPlaceholder(r.selfie, 'Selfie placeholder.'),
+          : DocumentFrame(r.selfie, { sent: 'The selfie, as it was sent.', none: 'Selfie placeholder.' }, actions.imageFailed),
       h('p', { class: 'kyc-review-note' }, r.note)),
     r.decision
       ? h('p', { class: cx('kyc-review-decision', `tone-${r.decision.tone}`) }, r.decision.text)

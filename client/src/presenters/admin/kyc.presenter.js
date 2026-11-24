@@ -1,8 +1,9 @@
 // useAdminKycPresenter (section 5, AdminKycPage): identity checks by status
 // (Pending oldest first; Approved and Rejected newest decision first), twenty
 // to a page from GET /admin/kyc, and one application open beside the list.
-// Opening it fetches the document image (written to the audit log; the mock
-// sends a placeholder). Approve, or reject with the reason the person sees.
+// Opening it fetches the document image, which the server writes to the audit
+// log; a seeded application has none, so its frame keeps the drawn placeholder.
+// Approve, or reject with the reason the person sees.
 
 import * as adminApi from '../../models/api/admin.api.js';
 import { createPresenter, every } from '../shared/presenter.js';
@@ -12,6 +13,7 @@ import { age, birthDate, dayMonth, dayTime, hourMinute, waited } from '../format
 import { countryName, documentLabel } from '../formatters/status.format.js';
 
 const PAGE = 20;
+const CLOSED = { status: 'idle', src: null };
 const TABS = [
   { key: 'pending', label: 'Pending' },
   { key: 'approved', label: 'Approved' },
@@ -25,7 +27,7 @@ export function createAdminKycPresenter() {
   let list = { status: 'loading', items: [], total: 0 };
   let pendingCount = null;
   let openId = null;
-  let image = { id: null, status: 'idle', selfie: 'idle' };
+  let images = { id: null, document: CLOSED, selfie: CLOSED };
   let deciding = false;
   let rejecting = null;
   let token = 0;
@@ -50,22 +52,37 @@ export function createAdminKycPresenter() {
   every(p, 30000, () => load({ keepOpen: true }));
   every(p, 15000, () => p.changed());
 
-  async function fetchImage(id, kind) {
-    try {
-      await adminApi.kycDocument(id, kind);
-      if (image.id !== id) return;
-      image = { ...image, [kind === 'selfie' ? 'selfie' : 'status']: 'ready' };
-    } catch {
-      if (image.id !== id) return;
-      image = { ...image, [kind === 'selfie' ? 'selfie' : 'status']: 'error' };
-    }
+  // An <img> can't send the access token, so each image is fetched and shown from
+  // an object URL, which holds it in memory until it is revoked. Nobody's document
+  // stays behind once its application is closed.
+  function show(kind, next) {
+    const { src } = images[kind];
+    if (src && src !== next.src) URL.revokeObjectURL(src);
+    images = { ...images, [kind]: next };
     p.changed();
+  }
+  function release() {
+    show('document', CLOSED);
+    show('selfie', CLOSED);
+  }
+  p.own(release);
+
+  async function fetchImage(id, kind) {
+    show(kind, { status: 'loading', src: null });
+    const closed = () => p.disposed || images.id !== id;
+    try {
+      const blob = await adminApi.kycDocument(id, kind);
+      if (!closed()) show(kind, { status: 'ready', src: blob && URL.createObjectURL(blob) });
+    } catch {
+      if (!closed()) show(kind, { status: 'error', src: null });
+    }
   }
 
   function open(id) {
     openId = id;
     rejecting = null;
-    image = { id, status: id ? 'loading' : 'idle', selfie: 'idle' };
+    release();
+    images = { ...images, id };
     if (id) fetchImage(id, 'document');
     p.changed();
   }
@@ -92,9 +109,11 @@ export function createAdminKycPresenter() {
     if (!k) return null;
     const pending = k.status === 'pending';
     const since = k.userCreatedAt ? ` · account since ${dayMonth(k.userCreatedAt)}` : '';
+    const name = k.userDisplayName ?? k.fullName;
+    const mine = images.id === k.id ? images : { document: CLOSED, selfie: CLOSED };
     return {
       key: k.id,
-      name: k.userDisplayName ?? k.fullName,
+      name,
       meta: pending
         ? `Sent ${dayTime(k.createdAt)} · waiting ${waited(k.createdAt)}${since}`
         : `Sent ${dayTime(k.createdAt)} · ${k.status === 'approved' ? 'approved' : 'rejected'} ${dayTime(k.reviewedAt)}${since}`,
@@ -104,8 +123,8 @@ export function createAdminKycPresenter() {
         { key: 'country', label: 'Country', value: countryName(k.country) },
         { key: 'document', label: 'Document', value: documentLabel(k.documentType), mono: `••••${k.documentNumberLast4}` },
       ],
-      image: image.id === k.id ? image.status : 'loading',
-      selfie: k.hasSelfie ? (image.id === k.id ? image.selfie : 'idle') : null,
+      image: { ...mine.document, alt: `${documentLabel(k.documentType)} sent by ${name}` },
+      selfie: k.hasSelfie ? { ...mine.selfie, alt: `Selfie sent by ${name}` } : null,
       note: `${k.hasSelfie ? 'A selfie was sent too.' : 'No selfie sent.'} Opening these images is written to the audit log.`,
       decision: pending ? null : k.status === 'approved' ? { tone: 'buy', text: `Approved ${dayTime(k.reviewedAt)}.` } : { tone: 'sell', text: `Rejected ${dayTime(k.reviewedAt)}: ${k.rejectReason}` },
       deciding,
@@ -144,10 +163,11 @@ export function createAdminKycPresenter() {
       retry: () => load(),
       openSelfie() {
         const k = current();
-        if (!k || !k.hasSelfie) return;
-        image = { ...image, selfie: 'loading' };
-        p.changed();
-        fetchImage(k.id, 'selfie');
+        if (k?.hasSelfie) fetchImage(k.id, 'selfie');
+      },
+      /** The browser couldn't draw what the server sent: a file that only begins like an image. */
+      imageFailed(src) {
+        for (const kind of ['document', 'selfie']) if (images[kind].src === src) show(kind, { status: 'error', src: null });
       },
       async approve() {
         const k = current();

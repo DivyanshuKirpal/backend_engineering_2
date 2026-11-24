@@ -2650,7 +2650,7 @@ Section 8 starts the frontend's static phase, and the table "Frontend, static ph
 | Change | 1 Folders | bcryptjs instead of bcrypt | Pure JavaScript, no native build on Windows |
 | Change | 1 Folders | morgan request logs instead of pino; no metrics | morgan is the course's logger; metrics come with Prometheus |
 | Change | 1 Folders, 4 API | KYC images are saved under `server/data/uploads` instead of Cloudinary | Cloud storage comes later |
-| Addition | 4 API (Admin) | `GET /admin/kyc/:id/document` answers `{ placeholder: true, image }` for an application without that image; the admin's page keeps its drawn frame and doesn't show the photo yet | The seeded applications came without images; the page's presenter and view are outside this phase's client changes |
+| Addition | 4 API (Admin) | `GET /admin/kyc/:id/document` answers `{ placeholder: true, image }` for an application without that image, and the admin's page then keeps its drawn placeholder | The seeded applications came without images |
 | Change | 4 API | No rate limits yet | They need Redis |
 | Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status, email-verified and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
 | Addition | 9 Server build log | New section: two lines pointing to `docs/server-plan.md`, which holds the phase's scope, decisions, milestones, checklist and log | The server phase keeps its plan and log in its own file instead of growing this one |

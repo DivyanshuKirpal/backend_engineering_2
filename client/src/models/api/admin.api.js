@@ -16,8 +16,11 @@ export const setUserRole = (id, { role }) => patch(`/admin/users/${encodeURIComp
 
 /** -> { items: [Kyc], page, total } */
 export const kyc = ({ status, page, limit } = {}) => get('/admin/kyc', { status, page, limit });
-/** The real endpoint streams the image; the mock answers { placeholder: true }. */
-export const kycDocument = (id, image = 'document') => get(`/admin/kyc/${encodeURIComponent(id)}/document`, { image });
+/** -> the image (`document` or `selfie`) as a Blob, or null: the seeded applications came without images */
+export async function kycDocument(id, image = 'document') {
+  const answer = await get(`/admin/kyc/${encodeURIComponent(id)}/document`, { image });
+  return answer.placeholder ? null : answer.image;
+}
 /** -> { application } */
 export const decideKyc = (id, { decision, reason }) => patch(`/admin/kyc/${encodeURIComponent(id)}`, { decision, reason });
 

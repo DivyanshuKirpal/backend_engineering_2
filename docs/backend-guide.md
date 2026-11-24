@@ -828,7 +828,7 @@ The admin's image is sent with a **stream**: `fs.createReadStream` reads the fil
 
 This is the one success answer without the envelope: the bytes themselves, as `image/jpeg`. `http.js` hands them to the caller as a Blob. The seeded applications never had images, so they answer `{ placeholder: true }`.
 
-The admin's page still shows its drawn frame instead of the photo. Drawing the photo means changing that page's presenter and view, which this phase leaves alone.
+**On the admin's page.** An `<img>` tag can't send the `Authorization` header, so `<img src="/api/v1/admin/kyc/…">` would get a 401. The presenter fetches the image like any other answer, gets a Blob, and makes an **object URL** for it (`blob:http://…`), which the view puts in the frame. An object URL keeps its image in memory until it is revoked, so the presenter revokes it when another application is opened or the page is left. Helmet's content security policy allows images from the own origin and `data:` only, so `app.js` adds `blob:` to `img-src`. A file that only begins like a JPEG passes the signature check but can't be drawn; the page then says "The image didn't load."
 
 ### Every error, in one place
 

@@ -37,6 +37,9 @@ app.use(helmet({
       // Helmet's default asks the browser to fetch everything over https.
       // Over plain http://localhost, Safari would then fail to load anything.
       upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,
+      // Helmet's default, plus blob: for the admin's identity images. They need
+      // the access token, so the page fetches them and draws its own copy.
+      imgSrc: ["'self'", 'data:', 'blob:'],
     },
   },
 }));
