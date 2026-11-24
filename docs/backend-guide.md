@@ -9,6 +9,7 @@ This guide explains the server built in the CE-2 phase, for a teammate getting r
 3. [M2. The API on the server](#m2-the-api-on-the-server)
 4. [M3. MongoDB, the models and the seed](#m3-mongodb-the-models-and-the-seed)
 5. [M4. The store on MongoDB](#m4-the-store-on-mongodb)
+6. [M5. Sign-in on MongoDB with bcrypt](#m5-sign-in-on-mongodb-with-bcrypt)
 
 ## M0. The plan in the repo
 
@@ -288,7 +289,7 @@ The mock kept its stand-in for the refresh cookie in one `localStorage` key. Mov
 - The store keeps only the token's **SHA-256 hash**, mapped to the session, so a copy of `store.json` can't sign anyone in. That map lives in the JSON store, so a server restart doesn't sign everyone out.
 - The **access token** is a random string kept in server memory and in the page's memory, never in storage; the page sends it as `Authorization: Bearer`. After a restart the server has forgotten it, the next request gets 401, and `http.js` gets a new one from `POST /auth/refresh` with the cookie, then retries.
 - `POST /auth/logout` revokes the session and forgets its tokens; the cookie is cleared.
-- As in the static phase, a sign-in revives the user's first session, so the Security page shows the seeded devices with "This device" first, as its board does. A brand-new user gets a session named from the browser's `User-Agent`, with the request's IP. (A row in the departures table says so.)
+- In M2 a sign-in still revived the user's first session, as the mock did. Since M5 every login has a session of its own; see [M5](#m5-sign-in-on-mongodb-with-bcrypt).
 
 M6 replaces both tokens with JWTs: a signed access token `{ sub, role, sid }` and a rotating refresh token `{ sid, ver }`.
 
@@ -316,7 +317,7 @@ The Simulator menu used to call the mock directly; now it calls routes under `/a
 - **`POST /demo/reset`** reseeds the data. On a server that is everyone's data, so a reset signs every browser out.
 - **`POST /demo/fail-next`** sets a short-lived `fail_next` cookie. The next API request from *that browser* answers 503, and the cookie goes. A cookie rather than a switch on the server, so the admin's background refresh in a second window can't use the failure up.
 
-With `TEST_ROUTES=true` as well, three routes exist only for the checks: `kyc-status` and `email-verified` set a user's state, and `GET /demo/db` returns a read-only copy of the data, without the plain demo passwords (which go in M5) or the cookie hashes.
+With `TEST_ROUTES=true` as well, three routes exist only for the checks: `kyc-status` and `email-verified` set a user's state, and `GET /demo/db` returns a read-only copy of the data, without the cookie hashes.
 
 ### The checks against the real server
 
@@ -508,3 +509,82 @@ npm run db:check-ledger
 - **What is a bulk write, and an upsert?** Many operations in one round trip; an update that inserts when nothing matches.
 - **What does `lean()` do?** Returns plain objects, skipping Mongoose's document wrappers.
 - **What if Atlas goes away?** Reads still work from memory, changes wait, the server retries, and `/health` says so.
+
+## M5. Sign-in on MongoDB with bcrypt
+
+In M5 registering, logging in, changing the password and switching two-factor run as Mongoose queries on the user documents, and a password exists only as a **bcrypt hash**. The plain demo passwords left the JSON store.
+
+### bcrypt
+
+A **hash function** turns text into a fixed string that can't be turned back. So the server never decrypts a password: it hashes the guess the same way and **compares**. A fast hash such as SHA-256 would let a thief with the database try billions of guesses a second; bcrypt is slow on purpose.
+
+```text
+$2b$12$N9qo8uLOickgx2ZMRZoMye IjZAgcfl7p92ldGxad68LJZdL17lhWy
+ │   │  │                      └ the hash
+ │   │  └ the salt: 16 random bytes, different for every password
+ │   └ the cost: 2^12 = 4,096 rounds; one more doubles the work
+ └ the version of bcrypt
+```
+
+- The **salt** means two people with the same password have different hashes, so a precomputed table of hashes is useless. It isn't secret; it is stored in the hash, which is how `compare` knows it.
+- The **cost** is `BCRYPT_ROUNDS`: 12 in use (about a quarter of a second), 4 in the checks so they run fast.
+- bcrypt reads at most 72 bytes, so longer passwords are refused rather than cut off silently.
+- `bcryptjs` is bcrypt in plain JavaScript: nothing to compile on Windows.
+
+### Where Mongoose middleware runs
+
+[`model/schemas/User.js`](../server/src/model/schemas/User.js) does the hashing, so no code path can forget it.
+
+| Piece | What it does |
+| --- | --- |
+| `password` **virtual** (setter) | `user.password = '…'` keeps the plain text in `$locals`, which is never saved |
+| **`pre('save')`** middleware | Runs inside every `save()`, after validation and before the write: hashes it into `passwordHash` and forgets it |
+| **error-handling** `post('save')` middleware | Runs when the save failed: MongoDB's E11000 (duplicate key) on the email becomes `ApiError` 409 `CONFLICT` |
+| `comparePassword()`, `compareCode()` **instance methods** | Methods on one document; the statics of M3 (`findByEmail`) are on the model |
+
+`insertMany` runs no save middleware, so the seed hashes by itself.
+
+**How a duplicate email becomes a 409.** The code doesn't look first and insert after: two requests at the same moment could both look, both find nothing and both insert. It inserts, and the **unique index** lets exactly one through. The checks send three at once: one 201, two 409s.
+
+### Signing in, step by step
+
+[`model/services/auth.service.js`](../server/src/model/services/auth.service.js) does the work; [`handlers/auth.js`](../server/src/presenter/handlers/auth.js) checks the input and shapes the answer.
+
+1. `User.findByEmail(email).select('+passwordHash')`: the hash is `select: false`, so it must be asked for.
+2. `isLocked`? Then 423 `ACCOUNT_LOCKED` with `lockUntil`, before the password is even looked at.
+3. `comparePassword()`. A wrong one adds 1 to `failedLoginCount` with **`$inc`**, which adds inside the database, so guesses sent at the same moment are all counted. The fifth in a row sets `lockUntil` 15 minutes ahead.
+4. An unknown email gets the same 401 and message as a wrong password.
+5. With two-factor on: a one-time ticket, then the code, compared with `twoFactor.codeHash`. Five tries per ticket, each counted *before* the comparison.
+6. The session: `Session.create()`, **one for every login**, with the device from `User-Agent`, the IP and an `expiresAt` 7 days ahead. A browser holds one `rt` cookie, so a session it already had ends.
+7. `store.remember()` tells the working set, so the handlers and the engine see the change at once.
+
+One session per login is what M6 needs: the refresh token will name its session and version, and replaying an old one can then end that device's session and no other.
+
+### Files
+
+| File | What changed |
+| --- | --- |
+| `model/schemas/User.js` | The virtual, the two hooks, the two instance methods |
+| `model/services/auth.service.js` | New: `register`, `checkPassword`, `passwordMatches`, `setPassword`, `codeMatches`, `setTwoFactor` |
+| `presenter/handlers/auth.js`, `users.js`, `wallet.js` | Call the service. `checkNewPassword` is shared by register and change |
+| `model/exchange/session.js` | `startSession` creates a session document; `revoke`, `revokeOthers`, `isLive` |
+| `model/seed.js` | No passwords in the working set; `credentials` and `lockouts` are gone |
+
+### How to check M5
+
+In Postman (or with `curl.exe`):
+
+1. `POST /api/v1/auth/register` with `{ "email", "password", "displayName" }`: 201. The same email again: 409 `CONFLICT`.
+2. Five logins with a wrong password: 401 four times, then 423 with `lockUntil`.
+3. The demo login: `requires2fa`; then `/auth/login/2fa` with the ticket and `123456`: 200 and a token.
+
+In Atlas, **Browse Collections** → `users`, filter `{ email: "the new email" }`: a `passwordHash` starting `$2b$12$`, and no password field. In `sessions`, filter `{ userId: ObjectId("…") }`: one document per login. On the Security page, change the password, log out and log in with the new one.
+
+### Be ready to answer
+
+- **What do the salt and the cost do?** The salt makes equal passwords hash differently; the cost makes each guess slow.
+- **Why is a hash compared and never decrypted?** It can't be decrypted. The guess is hashed with the same salt and cost, and the two are compared.
+- **Where does Mongoose middleware run?** `pre('save')` inside `save()`, after validation and before the write. Not in `updateOne` or `insertMany`.
+- **How does a duplicate email become a 409?** The unique index refuses it with E11000, and the error-handling middleware turns that into an `ApiError`.
+- **Why `$inc` for the count?** Reading, adding and saving loses counts when guesses arrive together.
+- **Why one session per login?** So a device can be signed out alone, and so M6 can tell a stolen refresh token from a second device.

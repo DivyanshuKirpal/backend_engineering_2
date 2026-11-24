@@ -12,8 +12,10 @@ try {
   await page.waitForSelector('.device-row');
   await page.waitForSelector('.activity-table tbody tr');
   check('two-factor on', /Two-factor authentication is on/.test(await text('.twofa-card')) && /Since \d{1,2} \w{3} 2026\./.test(await text('.twofa-card')));
-  check('three devices, this one first', (await deviceRows()) === 3 && /Chrome 130 on macOS\s*This device/.test(await text('.device-row')) && /Active now/.test(await text('.device-row')));
-  check('devices in sign-in order', /Safari on iPhone/.test(await page.locator('.device-row').nth(1).innerText()) && /Firefox 131 on Windows/.test(await page.locator('.device-row').nth(2).innerText()));
+  // Every login has a session of its own: this browser's, then the three seeded devices
+  check('four devices, this one first', (await deviceRows()) === 4 && /Chrome \d+ on \S+\s*This device/.test(await text('.device-row')) && /Active now/.test(await text('.device-row')), await text('.device-row'));
+  const others = await page.locator('.device-row').allInnerTexts();
+  check('devices in sign-in order', /Chrome 130 on macOS/.test(others[1]) && /Safari on iPhone/.test(others[2]) && /Firefox 131 on Windows/.test(others[3]), JSON.stringify(others));
   check('no sign out for this device', (await page.locator('.device-row').first().locator('button').count()) === 0);
   const activity = await text('.activity-table tbody');
   check('activity', /Wrong password/.test(activity) && /Two-factor turned on/.test(activity) && /Account created/.test(activity));
@@ -23,8 +25,8 @@ try {
   // Devices
   await page.click('.device-row:has-text("Safari") button:has-text("Sign out")');
   await page.waitForSelector('.toast:has-text("Signed out")');
-  await page.waitForFunction(() => document.querySelectorAll('.device-row').length === 2);
-  check('one device signed out', /Signed-in devices · 2/i.test(await text('.devices-panel .panel-label')));
+  await page.waitForFunction(() => document.querySelectorAll('.device-row').length === 3);
+  check('one device signed out', /Signed-in devices · 3/i.test(await text('.devices-panel .panel-label')));
   await page.waitForFunction(() => /Signed out a device/.test(document.querySelector('.activity-table tbody')?.textContent ?? ''));
   check('activity notes it', true);
   await page.click('button:has-text("Sign out all other devices")');

@@ -42,7 +42,7 @@ const FIELDS = {
     ['twoFactorEnabled', 'twoFactor.enabled'], ['twoFactorEnabledAt', 'twoFactor.enabledAt', 'date'],
     ['preferences.theme', 'preferences.theme'], ['preferences.hideSmallBalances', 'preferences.hideSmallBalances'],
     ['watchlist', 'watchlist', 'list'],
-    ['failedLoginCount', 'failedLoginCount'], ['lastLoginAt', 'lastLoginAt', 'date'], ['createdAt', 'createdAt', 'date'],
+    ['failedLoginCount', 'failedLoginCount'], ['lockUntil', 'lockUntil', 'date'], ['lastLoginAt', 'lastLoginAt', 'date'], ['createdAt', 'createdAt', 'date'],
   ],
   sessions: [
     ['id', '_id', 'id'], ['userId', 'userId', 'id'], ['device', 'device'], ['userAgent', 'userAgent'], ['ip', 'ip'],

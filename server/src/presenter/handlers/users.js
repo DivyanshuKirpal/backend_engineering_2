@@ -1,23 +1,21 @@
 // Account routes (section 4, user.routes.js).
 
-import { strength, MIN_LENGTH } from '../../../../client/src/models/domain/password.rules.js';
 import { db, persist } from '../../model/store.js';
 import { ApiError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { sessionDto, userDto } from '../mappers.js';
 import * as session from '../../model/exchange/session.js';
 import { notify } from '../../model/exchange/engine.js';
+import * as authService from '../../model/services/auth.service.js';
 import { cursorPage, newestFirst } from '../../lib/util.js';
+import { checkNewPassword } from './auth.js';
 
 const DEMO_SECRET = 'JBSWY3DPEHPK3PXP';
-const DEMO_CODE = '123456';
 const SECURITY_ACTIONS = new Set([
   'auth.login', 'auth.login_failed', 'auth.2fa_failed', 'user.registered', 'user.2fa_enabled', 'user.2fa_disabled',
   'user.password_changed', 'user.email_verified', 'user.sessions_revoked', 'user.session_revoked',
 ]);
 
-function checkCode(code) {
-  if (String(code ?? '') !== DEMO_CODE) throw new ApiError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
-}
+const wrongCode = () => new ApiError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
 
 export default [
   ['GET', '/users/me', (ctx) => ({ data: { user: userDto(session.requireUser(ctx)) } })],
@@ -44,23 +42,15 @@ export default [
     return { data: { user: userDto(user) } };
   }],
 
-  ['PATCH', '/users/me/password', (ctx) => {
+  ['PATCH', '/users/me/password', async (ctx) => {
     const user = session.requireUser(ctx);
-    const cred = db().credentials[user.email];
-    if (!cred || cred.password !== String(ctx.body?.currentPassword ?? '')) {
-      throw badRequest('Your current password isn\'t right.', { currentPassword: 'wrong' });
-    }
+    const current = String(ctx.body?.currentPassword ?? '');
     const next = String(ctx.body?.newPassword ?? '');
-    if (next.length < MIN_LENGTH || strength(next).score < 2) throw badRequest('Choose a stronger password.', { newPassword: 'weak' });
-    if (next === cred.password) throw badRequest('Choose a password you haven\'t used here.', { newPassword: 'same' });
-    cred.password = next;
-    let revoked = 0;
-    for (const s of db().sessions) {
-      if (s.userId === user.id && !s.revokedAt && s.id !== ctx.session.id) {
-        s.revokedAt = new Date().toISOString();
-        revoked += 1;
-      }
-    }
+    if (!(await authService.passwordMatches(user.id, current))) throw badRequest('Your current password isn\'t right.', { currentPassword: 'wrong' });
+    checkNewPassword(next, 'newPassword');
+    if (next === current) throw badRequest('Choose a password you haven\'t used here.', { newPassword: 'same' });
+    await authService.setPassword(user.id, next);
+    const revoked = session.revokeOthers(user.id, ctx.session.id);
     session.audit(ctx, user, 'user.password_changed', { metadata: { otherSessionsSignedOut: revoked } });
     notify(user.id, 'security', 'Password changed', 'Your other devices were signed out.', '/account/security');
     persist();
@@ -74,27 +64,23 @@ export default [
     return { data: { otpauthUrl: `otpauth://totp/${label}?secret=${DEMO_SECRET}&issuer=Orichal`, manualKey: DEMO_SECRET.replace(/(.{4})/g, '$1 ').trim() } };
   }],
 
-  ['POST', '/users/me/2fa/enable', (ctx) => {
+  ['POST', '/users/me/2fa/enable', async (ctx) => {
     const user = session.requireUser(ctx);
-    checkCode(ctx.body?.code);
-    user.twoFactorEnabled = true;
-    user.twoFactorEnabledAt = new Date().toISOString();
-    db().credentials[user.email].twoFactorCode = DEMO_CODE;
+    if (String(ctx.body?.code ?? '') !== authService.DEMO_CODE) throw wrongCode();
+    await authService.setTwoFactor(user.id, true);
     session.audit(ctx, user, 'user.2fa_enabled');
     notify(user.id, 'security', 'Two-factor turned on', 'Logging in and withdrawing now ask for a code from your authenticator app.', '/account/security');
     persist();
     return { data: { twoFactorEnabled: true } };
   }],
 
-  ['POST', '/users/me/2fa/disable', (ctx) => {
+  ['POST', '/users/me/2fa/disable', async (ctx) => {
     const user = session.requireUser(ctx);
-    checkCode(ctx.body?.code);
-    if (user.hasPassword && db().credentials[user.email]?.password !== String(ctx.body?.password ?? '')) {
+    if (!(await authService.codeMatches(user.id, ctx.body?.code))) throw wrongCode();
+    if (user.hasPassword && !(await authService.passwordMatches(user.id, ctx.body?.password))) {
       throw badRequest('Your password isn\'t right.', { password: 'wrong' });
     }
-    user.twoFactorEnabled = false;
-    user.twoFactorEnabledAt = null;
-    db().credentials[user.email].twoFactorCode = null;
+    await authService.setTwoFactor(user.id, false);
     session.audit(ctx, user, 'user.2fa_disabled');
     notify(user.id, 'security', 'Two-factor turned off', 'Logging in now needs only your password.', '/account/security');
     persist();
@@ -103,30 +89,23 @@ export default [
 
   ['GET', '/users/me/sessions', (ctx) => {
     const user = session.requireUser(ctx);
-    const list = db().sessions.filter((s) => s.userId === user.id && !s.revokedAt).sort(newestFirst('lastUsedAt'));
+    const list = db().sessions.filter((s) => s.userId === user.id && session.isLive(s)).sort(newestFirst('lastUsedAt'));
     return { data: { sessions: list.map((s) => sessionDto(s, ctx.session.id)) } };
   }],
 
   ['DELETE', '/users/me/sessions/:id', (ctx) => {
     const user = session.requireUser(ctx);
-    const s = db().sessions.find((x) => x.id === ctx.params.id && x.userId === user.id && !x.revokedAt);
+    const s = db().sessions.find((x) => x.id === ctx.params.id && x.userId === user.id && session.isLive(x));
     if (!s) throw notFound('That device isn\'t signed in.');
     if (s.id === ctx.session.id) throw conflict('Use Log out to end this device\'s session.');
-    s.revokedAt = new Date().toISOString();
+    session.revoke(s);
     session.audit(ctx, user, 'user.session_revoked', { metadata: { device: s.device } });
-    persist();
     return { status: 204, data: null };
   }],
 
   ['DELETE', '/users/me/sessions', (ctx) => {
     const user = session.requireUser(ctx);
-    let revoked = 0;
-    for (const s of db().sessions) {
-      if (s.userId === user.id && !s.revokedAt && s.id !== ctx.session.id) {
-        s.revokedAt = new Date().toISOString();
-        revoked += 1;
-      }
-    }
+    const revoked = session.revokeOthers(user.id, ctx.session.id);
     session.audit(ctx, user, 'user.sessions_revoked', { metadata: { revoked } });
     persist();
     return { data: { revoked } };

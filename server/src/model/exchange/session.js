@@ -19,13 +19,13 @@ import { createHash, randomBytes } from 'node:crypto';
 import { env } from '../../config/env.js';
 import { forbidden, unauthenticated } from '../../lib/errors.js';
 import { durationMs } from '../../lib/util.js';
-import { db, newId, persist } from '../store.js';
+import { toRecord } from '../documents.js';
+import { Session } from '../schemas/Session.js';
+import { db, newId, persist, remember } from '../store.js';
 
 const COOKIE = 'rt';
 const tokens = new Map(); // access token -> session id
 const tickets = new Map(); // 2FA login ticket -> { userId, attemptsLeft, expiresAt }
-export const LOCK_AFTER = 5;
-export const LOCK_MINUTES = 15;
 
 const cookieOptions = () => ({
   httpOnly: true,
@@ -36,6 +36,9 @@ const cookieOptions = () => ({
 const expiry = () => new Date(Date.now() + durationMs(env.REFRESH_TOKEN_TTL)).toISOString();
 const hash = (token) => createHash('sha256').update(token).digest('hex');
 
+/** Signed in: not ended, and used within its lifetime (MongoDB deletes it some time after that). */
+export const isLive = (session) => !session.revokedAt && Date.parse(session.expiresAt) > Date.now();
+
 export function issueToken(sessionId) {
   const token = randomBytes(24).toString('base64url');
   tokens.set(token, sessionId);
@@ -45,7 +48,7 @@ export function issueToken(sessionId) {
 /** The session and user behind an access token, or null. */
 export function fromToken(token) {
   const sessionId = token && tokens.get(token);
-  const session = sessionId && db().sessions.find((s) => s.id === sessionId && !s.revokedAt);
+  const session = sessionId && db().sessions.find((s) => s.id === sessionId && isLive(s));
   const user = session && db().users.find((u) => u.id === session.userId);
   return user ? { user, session } : null;
 }
@@ -102,32 +105,42 @@ function forget(sessionId) {
   for (const [token, id] of tokens) if (id === sessionId) tokens.delete(token);
 }
 
+/** Ends a session: it stops working at once, on whichever device it is. */
+export function revoke(session) {
+  session.revokedAt = new Date().toISOString();
+  forget(session.id);
+  persist();
+}
+
+/** Ends every live session of a user but one; returns how many that was. */
+export function revokeOthers(userId, keepId) {
+  const others = db().sessions.filter((s) => s.userId === userId && s.id !== keepId && isLive(s));
+  others.forEach(revoke);
+  return others.length;
+}
+
+/** The live session behind this browser's rt cookie, if it has one. */
+function fromCookie(ctx) {
+  const token = ctx.cookies.get(COOKIE);
+  const sessionId = token && db().refreshTokens[hash(token)];
+  return (sessionId && db().sessions.find((s) => s.id === sessionId && isLive(s))) || null;
+}
+
 /**
- * Signs a user in. A returning user gets their first session back: the demo
- * treats every browser as the device the seed data and the Security board
- * show. A user with no session yet gets one named after the browser in the
- * User-Agent header, with the request's IP. Sets the rt cookie and returns an
- * access token.
+ * Signs a user in: a session of its own for every login, one per device, named
+ * from the User-Agent header, with the request's IP. A browser holds one rt
+ * cookie, so a session it already had ends here rather than staying signed in
+ * with nobody holding its cookie. Sets the cookie and returns an access token.
  */
-export function startSession(ctx, user) {
-  const now = new Date().toISOString();
-  const own = db().sessions.filter((s) => s.userId === user.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  let session = own[0];
-  if (session) {
-    session.revokedAt = null;
-    session.lastUsedAt = now;
-    session.expiresAt = expiry();
-  } else {
-    session = {
-      id: newId(), userId: user.id, device: deviceName(ctx.userAgent).device, userAgent: ctx.userAgent, ip: ctx.ip,
-      tokenVersion: 0, rotatedAt: null, createdAt: now, lastUsedAt: now, expiresAt: expiry(), revokedAt: null,
-    };
-    db().sessions.push(session);
-  }
-  user.lastLoginAt = now;
-  user.failedLoginCount = 0;
-  delete db().lockouts[user.email];
-  audit(ctx, user, 'auth.login', { device: session.device.replace(/ \d+ on /, ' on '), ip: session.ip });
+export async function startSession(ctx, user) {
+  const earlier = fromCookie(ctx);
+  if (earlier) revoke(earlier);
+  const doc = await Session.create({
+    userId: user.id, device: deviceName(ctx.userAgent).device, userAgent: ctx.userAgent, ip: ctx.ip, expiresAt: expiry(),
+  });
+  const session = remember('sessions', toRecord('sessions', doc));
+  user.lastLoginAt = session.createdAt;
+  audit(ctx, user, 'auth.login');
   const token = randomBytes(32).toString('base64url');
   db().refreshTokens[hash(token)] = session.id;
   sendCookie(ctx, token);
@@ -139,8 +152,7 @@ export function startSession(ctx, user) {
 export function refresh(ctx) {
   const token = ctx.cookies.get(COOKIE);
   const key = token ? hash(token) : null;
-  const sessionId = key && db().refreshTokens[key];
-  const session = sessionId && db().sessions.find((s) => s.id === sessionId && !s.revokedAt);
+  const session = fromCookie(ctx);
   const user = session && db().users.find((u) => u.id === session.userId);
   if (!user) {
     if (key) delete db().refreshTokens[key];
@@ -159,13 +171,8 @@ export function refresh(ctx) {
 
 /** POST /auth/logout: ends the cookie's session; works without an access token. */
 export function endSession(ctx) {
-  const token = ctx.cookies.get(COOKIE);
-  const sessionId = token && db().refreshTokens[hash(token)];
-  const session = sessionId && db().sessions.find((s) => s.id === sessionId);
-  if (session) {
-    session.revokedAt = new Date().toISOString();
-    forget(session.id);
-  }
+  const session = fromCookie(ctx);
+  if (session) revoke(session);
   ctx.cookies.clear(COOKIE, cookieOptions());
   persist();
 }

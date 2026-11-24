@@ -505,7 +505,6 @@ Copy these rows into the review log under "### Server, CE-2 phase" (M0), and add
 | Change | 1 Folders, 4 API | KYC images are saved under `server/data/uploads` instead of Cloudinary | Cloud storage comes later |
 | Change | 4 API | No rate limits yet | They need Redis |
 | Addition | 4 API | Demo routes under `/api/v1/demo`: reset and fail-next for the Simulator menu; kyc-status, email-verified and a read-only snapshot for the checks only | The Simulator menu and the checks used to reach into the mock directly |
-| Change | 3 Schemas (sessions), 4 API | A sign-in revives the user's first session instead of starting one per device: the demo treats every browser as the seeded device the Security board shows. A user with no session gets one named from the User-Agent, with the request's IP (added in M2) | Carried over from the static phase, so the Security page and its check show the seeded devices with this one first |
 | Change | 3 Schemas | `createdAt` and `updatedAt` are fields the code sets instead of Mongoose timestamps; `users` also stores `hasPassword` and `googleLinked`, and `sessions` the device name; only the indexes this phase's queries use exist (added in M3) | The API's times are the engine's own, to the millisecond; the records already carry those fields |
 | Change | 4 API (Health) | One `GET /api/v1/health` (`status`, `uptimeSeconds`, `time`; MongoDB's state from M3) instead of `/health/live`, `/health/ready` and `/metrics` outside `/api/v1` (added in M1) | No Docker, Nginx or Prometheus probes the server in this phase; one public route under the API's base path serves Postman and the demo |
 
@@ -571,10 +570,11 @@ M4 · The store on MongoDB
 
 M5 · Sign-in on MongoDB with bcrypt
 
-- [ ] `password` virtual, hashing middleware, `comparePassword`, `findByEmail`
-- [ ] E11000 to 409
-- [ ] `auth.service` on Mongoose; password change and 2FA on the user document
-- [ ] `credentials` and `lockouts` maps removed
+- [x] `password` virtual, hashing middleware, `comparePassword`, `findByEmail`
+- [x] E11000 to 409
+- [x] `auth.service` on Mongoose; password change and 2FA on the user document
+- [x] `credentials` and `lockouts` maps removed
+- [x] One session per login (the owner's decision, 24 Nov): M6's rotation and reuse detection depend on it
 
 M6 · Tokens and protected routes
 
@@ -683,3 +683,19 @@ M10 · Documents and the tag
   Also checked on Atlas: the flush keeps `passwordHash` and `twoFactor.codeHash`; a flush made to fail shows on `/health` and is retried; a flush with nothing changed sends nothing.
 
   Departures from the plan: a flush `$set`s only the fields that changed and upserts only new records. The plan's upsert on every record would have made half a document out of a session that the TTL index had already deleted. Nothing new against the architecture.
+- **24 Nov 2026 · M5, sign-in on MongoDB with bcrypt.** What: registering, logging in, the 2FA step, changing the password and switching 2FA use Mongoose queries; passwords and the 2FA code exist only as bcrypt hashes; every login has a session of its own. Files and how:
+  - `model/schemas/User.js`: the `password` virtual (held in `$locals` for one save), `pre('save')` hashing with `BCRYPT_ROUNDS`, the error-handling `post('save')` that turns E11000 on the email into 409 `CONFLICT`, and the methods `comparePassword` and `compareCode`.
+  - `model/services/auth.service.js` (new): `register`, `checkPassword` (`findByEmail`, `isLocked`, the comparison; wrong ones counted with `$inc`, the fifth sets `lockUntil`), `passwordMatches`, `setPassword`, `codeMatches`, `setTwoFactor`. Each writes to MongoDB, then calls `store.remember()`.
+  - `handlers/auth.js`, `users.js` and the withdrawal's code check in `wallet.js` use it. A 2FA try is counted before the code is compared, and a ticket signs in once. Passwords over bcrypt's 72 bytes are refused. The sign-up credit comes from `DEMO_CREDIT_USDT`.
+  - `exchange/session.js`: `startSession` does `Session.create()` for every login, with the device, the User-Agent, the IP and `expiresAt`; a session this browser already held ends. `isLive` also checks `expiresAt`, since MongoDB's TTL deletion runs a little later. `revoke` and `revokeOthers` forget the tokens as well.
+  - The `credentials` and `lockouts` maps are gone from the working set, the seed and `store.json`. `lockUntil` joins the user record.
+
+  Checks (on Atlas from a script, 23 of 23, and in `api.check`):
+  1. Register 201 with a 10,000 USDT wallet; the same email again, in capitals, 409 `CONFLICT`. Three at the same moment with one email: one 201, two 409s.
+  2. Five wrong passwords: 401, 401, 401, 401, 423 with `lockUntil`, which is on the user in Atlas.
+  3. The demo login asks for the code; the code step gives 200 and a token.
+  4. In Atlas the new user has a `$2b$12$` hash and no password field; `store.json` and the server's log hold no password.
+  5. The Security page (`security.check`): the password changed, then used. On Atlas: the old one refused, the other device signed out.
+  6. `npm run checks`: 492 in 22 files (476 before; `api` 62 instead of 46). `npm run check:data`: 3,947 on 26 files. `npm run db:check-ledger`: 60 wallets in step.
+
+  Departures: the row "a sign-in revives the user's first session" is removed from section 8 and the md's review log. `security.check` now expects four devices, this login's first, so the Security page no longer matches its board's three. The answer for an unknown email is slowed by a bcrypt comparison but still comes sooner than a wrong password's (about 270 ms against 410 ms on Atlas), which also writes its count.

@@ -76,11 +76,12 @@ server/
     │   ├── seed.js              how the demo data is made, and how it fills MongoDB
     │   ├── documents.js         records to MongoDB documents and back, field by field
     │   ├── schemas/             the Mongoose models: User, Session, Wallet, LedgerEntry, Order, Trade
+    │   ├── services/            auth.service.js: registering and signing in against MongoDB
     │   └── exchange/
     │       ├── engine.js        matching and settlement: pending, open, filled, cancelled
     │       ├── market.js        the market simulator: books, the bot's ladder and taker, tickers, candles
     │       ├── wallet.js        the only code that changes a balance; a ledger entry for every change
-    │       ├── session.js       sessions, the rt cookie, access tokens, audit entries
+    │       ├── session.js       one session per login, the rt cookie, access tokens, audit entries
     │       ├── bus.js           the in-process event bus the gateway taps
     │       ├── lifecycle.js     start-up and the demo reset
     │       └── text.js          the server's own number grouping for notification text

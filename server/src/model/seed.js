@@ -20,7 +20,7 @@ export const VERSION = 1;
 /** The parts of the working set that live in STORE_FILE; the rest is in MongoDB (documents.js, MODELS). */
 export const FILE_KEYS = [
   'meta', 'assets', 'markets', 'transactions', 'kyc', 'audit', 'notifications', 'addresses', 'stats', 'health',
-  'idempotency', 'refreshTokens', 'credentials', 'lockouts',
+  'idempotency', 'refreshTokens',
 ];
 
 const SEED_FILES = {
@@ -40,7 +40,6 @@ const SEED_FILES = {
   addresses: 'deposit-addresses.json',
   stats: 'admin-stats.json',
   health: 'system-health.json',
-  accounts: 'demo-accounts.json',
 };
 
 /** One seed file's `data`; every seed file is a { success, data } envelope. */
@@ -118,7 +117,6 @@ export async function buildSeed() {
     assets: raw.assets.assets,
     markets: raw.markets.markets.map(({ ticker, ...config }) => config),
     users: s.users.items.map((user) => ({ ...user, watchlist: watchlists.get(user.id) ?? [] })),
-    credentials: Object.fromEntries(s.accounts.accounts.map((a) => [a.email, { password: a.password, twoFactorCode: a.twoFactorCode }])),
     balances: s.balances.items,
     ledger: orderTiedIds(s.ledger.items),
     orders: s.orders.items,
@@ -131,7 +129,6 @@ export async function buildSeed() {
     addresses: s.addresses.items,
     stats: s.stats,
     health: s.health,
-    lockouts: {},
     idempotency: {},
     refreshTokens: {}, // SHA-256 of an rt cookie's token -> session id (session.js)
   };
@@ -139,26 +136,24 @@ export async function buildSeed() {
 
 /**
  * Empties the six collections and fills them from a seed, through the models,
- * so validation runs. The demo passwords and the 2FA code are stored only as
- * bcrypt hashes. Returns how many documents each collection got.
+ * so validation runs. The demo accounts' passwords and 2FA code are stored only
+ * as bcrypt hashes. (insertMany runs no save hooks, so they are hashed here.)
  */
 export async function seedDatabase(data) {
   const hash = (text) => bcrypt.hash(text, env.BCRYPT_ROUNDS);
+  const { accounts } = await readSeed('demo-accounts.json');
   const users = await Promise.all(data.users.map(async (record) => {
     const doc = toDocument('users', record);
-    const account = data.credentials[record.email];
+    const account = accounts.find((a) => a.email === record.email);
     if (account) doc.passwordHash = await hash(account.password);
     if (account?.twoFactorCode) doc.twoFactor.codeHash = await hash(account.twoFactorCode);
     return doc;
   }));
 
-  const counts = {};
   for (const [collection, Model] of Object.entries(MODELS)) {
     const docs = collection === 'users' ? users : data[collection].map((record) => toDocument(collection, record));
     await Model.createIndexes();
     await Model.deleteMany({});
     await Model.insertMany(docs);
-    counts[Model.collection.name] = docs.length;
   }
-  return counts;
 }

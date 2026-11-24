@@ -6,7 +6,7 @@
 import * as money from '../../client/src/models/domain/money.js';
 import { start } from './harness.mjs';
 
-const { base, check, fail, finish } = await start({ browser: false });
+const { base, check, fail, finish, snapshot } = await start({ browser: false });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** One client, as a browser would be: its cookies (sent only under their path) and its access token. */
@@ -199,6 +199,54 @@ try {
   r = await call('GET', '/admin/stats');
   check('a trader on an admin route: 403 FORBIDDEN', r.status === 403 && r.body.error.code === 'FORBIDDEN');
   await consistent('after admin approval');
+
+  // 10. One session per login
+  const phone = client();
+  r = await phone.call('POST', '/auth/login', { email: 'demo@orichal.app', password: 'orichal-demo' });
+  r = await phone.call('POST', '/auth/login/2fa', { loginTicket: r.body.data.loginTicket, code: '123456' });
+  const phoneTicket = r.status;
+  phone.setToken(r.body.data.accessToken);
+  const currentOf = async (c) => (await c.call('GET', '/users/me/sessions')).body.data.sessions.find((s) => s.current)?.id;
+  const [mine, theirs] = [await currentOf(demo), await currentOf(phone)];
+  check('two logins have two sessions', phoneTicket === 200 && mine && theirs && mine !== theirs, `${mine} ${theirs}`);
+  r = await demo.call('DELETE', `/users/me/sessions/${theirs}`);
+  check('signing the other device out ends only its session', r.status === 204 && (await phone.call('GET', '/users/me')).status === 401 && (await phone.call('POST', '/auth/refresh')).status === 401 && (await demo.call('GET', '/users/me')).status === 200);
+  const sessionsBefore = (await demo.call('GET', '/users/me/sessions')).body.data.sessions.length;
+  r = await demo.call('POST', '/auth/login', { email: 'demo@orichal.app', password: 'orichal-demo' });
+  const usedTicket = r.body.data.loginTicket;
+  r = await demo.call('POST', '/auth/login/2fa', { loginTicket: usedTicket, code: '123456' });
+  demo.setToken(r.body.data.accessToken);
+  check('logging in again in one browser replaces its session', (await demo.call('GET', '/users/me/sessions')).body.data.sessions.length === sessionsBefore && (await currentOf(demo)) !== mine);
+  r = await client().call('POST', '/auth/login/2fa', { loginTicket: usedTicket, code: '123456' });
+  check('a login ticket works once', r.status === 401);
+
+  // 11. Register, the duplicate email, and the lockout
+  const newcomer = client();
+  r = await newcomer.call('POST', '/auth/register', { email: 'New.Person@Example.com', password: 'Correct-horse-42', displayName: 'New Person' });
+  check('register 201 with an rt cookie', r.status === 201 && r.body.data.user.email === 'new.person@example.com' && newcomer.cookies.has('rt'), JSON.stringify(r.body));
+  check('the answer holds no password or hash', !/password(Hash)?"|\$2[aby]\$|Correct-horse/.test(JSON.stringify(r.body)), JSON.stringify(r.body));
+  newcomer.setToken(r.body.data.accessToken);
+  const newId = r.body.data.user.id;
+  r = await newcomer.call('GET', '/wallet/balances');
+  check('with a 10,000 USDT wallet', r.body.data.balances.find((b) => b.asset === 'USDT').available === '10000.000000', JSON.stringify(r.body.data.balances[0]));
+  r = await client().call('POST', '/auth/register', { email: 'new.person@example.com', password: 'Another-horse-43', displayName: 'Someone Else' });
+  check('the same email again: 409 CONFLICT', r.status === 409 && r.body.error.code === 'CONFLICT' && r.body.error.details.email === 'taken', JSON.stringify(r.body));
+  const twins = await Promise.all([1, 2, 3].map(() => client().call('POST', '/auth/register', { email: 'twin@example.com', password: 'Correct-horse-42', displayName: 'Twin' })));
+  check('three at the same moment with one email: one 201, two 409', twins.map((t) => t.status).sort().join() === '201,409,409', twins.map((t) => t.status).join());
+  r = await client().call('POST', '/auth/register', { email: 'long@example.com', password: `Aa1-${'x'.repeat(80)}`, displayName: 'Long' });
+  check('a password longer than bcrypt reads: 400', r.status === 400 && r.body.error.details.password === 'long', JSON.stringify(r.body));
+  const statuses = [];
+  for (let i = 0; i < 5; i += 1) statuses.push((r = await client().call('POST', '/auth/login', { email: 'new.person@example.com', password: `wrong-${i}` })).status);
+  check('five wrong passwords: four 401s, then 423 with lockUntil', statuses.join() === '401,401,401,401,423' && r.body.error.code === 'ACCOUNT_LOCKED' && Date.parse(r.body.error.details.lockUntil) > Date.now(), statuses.join());
+  r = await client().call('POST', '/auth/login', { email: 'new.person@example.com', password: 'Correct-horse-42' });
+  check('the right password while locked: 423', r.status === 423);
+  check('a signed-in session goes on through the lock', (await newcomer.call('GET', '/users/me')).status === 200);
+  r = await client().call('POST', '/auth/login', { email: 'nobody@example.com', password: 'whatever-1' });
+  check('an unknown email answers like a wrong password', r.status === 401 && r.body.error.message === 'That email and password don\'t match an account.');
+  const everything = JSON.stringify(await snapshot());
+  check('no password, hash or code anywhere in the working set', !/orichal-demo|Correct-horse|\$2[aby]\$|passwordHash|codeHash|"credentials"|"lockouts"/.test(everything));
+  const people = (await snapshot('users')).users;
+  check('the lock is on the user', Date.parse(people.find((u) => u.id === newId).lockUntil) > Date.now());
 } catch (err) {
   fail(err);
 } finally {

@@ -10,6 +10,7 @@ import { ApiError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { ledgerDto, transactionDto } from '../mappers.js';
 import * as session from '../../model/exchange/session.js';
 import * as wallet from '../../model/exchange/wallet.js';
+import { codeMatches } from '../../model/services/auth.service.js';
 import { notify } from '../../model/exchange/engine.js';
 import { grouped } from '../../model/exchange/text.js';
 import { cursorPage, newestFirst, requireFields } from '../../lib/util.js';
@@ -100,16 +101,15 @@ export default [
     throw new ApiError(503, 'INTERNAL', 'Card deposits use Stripe test mode, which needs the backend.');
   }],
 
-  ['POST', '/wallet/withdrawals', (ctx) => {
+  ['POST', '/wallet/withdrawals', async (ctx) => {
     const user = session.requireUser(ctx);
+    // Looked up first: from the checks below to the lock, nothing else may run in between
+    const codeOk = !user.twoFactorEnabled || (await codeMatches(user.id, ctx.body?.code));
     if (user.status !== 'active') throw new ApiError(403, 'FORBIDDEN', 'This account is frozen, so it can\'t withdraw.');
     if (user.kycStatus !== 'approved') throw new ApiError(403, 'KYC_REQUIRED', 'Verify your identity before withdrawing.');
     requireFields(ctx.body, ['asset', 'amount', 'address']);
     const a = asset(ctx.body.asset);
-    if (user.twoFactorEnabled) {
-      const expected = db().credentials[user.email]?.twoFactorCode;
-      if (String(ctx.body.code ?? '') !== expected) throw new ApiError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
-    }
+    if (!codeOk) throw new ApiError(400, 'INVALID_2FA_CODE', 'That code didn\'t work.', { attemptsLeft: null });
     const free = wallet.balance(user.id, a.code).available;
     const check = withdrawalRules.validate(a, { address: ctx.body.address, amount: String(ctx.body.amount), code: ctx.body.code ?? '000000' }, free, { ...user, twoFactorEnabled: false });
     if (!check.ok) {

@@ -2655,7 +2655,6 @@ Section 8 starts the frontend's static phase, and the table "Frontend, static ph
 | Addition | 9 Server build log | New section: two lines pointing to `docs/server-plan.md`, which holds the phase's scope, decisions, milestones, checklist and log | The server phase keeps its plan and log in its own file instead of growing this one |
 | Change | 3 Schemas | `createdAt` and `updatedAt` are fields the code sets instead of Mongoose timestamps; `users` also stores `hasPassword` and `googleLinked`, and `sessions` the device name; only the indexes this phase's queries use exist | The API's times are the engine's own, to the millisecond; the records already carry those fields |
 | Change | 4 API (Health) | One `GET /api/v1/health` (`status`, `uptimeSeconds`, `time`; MongoDB's state from M3) instead of `/health/live`, `/health/ready` and `/metrics` outside `/api/v1` | No Docker, Nginx or Prometheus probes the server in this phase; one public route under the API's base path serves Postman and the demo |
-| Change | 3 Schemas (sessions), 4 API | A sign-in revives the user's first session instead of starting one per device: the demo treats every browser as the seeded device the Security board shows. A user with no session gets one named from the User-Agent, with the request's IP | Carried over from the static phase, so the Security page and its check show the seeded devices with this one first |
 
 ### Sources
 

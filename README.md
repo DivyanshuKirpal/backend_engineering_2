@@ -20,7 +20,7 @@ Then open http://localhost:5173. Any page can be opened directly, for example ht
 
 ## Demo accounts
 
-The accounts and codes below live in the server's demo data. Until M5 the passwords are compared as plain text; then they become bcrypt hashes in MongoDB.
+The accounts below are in the seed data; in MongoDB their passwords and code exist only as bcrypt hashes.
 
 | Account | Email | Password | 2FA code |
 | --- | --- | --- | --- |
